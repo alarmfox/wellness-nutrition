@@ -4,10 +4,11 @@ import {
   type NextAuthOptions,
   type DefaultSession,
 } from "next-auth";
-import DiscordProvider from "next-auth/providers/discord";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { env } from "../env/server.mjs";
 import { prisma } from "./db";
+import CredentialsProvider from 'next-auth/providers/credentials';
+import type { Role } from "@prisma/client";
+import argon2 from "argon2";
 
 /**
  * Module augmentation for `next-auth` types.
@@ -21,18 +22,13 @@ declare module "next-auth" {
     user: {
       id: string;
       // ...other properties
-      role: UserRole;
+      role: Role;
     } & DefaultSession["user"];
   }
 
-  enum UserRole {
-    ADMIN,
-    CLIENT
-  }
-  
   interface User {
     // ...other properties
-    role: UserRole;
+    role: Role;
  }
 }
 
@@ -54,10 +50,31 @@ export const authOptions: NextAuthOptions = {
   },
   adapter: PrismaAdapter(prisma),
   providers: [
-    DiscordProvider({
-      clientId: env.DISCORD_CLIENT_ID,
-      clientSecret: env.DISCORD_CLIENT_SECRET,
-    }),
+    CredentialsProvider({
+      name: 'Credentials',
+      credentials: {
+        email: {
+          label: "Email", type: "email", placeholder: "Indirizzo email",
+        },
+        password: {
+          label: "Password", type: "password",
+        }
+      },
+      async authorize(credentials) {
+        console.log(credentials);
+        const user = await prisma.user.findUnique({
+          where: {
+            email: credentials?.email
+          }
+        })
+
+        if (!user || !user.emailVerified || !user.password) 
+          return null;
+        
+        return (await argon2.verify(user.password, credentials?.password || '')) ? user : null;
+
+      },
+    })
     /**
      * ...add more providers here
      *
@@ -68,6 +85,9 @@ export const authOptions: NextAuthOptions = {
      * @see https://next-auth.js.org/providers/github
      **/
   ],
+  pages: {
+    signIn: '/signin',
+  }
 };
 
 /**
