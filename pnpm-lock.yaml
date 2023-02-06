@@ -7,6 +7,7 @@ specifiers:
   '@hookform/resolvers': ^2.9.10
   '@mui/icons-material': ^5.11.0
   '@mui/material': ^5.11.7
+  '@mui/utils': ^5.11.7
   '@mui/x-data-grid': ^5.17.22
   '@next-auth/prisma-adapter': ^1.0.5
   '@prisma/client': ^4.9.0
@@ -46,6 +47,7 @@ dependencies:
   '@hookform/resolvers': 2.9.10_react-hook-form@7.43.0
   '@mui/icons-material': 5.11.0_m3y2ykptchyoygtoroit6l3ehq
   '@mui/material': 5.11.7_rqh7qj4464ntrqrt6banhaqg4q
+  '@mui/utils': 5.11.7_react@18.2.0
   '@mui/x-data-grid': 5.17.22_juhrskmuvyorwpajghq6zhdw2q
   '@next-auth/prisma-adapter': 1.0.5_77bhi65b6v5jbrzr36rs2ojwe4
   '@prisma/client': 4.9.0_prisma@4.9.0
