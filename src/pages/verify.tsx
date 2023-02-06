@@ -8,14 +8,22 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { ErrorMessage } from '@hookform/error-message';
 import { api } from '../utils/api';
+import type { NextPage, NextPageContext } from 'next';
 
+interface Props {
+  token: string;
+}
 
-export default function VerifyEmail() {
-  const { register,  handleSubmit, watch, formState: { errors, isLoading } } = useForm<VerifyAccountModel>({
-    resolver: zodResolver(VerifyAccountSchema)
+const Verify: NextPage<Props> = ({ token }) => {
+  console.log(token);
+  const router = useRouter();
+  const { register,  handleSubmit, watch, formState: { errors, isLoading }, getValues} = useForm<VerifyAccountModel>({
+    resolver: zodResolver(VerifyAccountSchema),
+    defaultValues: {
+      token: router.query.token as string
+    }
   });
   const [error, setError] = React.useState<string | undefined>(undefined); 
-  const router = useRouter();
   const { mutate, isLoading: requestLoading } = api.user.changePassword.useMutation({
     onSuccess: () => router.replace('/signin'),
     onError: (err) => {
@@ -26,9 +34,7 @@ export default function VerifyEmail() {
       setError('Errore sconosciuto');
     }
   })
-  const onSubmit = React.useCallback((v: VerifyAccountModel) => {
-      mutate(v);
-  }, [mutate])
+  const onSubmit = React.useCallback((v: VerifyAccountModel) => mutate(v), [mutate])
   return (
       <Container component="main" maxWidth="xs">
         <CssBaseline />
@@ -49,7 +55,7 @@ export default function VerifyEmail() {
           </Typography>
             {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
           <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
-            <input type="hidden" {...register('token')} defaultValue={router.query.token} />
+            <input type="hidden" {...register('token')} />
             <TextField
               margin="normal"
               required
@@ -68,13 +74,12 @@ export default function VerifyEmail() {
               label="Conferma password"
               type="password"
               id="confirmPassword"
+              error={watch("newPassword") !== watch("confirmPassword") && !!getValues("confirmPassword")}
               disabled={!isLoading}
-              {...register('confirmPassword', {
-                validate: (v: string) => watch('newPassword') !== v ? 'Le password non corrispndono' : undefined
-              })}
+              {...register('confirmPassword')}
             />
             <ErrorMessage errors={errors} name="confirmPassword" />
-            {error && <Alert variant='filled' severity="error">{error}</Alert> } 
+            {error && <Alert variant='filled' severity="error">{error}</Alert> }
             <Button
               type="submit"
               fullWidth
@@ -88,3 +93,12 @@ export default function VerifyEmail() {
       </Container>
   );
 }
+
+Verify.getInitialProps = (ctx: NextPageContext) => {
+  const { query } = ctx;
+  return {
+    token: query.token as string
+  }
+}
+
+export default Verify;

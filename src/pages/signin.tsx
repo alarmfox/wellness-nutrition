@@ -45,7 +45,7 @@ export default function SignIn({ csrfToken }: InferGetServerSidePropsType<typeof
           id="password"
           autoComplete="current-password"
         />
-        {error && <Alert variant="filled" severity="error">Login fallito. Email e/o password errati</Alert>}
+        {error && error !== "SessionRequired" && <Alert variant="filled" severity="error">Login fallito. Email e/o password errati</Alert>}
         <Button
           type="submit"
           fullWidth

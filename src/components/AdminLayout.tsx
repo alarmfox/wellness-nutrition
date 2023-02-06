@@ -3,14 +3,15 @@ import { styled, useTheme } from '@mui/material/styles';
 import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
 import { Box, CssBaseline, Toolbar, IconButton, Typography, Drawer,
-    Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
+    Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
 import type { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import MuiAppBar from '@mui/material/AppBar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useRouter } from 'next/router';
-
+import { AccountCircle } from '@mui/icons-material';
+import { signOut } from 'next-auth/react';
 const drawerWidth = 240;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
@@ -65,35 +66,47 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 type NavigationOption = {
   name: string;
   to: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: any
 }
 
-const NavigationOptions: {[key: string]: NavigationOption } = {
-  '1': {
+const NavigationOptions: NavigationOption[] = [
+  {
     icon: <PeopleIcon />,
     name: 'Utenti',
     to: '/users'
   },
-  '2': {
+   {
     icon: <EventIcon />,
     name: 'Calendario',
     to: '/' 
   }
-}
 
+]
 export default function AdminLayout ({ children }: React.PropsWithChildren) {
   const theme = useTheme();
   const [open, setOpen] = React.useState(true);
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [ selected, setSelected ] = React.useState('Utenti');
   const { pathname } = useRouter();
-  
-  const handleDrawerOpen = () => {
-    setOpen(true);
-  };
 
-  const handleDrawerClose = () => {
+  const handleMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  }, [])
+
+  const handleClose = React.useCallback(() => {
+    setAnchorEl(null);
+  }, []);
+
+  const handleDrawerOpen = React.useCallback(() => {
+    setOpen(true);
+  }, []);
+
+  const handleDrawerClose = React.useCallback(() => {
     setOpen(false);
-  };
+  }, []);
+
+  const onLogout = React.useCallback(() =>  signOut({callbackUrl: '/'}).catch(console.error), [])
 
   React.useEffect(() => {
      switch(pathname) {
@@ -102,9 +115,6 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
         break;
       case "/":
         setSelected('Calendario');
-        break;
-      case "/new-user":
-        setSelected('Nuovo utente');
         break;
      }
   }, [pathname])
@@ -126,6 +136,34 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
           <Typography variant="h6" noWrap component="div">
             {selected}
           </Typography>
+          <IconButton
+                size="large"
+                aria-label="account of current user"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                onClick={handleMenu}
+                color="inherit"
+              >
+                <AccountCircle />
+              </IconButton>
+              <Menu
+                id="menu-appbar"
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                open={Boolean(anchorEl)}
+                onClose={handleClose}
+              >
+                {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+                <MenuItem onClick={onLogout}>Logout</MenuItem>
+              </Menu>
         </Toolbar>
       </AppBar>
       <Drawer
@@ -148,13 +186,13 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
         </DrawerHeader>
         <Divider />
         <List>
-          {Object.keys(NavigationOptions).map((id: string) => (
-            <ListItem key={id} disablePadding>
-              <ListItemButton component="a" href={NavigationOptions[id]?.to}>
+          {NavigationOptions.map((e) => (
+            <ListItem key={e.name} disablePadding>
+              <ListItemButton component="a" href={e.to}>
                 <ListItemIcon>
-                  {NavigationOptions[id]?.icon}
+                  {e.icon}
                 </ListItemIcon>
-                <ListItemText primary={NavigationOptions[id]?.name} />
+                <ListItemText primary={e.name} />
               </ListItemButton>
             </ListItem>
           ))}

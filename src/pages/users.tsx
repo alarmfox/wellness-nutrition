@@ -11,6 +11,7 @@ import { api } from "../utils/api";
 import AddIcon from "@mui/icons-material/Add"
 import AdminLayout from "../components/AdminLayout";
 import type { User } from "@prisma/client";
+import { Role } from "@prisma/client";
 import { SubType } from "@prisma/client";
 import { visuallyHidden } from '@mui/utils';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -55,6 +56,11 @@ export default function Users() {
         </Stack>
       </AdminLayout>
     )
+}
+
+Users.auth = {
+  isProtected: true,
+  role: Role.ADMIN
 }
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
