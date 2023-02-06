@@ -61,7 +61,7 @@ model User {
     medOk             Boolean   @default(false)
     cellphone         String?
     subType           SubType   @default(SHARED)
-    email             String   @unique
+    email             String    @unique
     emailVerified     DateTime?
     expiresAt         DateTime
     remainingAccesses Int
