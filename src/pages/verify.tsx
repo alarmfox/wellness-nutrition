@@ -15,12 +15,11 @@ interface Props {
 }
 
 const Verify: NextPage<Props> = ({ token }) => {
-  console.log(token);
   const router = useRouter();
   const { register,  handleSubmit, watch, formState: { errors, isLoading }, getValues} = useForm<VerifyAccountModel>({
     resolver: zodResolver(VerifyAccountSchema),
     defaultValues: {
-      token: router.query.token as string
+      token
     }
   });
   const [error, setError] = React.useState<string | undefined>(undefined); 

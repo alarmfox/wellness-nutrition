@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { AppBar, Container, Toolbar, Box, IconButton, Menu, MenuItem, Typography, Button, Tooltip, Avatar } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import { signOut } from 'next-auth/react';
 
 type Page = {
   name: string;
@@ -9,20 +10,33 @@ type Page = {
 }
  
 
-const pages: {[key: number]: Page} = {
-  1: {
+const pages: Page[]= [
+  {
     name: 'Home',
     id: 1,
     path: '/',
   },
-  2: {
+  {
     name: 'Nuova prenotazione',
     id: 2,
     path: 'new'
   }
-}
+]
 
-const settings = ['Logout'];
+type Action = {
+  name: string;
+  id: number;
+  callback: () => void
+};
+
+const actions: Action[] = [
+  {
+    id: 1,
+    name: 'Logout',
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    callback: () => signOut({ callbackUrl: '/'})
+  }
+];
 
 export function ResponsiveAppBar() {
 
@@ -78,9 +92,9 @@ export function ResponsiveAppBar() {
                 display: { xs: 'block', md: 'none' },
               }}
             >
-              {Object.keys(pages).map((page) => (
-                <MenuItem component="a" href={pages[+page]?.path} key={page}>
-                  <Typography textAlign="center">{pages[+page]?.name}</Typography>
+              {pages.map((page) => (
+                <MenuItem component="a" href={page.path} key={page.id}>
+                  <Typography textAlign="center">{page.name}</Typography>
                 </MenuItem>
               ))}
             </Menu>
@@ -104,13 +118,13 @@ export function ResponsiveAppBar() {
             Wellness & Nutrition
           </Typography>
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            {Object.keys(pages).map((page) => (
+            {pages.map((page) => (
               <Button
-                key={page}
-                href={pages[+page]?.path}
+                key={page.id}
+                href={page.path}
                 sx={{ my: 2, color: 'white', display: 'block' }}
               >
-                {pages[+page]?.name}
+                {page.name}
               </Button>
             ))}
           </Box>
@@ -138,9 +152,10 @@ export function ResponsiveAppBar() {
               open={Boolean(anchorElUser)}
               onClose={handleCloseUserMenu}
             >
-              {settings.map((setting) => (
-                <MenuItem key={setting}>
-                  <Typography textAlign="center">{setting}</Typography>
+              {actions.map((action) => (
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises, @typescript-eslint/no-unsafe-assignment
+                <MenuItem key={action.id} onClick={action.callback}>
+                  <Typography textAlign="center">{action.name}</Typography>
                 </MenuItem>
               ))}
             </Menu>
