@@ -23,6 +23,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { CreateUserModel, UpdateUserModel} from '../utils/user.schema';
 import { CreateUserSchema, UpdateUserSchema } from '../utils/user.schema';
 import { DateTime } from 'luxon';
+import { useConfirm } from 'material-ui-confirm';
 
 const Item = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
@@ -229,14 +230,25 @@ interface EnhancedTableToolbarProps {
 
 function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
   const utils = api.useContext();
+  const confirm = useConfirm();
   const { selected, setSearch } = props;
-  const { mutate: deleteUsers, isLoading } = api.user.delete.useMutation({
+  const { mutate, isLoading } = api.user.delete.useMutation({
     onSuccess: () => utils.user.getAll.invalidate()
   })
 
-  const handleDelete = React.useCallback(() => {
-    deleteUsers(selected);
-  }, [selected, deleteUsers])
+  const handleDelete = React.useCallback(async() => {
+    try {
+      await confirm({
+        description: 'Sicuro di voler cancellare gli utenti selezionati? L\'azione non sarà reversibile.',
+        title: 'Conferma',
+        confirmationText: 'Conferma',
+        cancellationText: 'Annulla',
+      })
+      mutate(selected);
+    } catch (error) {
+     console.log(error); 
+    }
+  }, [selected, mutate, confirm])
 
   if(isLoading) return <CircularProgress />
 
@@ -272,12 +284,13 @@ function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
       )}
       {selected.length > 0 ? (
         <Tooltip title="Delete">
+          {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
           <IconButton onClick={handleDelete}>
             <DeleteIcon />
           </IconButton>
         </Tooltip>
       ) : (
-        <Tooltip title="Filter list">
+        <Tooltip title="Ricerca per cognome">
           <FormControl sx={{ m : '.5rem'}} variant="outlined">
             <InputLabel htmlFor="search">Cerca per congnome</InputLabel>
             <OutlinedInput
@@ -506,7 +519,7 @@ function CreateUser({ handleClose }: CreateUserProps) {
         await utils.user.getAll.invalidate();
         handleClose();
       } catch (error) {
-       setError('Error sconosciuto') 
+        setError('Error sconosciuto') 
       }          
       }),
     onError: ((error) => {
@@ -621,7 +634,7 @@ function CreateUser({ handleClose }: CreateUserProps) {
                     fullWidth
                     type="date"
                     id="expiresAt"
-                    defaultValue={DateTime.now().toFormat('yyyy-LL-dd')}
+                    defaultValue={DateTime.now().plus({ months: 1}).toFormat('yyyy-LL-dd')}
                     required
                     {...register('expiresAt', { valueAsDate: true } )}
                     label="Scadenza"
