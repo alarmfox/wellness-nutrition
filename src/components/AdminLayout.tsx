@@ -10,7 +10,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useRouter } from 'next/router';
-import { AccountCircle } from '@mui/icons-material';
+import { AccountCircle, Logout } from '@mui/icons-material';
 import { signOut } from 'next-auth/react';
 const drawerWidth = 240;
 
@@ -133,37 +133,39 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" component="div">
             {selected}
           </Typography>
-          <IconButton
-                size="large"
-                aria-label="account of current user"
-                aria-controls="menu-appbar"
-                aria-haspopup="true"
-                onClick={handleMenu}
-                color="inherit"
-              >
-                <AccountCircle />
-              </IconButton>
-              <Menu
-                id="menu-appbar"
-                anchorEl={anchorEl}
-                anchorOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                keepMounted
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                open={Boolean(anchorEl)}
-                onClose={handleClose}
-              >
-                {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-                <MenuItem onClick={onLogout}>Logout</MenuItem>
-              </Menu>
+          <Box sx={{ display: 'flex', width: '100%', justifyContent: 'end'}}>
+            <IconButton
+              size="large"
+              aria-label="account of current user"
+              aria-controls="menu-appbar"
+              aria-haspopup="true"
+              onClick={handleMenu}
+              color="inherit"
+            >
+              <AccountCircle />
+            </IconButton>
+            <Menu
+              id="menu-appbar"
+              anchorEl={anchorEl}
+              anchorOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              keepMounted
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              open={Boolean(anchorEl)}
+              onClose={handleClose}
+            >
+              {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+              <MenuItem onClick={onLogout}>Logout</MenuItem>
+            </Menu>
+          </Box>
         </Toolbar>
       </AppBar>
       <Drawer
@@ -198,6 +200,18 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
           ))}
         </List>
         
+        <Divider />
+        <List>
+          <ListItem key="logout" disablePadding>
+            {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+            <ListItemButton onClick={onLogout}> 
+              <ListItemIcon>
+                <Logout />
+              </ListItemIcon>
+              <ListItemText primary="Esci"/>
+            </ListItemButton>
+          </ListItem>
+        </List>
       </Drawer>
       <Main open={open}>
         <DrawerHeader />

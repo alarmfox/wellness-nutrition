@@ -18,7 +18,7 @@ function Home () {
 
 Home.auth = {
   isProtected: true,
-  role: Role.USER
+  role: [Role.USER, Role.ADMIN]
 }
 
 export default Home;

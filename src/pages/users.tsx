@@ -60,7 +60,7 @@ export default function Users() {
 
 Users.auth = {
   isProtected: true,
-  role: Role.ADMIN
+  role: [ Role.ADMIN ]
 }
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {

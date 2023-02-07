@@ -15,7 +15,7 @@ const theme = createTheme();
 
 export type AuthProps = {
   isProtected: boolean;
-  role: Role
+  role: Role[]
 }
 
 export type CustomAppProps = AppProps & {
@@ -63,7 +63,7 @@ function Auth({ children, auth }: { children: JSX.Element, auth: AuthProps}) {
     )
   }
 
-  if (data.user.role !== auth.role) {
+  if (!auth.role.includes(data.user.role)) {
     return <div>Forbidden</div>
   }
   return children;
