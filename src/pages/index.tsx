@@ -9,7 +9,6 @@ import { Container, CssBaseline, Box, Typography, Button, Alert, Card,
 import { ResponsiveAppBar } from '../components/AppBar';
 import { DateTime } from 'luxon';
 import { useConfirm } from 'material-ui-confirm';
-import { useRouter } from 'next/router';
 import type { ListChildComponentProps} from 'react-window';
 import { FixedSizeList } from 'react-window';
 import { Delete, Event } from '@mui/icons-material';
@@ -21,11 +20,13 @@ function Home () {
   if (sessionData?.user.role === 'ADMIN') return <Admin />
 
   const { data, isLoading } = api.bookings.getCurrent.useQuery();
+  const { data: user, isLoading: userLoading } = api.user.getCurrent.useQuery();
 
-  if (isLoading) return <div>Caricamento in corso...</div>
+  if (!user) return <div>Caricamento in corso...</div>
 
   return (
-    <><ResponsiveAppBar /><Container component="main" maxWidth="xs">
+    <><ResponsiveAppBar />
+    <Container fixed component="main" maxWidth="xs">
       <CssBaseline />
       <Box
         sx={{
@@ -33,10 +34,10 @@ function Home () {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          height: '95vh',
-          width: '100%'
+          overflowY: 'hidden',
+          overflowX: 'hidden',
         }}
-      >
+      > {isLoading || userLoading && <CircularProgress />}
         <SubscriptionInfo />
         {data && data.length > 0 ? <Box sx={{
           display: 'flex',
@@ -46,7 +47,9 @@ function Home () {
           <Typography gutterBottom variant="h6">Prenotazioni</Typography>
           <BookingList bookings={data} />
         </Box> : <Typography color="gray"> Nessuna prenotazione </Typography>}
-        <Button component="a" href="/new" sx={{ mt: '2rem' }} variant="contained" color="primary" aria-label="nuova prenotazione">
+        <Button 
+          disabled={user.remainingAccesses === 0 || DateTime.fromJSDate(user.expiresAt) < DateTime.now()} 
+          component="a" href="/new" sx={{ mt: '2rem' }} variant="contained" color="primary" aria-label="nuova prenotazione">
           Nuova prenotazione
         </Button>
       </Box>
@@ -103,7 +106,7 @@ function SubscriptionInfo() {
               </Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography align="right" variant="h5">
+              <Typography color={DateTime.fromJSDate(data.expiresAt) < DateTime.now() ? 'red' : 'green'} align="right" variant="h5">
                 {formatDate(data.expiresAt.toISOString(), DateTime.DATE_SHORT)}
               </Typography>
             </Grid>
@@ -124,27 +127,48 @@ function RenderRow(props: ListChildComponentProps<Booking[]>) {
   const { index, style, data } = props;
   const booking = data[index];
   const confirm = useConfirm();
+  const utils = api.useContext();
   const  [error, setError] = React.useState<string | undefined>(undefined);
   
-  const handleClick = React.useCallback(async (booking: Booking) => {
+  const { mutate, isLoading } = api.bookings.delete.useMutation({
+    onSuccess:  () => Promise.all([
+        utils.bookings.getCurrent.invalidate(),
+        utils.user.getCurrent.invalidate(),
+    ]),
+    onError: (err) => {
+      if (err?.data?.code === 'NOT_FOUND') {
+        setError('Impossibile trovare la prenotazione')
+        return;
+      }
+      setError('Errore sconosciuto')
+    }
+  })
+  
+  const handleClick = React.useCallback(async ({ id, startsAt}: Booking) => {
     try {
+      const isRefundable = DateTime.fromJSDate(startsAt).diffNow().as('hours') > 3; 
       await confirm({
-        description: DateTime.fromJSDate(booking.startsAt).diff(DateTime.now()).hours <= 3 ? 
+        description: !isRefundable ? 
           'Sicuro di voler eliminare questa prenotazione? L\'accesso NON sarà rimborsato!' :
           'Sicuro di voler eliminare questa prenotazione?' ,
-          title: 'Conferma'
+          title: 'Conferma',
+          cancellationText: 'Annulla',
+          confirmationText: 'Conferma',
       })
-      console.log('deleting', booking)
+      mutate({
+        isRefundable,
+        id,
+      });
       
     } catch (error) {
-      console.log(error);
+      if (error) console.log(error);
     }
-  }, [confirm]);
+  }, [confirm, mutate]);
     
   if (!data) return <div>no data</div>
   if (!booking) return <div>no data</div>
   return (
-      <ListItemButton divider key={index} style={style}>
+      <ListItemButton divider disabled={DateTime.fromJSDate(booking.startsAt) < DateTime.now()} key={index} style={style}>
         {error ? <Alert severity="error">{error}</Alert> : <>
         <ListItemIcon sx={{ fontSize: 18 }}>
           <Event />
@@ -160,9 +184,10 @@ function RenderRow(props: ListChildComponentProps<Booking[]>) {
           secondary={`Effettuata ${formatDate(booking.createdAt.toISOString(), DateTime.DATETIME_MED)}`}
         />
         {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-        <ListItemIcon sx={{fontSize: 18}} onClick={() => handleClick(booking)}>
+        {isLoading ? <CircularProgress /> : <ListItemIcon sx={{fontSize: 18}} onClick={() => handleClick(booking)}>
           <Delete />
         </ListItemIcon>
+        }
         </>
 }
     </ListItemButton>

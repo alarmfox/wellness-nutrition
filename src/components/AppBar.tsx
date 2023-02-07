@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { AppBar, Container, Toolbar, Box, IconButton, Menu, MenuItem, Typography, Button, Tooltip, Avatar } from '@mui/material';
+import { AppBar, Container, Toolbar, Box, IconButton, Menu, MenuItem, Typography, Button, Tooltip } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { signOut } from 'next-auth/react';
+import { AccountCircle } from '@mui/icons-material';
 
 type Page = {
   name: string;
@@ -32,7 +33,7 @@ type Action = {
 const actions: Action[] = [
   {
     id: 1,
-    name: 'Logout',
+    name: 'Esci',
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     callback: () => signOut({ callbackUrl: '/'})
   }
@@ -132,7 +133,7 @@ export function ResponsiveAppBar() {
           <Box sx={{ flexGrow: 0 }}>
             <Tooltip title="Open settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt="" />
+                <AccountCircle />
               </IconButton>
             </Tooltip>
             <Menu

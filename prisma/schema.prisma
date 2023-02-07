@@ -92,5 +92,5 @@ model Booking {
     User      User     @relation(fields: [usesrId], references: [id], onDelete: Cascade)
 
 
-    @@index([usesrId])
+    @@index([usesrId, startsAt])
 }

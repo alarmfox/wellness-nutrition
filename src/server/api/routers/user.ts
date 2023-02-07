@@ -79,7 +79,7 @@ export const userRouter = createTRPCRouter({
         }
       });
 
-      if (DateTime.now().diff(DateTime.fromJSDate(token.expires)).seconds > 0) {
+      if (DateTime.fromJSDate(token.expires) < DateTime.now()) {
         throw new TRPCError({ code: 'NOT_FOUND' });
       }
 
