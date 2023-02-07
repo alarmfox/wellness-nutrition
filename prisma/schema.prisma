@@ -6,8 +6,7 @@ generator client {
 }
 
 datasource db {
-    provider = "mysql"
-    relationMode = "prisma"
+    provider = "postgres"
     // NOTE: When using postgresql, mysql or sqlserver, uncomment the @db.Text annotations in model Account below
     // Further reading:
     // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
@@ -42,7 +41,6 @@ model Account {
     user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@unique([provider, providerAccountId])
-    @@index([userId])
 }
 
 model Session {
@@ -51,8 +49,6 @@ model Session {
     userId       String
     expires      DateTime
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@index([userId])
 }
 
 model User {
@@ -91,5 +87,4 @@ model Booking {
     usesrId   String
     User      User     @relation(fields: [usesrId], references: [id], onDelete: Cascade)
 
-    @@index([usesrId])
 }
