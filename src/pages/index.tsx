@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { useSession } from 'next-auth/react';
-import type { Booking} from '@prisma/client';
-import { Role, SubType } from '@prisma/client';
+import type { Booking } from '@prisma/client';
 import { api } from '../utils/api';
 import { Container, CssBaseline, Box, Typography, Button, Alert, Card, 
   CardContent, Grid, ListItemButton, 
-  ListItemIcon, ListItemText, CircularProgress } from '@mui/material';
+  ListItemIcon, ListItemText, CircularProgress, DialogActions, 
+  FormControl, InputLabel, MenuItem, OutlinedInput, Select, Checkbox, 
+  FormControlLabel, FormGroup } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
 import { DateTime } from 'luxon';
 import { useConfirm } from 'material-ui-confirm';
@@ -13,6 +14,16 @@ import type { ListChildComponentProps} from 'react-window';
 import { FixedSizeList } from 'react-window';
 import { Delete, Event } from '@mui/icons-material';
 import AdminLayout from '../components/AdminLayout';
+import { Scheduler } from '@aldabil/react-scheduler';
+import { it } from 'date-fns/locale';
+import type { ProcessedEvent, SchedulerHelpers, Translations, ViewEvent } from '@aldabil/react-scheduler/types';
+import type { WeekProps } from '@aldabil/react-scheduler/views/Week';
+import type { DayProps } from '@aldabil/react-scheduler/views/Day';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { AdminCreateModel} from '../utils/booking.schema';
+import { AdminCreateSchema } from '../utils/booking.schema';
+import type { StateItem } from '@aldabil/react-scheduler/views/Editor';
 
 function Home () {
   const { data: sessionData } = useSession();
@@ -62,7 +73,7 @@ function Home () {
 
 Home.auth = {
   isProtected: true,
-  role: [Role.USER, Role.ADMIN]
+  role: ['USER', 'ADMIN']
 }
 
 export default Home;
@@ -98,7 +109,7 @@ function SubscriptionInfo() {
             </Grid>
             <Grid item xs={6}>
               <Typography align="right" gutterBottom variant="h5" >
-                {data.subType === SubType.SHARED ? 'Condiviso' : 'Singolo'}
+                {data.subType === 'SHARED' ? 'Condiviso' : 'Singolo'}
               </Typography>
             </Grid>
             <Grid item xs={6} >
@@ -302,10 +313,165 @@ function SlotList() {
   );
 }
 
+const translations: Translations = {
+  navigation: {
+    month: 'Mese',
+    day: 'Giorno',
+    today: 'Oggi',
+    week: 'Settimana'
+  },
+  event: {
+    title: 'Titolo',
+    start: 'Inizio',
+    end: 'Fine',
+    allDay: 'Tutto il giorno'
+  },
+  form: {
+    addTitle: 'Crea appuntamento',
+    cancel: 'Annulla',
+    confirm: 'Conferma',
+    delete: 'Elimina',
+    editTitle: 'Modifica'
+  },
+  loading: 'Caricamento in corso...',
+  moreEvents: 'Altri eventi'
+}
+
+const day: DayProps = {
+  startHour: 8,
+  endHour: 21,
+  step: 60,
+}
+
+const week: WeekProps = {
+  startHour: 8,
+  endHour: 21,
+  weekStartOn: 0,
+  step: 60,
+  weekDays: [1, 2, 3, 4, 5, 6]
+}
+
+interface CustomEditorProps {
+  scheduler: SchedulerHelpers;
+}
 function Admin() {
+  const onNewData = (p: ViewEvent): Promise<ProcessedEvent[]> => {
+    console.log(p)
+    return new Promise((res) => res([
+      {
+        start: DateTime.now().startOf('hour').toJSDate(),
+        end: DateTime.now().startOf('hour').plus({hours: 1}).toJSDate(),
+        title: 'Test',
+        event_id: 1,
+        allDay: false,
+        deletable: true,
+        disabled: false,
+        draggable: false,
+        editable: false,
+      }
+    ])
+  )};
+
   return (
     <AdminLayout>
-     <div>hello world</div> 
+      <Scheduler
+        customEditor={(scheduler) => <CustomEditor scheduler={scheduler}/>}
+        hourFormat="24"
+        locale={it}
+        week={week}
+        day={day}
+        translations={translations}
+        getRemoteEvents={onNewData}
+      />
     </AdminLayout>
   )
+}
+
+function formatSlot(s: StateItem | undefined): string {
+  if (!s || s.type !== 'date') return 'invalid';
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  const dt = DateTime.fromJSDate(s.value).setLocale('it');
+  let str = dt.toLocaleString(DateTime.DATE_HUGE);
+  str += ` dalle ${dt.toFormat('HH:mm')} alle ${dt.plus({ hours: 1 }).toFormat('HH:mm')} `
+  return str;
+}
+
+
+function CustomEditor ({ scheduler }: CustomEditorProps) {
+  const { data, isLoading: queryLoading } = api.user.getActive.useQuery();
+  const { register, handleSubmit, setValue, watch, formState: { isLoading }} = useForm<AdminCreateModel>({
+    resolver: zodResolver(AdminCreateSchema),
+    defaultValues: {
+      startsAt: scheduler.state.start?.value as Date,
+    },
+  })
+  const [error, setError] = React.useState<string | undefined>(undefined);
+
+  const { mutate, isLoading: mutateLoading} = api.bookings.adminCreate.useMutation({
+    onSuccess: () =>  void scheduler.close(),
+    onError: (err) => {
+      setError('Errore durante la creazione della prenotazione.')
+      console.log(err);
+    }
+  })
+
+  const userId = watch('userId')
+
+  React.useEffect(() => {
+    const user = data?.find((v) => v.id === userId)
+    if (!user) return;
+    setValue('subType', user.subType)
+  }, [userId, setValue, data])
+
+  const onSubmit = React.useCallback((v: AdminCreateModel) => mutate(v), [mutate])
+
+  if (queryLoading) return <CircularProgress />
+  return (
+    <div>
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div style={{ padding: '1rem'}}>
+          {queryLoading && <CircularProgress />}
+            <Typography sx={{fontWeight: 'bold'}}>
+              Nuova prenotazione
+            </Typography>
+            <Typography>
+              Prenota per <span style={{fontWeight: 'bold'}}>{formatSlot(scheduler.state.start)}</span>
+            </Typography>
+              <FormControl sx={{mt: '1rem', mr: '1rem'}} fullWidth >
+                {data && 
+                <>
+                <InputLabel id="select-user-label">{data.length > 0 ? 'Seleziona utente' : 'Nessun utente disponibile'}</InputLabel>
+                  <Select
+                    labelId="select-user-label"
+                    id="select-user"
+                    disabled={data.length === 0 || !isLoading}
+                    input={<OutlinedInput label="Name" />}
+                    {...register('userId')}
+                  >
+                    {data.map((user) => (
+                        <MenuItem
+                          key={user.id}
+                          value={user.id}
+                        >
+                          {`${user.lastName} ${user.firstName}`}
+                        </MenuItem>
+                    ))}
+                  </Select>
+                </>
+            }
+            </FormControl>
+            <FormGroup>
+              <FormControlLabel {...register('disable')} control={<Checkbox />} label="Disabilita lo slot per prenotazioni future" />
+            </FormGroup>
+            {error && <Alert variant="filled" severity="error" >{error}</Alert>}
+          </div>
+          <DialogActions>
+            {mutateLoading && <CircularProgress />}
+            <Button onClick={() => void scheduler.close()}>Cancella</Button>
+            <Button type="submit" variant="contained">Conferma</Button>
+          </DialogActions>
+        </form>
+    </div>
+  );
 }

@@ -42,16 +42,15 @@ model User {
     verificationToken          String?
     verificationTokenExpiresIn DateTime?
     bookings                   Booking[]
-    
+
     @@index([verificationToken])
 }
 
 model Slot {
     startsAt    DateTime  @id
     peopleCount Int       @default(0)
+    disabled    Boolean   @default(false)
     bookings    Booking[]
-
-    @@index([startsAt])
 }
 
 model Booking {

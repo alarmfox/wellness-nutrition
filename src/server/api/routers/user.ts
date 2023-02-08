@@ -128,5 +128,23 @@ export const userRouter = createTRPCRouter({
         code: 'INTERNAL_SERVER_ERROR'
       })
     }
+  }),
+
+  getActive: adminProtectedProcedure.query(( { ctx } ) => {
+    return ctx.prisma.user.findMany({
+      where: {
+        AND: {
+          expiresAt: {
+            gt: new Date(),
+          },
+          remainingAccesses: {
+            gt: 0
+          },
+          emailVerified: {
+            not: null
+          }
+        }
+      }
+    })
   })
 })
