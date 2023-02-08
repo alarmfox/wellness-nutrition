@@ -9,3 +9,10 @@ export const AdminCreateSchema = z.object({
 })
 
 export type AdminCreateModel = z.infer<typeof AdminCreateSchema>;
+
+export const IntervalSchema = z.object({
+  from: z.date(),
+  to: z.date(),
+});
+
+export type IntervalModel = z.infer<typeof IntervalSchema>;

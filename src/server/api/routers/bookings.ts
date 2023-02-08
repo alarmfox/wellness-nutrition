@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { DateTime, } from "luxon";
 import { z } from "zod";
-import { AdminCreateSchema } from "../../../utils/booking.schema";
+import { AdminCreateSchema, IntervalSchema } from "../../../utils/booking.schema";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
 
 const businessWeek = [1, 2, 3, 4, 5, 6];
@@ -218,18 +218,17 @@ export const bookingRouter = createTRPCRouter({
     })
   }),
 
-  getInInterval: adminProtectedProcedure.input(z.object({
-    from: z.date(),
-    to: z.date()
-  })).query(({ ctx, input }) => {
+  getByInterval: adminProtectedProcedure.input(IntervalSchema).query(({ ctx, input }) => {
     return ctx.prisma.booking.findMany({
       where: {
         startsAt: {
           gte: input.from,
           lte: input.to
         }
+      },
+      include: {
+        User: true
       }
     })
   })
-
 });

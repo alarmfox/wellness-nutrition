@@ -6,7 +6,7 @@ import { Container, CssBaseline, Box, Typography, Button, Alert, Card,
   CardContent, Grid, ListItemButton, 
   ListItemIcon, ListItemText, CircularProgress, DialogActions, 
   FormControl, InputLabel, MenuItem, OutlinedInput, Select, Checkbox, 
-  FormControlLabel, FormGroup } from '@mui/material';
+  FormControlLabel, FormGroup, useTheme } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
 import { DateTime } from 'luxon';
 import { useConfirm } from 'material-ui-confirm';
@@ -21,7 +21,7 @@ import type { WeekProps } from '@aldabil/react-scheduler/views/Week';
 import type { DayProps } from '@aldabil/react-scheduler/views/Day';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { AdminCreateModel} from '../utils/booking.schema';
+import type { AdminCreateModel, IntervalModel} from '../utils/booking.schema';
 import { AdminCreateSchema } from '../utils/booking.schema';
 import type { StateItem } from '@aldabil/react-scheduler/views/Editor';
 
@@ -354,34 +354,80 @@ const week: WeekProps = {
 interface CustomEditorProps {
   scheduler: SchedulerHelpers;
 }
-function Admin() {
-  const onNewData = (p: ViewEvent): Promise<ProcessedEvent[]> => {
-    console.log(p)
-    return new Promise((res) => res([
-      {
-        start: DateTime.now().startOf('hour').toJSDate(),
-        end: DateTime.now().startOf('hour').plus({hours: 1}).toJSDate(),
-        title: 'Test',
-        event_id: 1,
-        allDay: false,
-        deletable: true,
-        disabled: false,
-        draggable: false,
-        editable: false,
-      }
-    ])
-  )};
 
+function Admin() {
+  const [input, setInput] = React.useState<IntervalModel>({
+    from: DateTime.now().startOf('week').toJSDate(),
+    to: DateTime.now().endOf('week').toJSDate() 
+  })
+  const { isLoading, refetch, } = api.bookings.getByInterval.useQuery({
+      from: input.from,
+      to: input.to,
+  }, {
+    enabled: false,
+  });
+
+  const utils = api.useContext();
+  const { mutate } = api.bookings.deleteAdming.useMutation({
+    onSuccess: () => {
+      utils.bookings.getByInterval.invalidate().catch(console.error);
+    } 
+  });
+
+  const onDelete = React.useCallback((id: string | number): Promise<void> => {
+    return new Promise((res) => {
+      res(mutate(BigInt(id)));
+    })
+  }, [mutate]);
+
+  const theme = useTheme();
+
+  const fetchData = async (params: ViewEvent): Promise<ProcessedEvent[]> => {
+    setInput({
+      from: params.start,
+      to: params.end,
+    })
+    console.log(input);
+    
+    const bookings = await refetch();
+    
+    console.log(bookings);
+
+    return new Promise((res) => {
+      setTimeout(() => {
+        res(
+          bookings.data ? bookings.data.map((booking): ProcessedEvent => {
+            return {
+              start: booking.startsAt,
+              end: DateTime.fromJSDate(booking.startsAt).plus({ hours: 1 }).toJSDate(),
+              event_id: booking.id.toString(),
+              title: `${booking.User.lastName} ${booking.User.firstName}`,
+              draggable: false,
+              editable: false,
+              disabled: false,
+              allDay: false,
+              deletable: true,
+              color: booking.User.subType === 'SHARED' ? theme.palette.success.main : theme.palette.secondary.main
+            }
+          }) : []
+        )
+      }, 1000)
+    })
+
+  }
+  
   return (
     <AdminLayout>
-      <Scheduler
+      <Scheduler 
+        onDelete={onDelete}
+        loading={isLoading}
         customEditor={(scheduler) => <CustomEditor scheduler={scheduler}/>}
         hourFormat="24"
         locale={it}
         week={week}
         day={day}
         translations={translations}
-        getRemoteEvents={onNewData}
+        getRemoteEvents={fetchData}
       />
     </AdminLayout>
   )
@@ -404,11 +450,15 @@ function CustomEditor ({ scheduler }: CustomEditorProps) {
     defaultValues: {
       startsAt: scheduler.state.start?.value as Date,
     },
-  })
-  const [error, setError] = React.useState<string | undefined>(undefined);
+  });
 
+  const [error, setError] = React.useState<string | undefined>(undefined);
+  const utils = api.useContext()
   const { mutate, isLoading: mutateLoading} = api.bookings.adminCreate.useMutation({
-    onSuccess: () =>  void scheduler.close(),
+    onSuccess: () =>  {
+      utils.bookings.getByInterval.invalidate().catch(console.error);
+      void scheduler.close();
+    },
     onError: (err) => {
       setError('Errore durante la creazione della prenotazione.')
       console.log(err);
