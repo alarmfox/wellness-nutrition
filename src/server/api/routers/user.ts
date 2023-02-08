@@ -12,7 +12,7 @@ import argon2 from "argon2";
 
 export const userRouter = createTRPCRouter({
   getCurrent: protectedProcedure.query(({ ctx }) => {
-    return ctx.prisma.user.findFirst({
+    return ctx.prisma.user.findUnique({
       where: {
         id: ctx.session.user.id
       }
@@ -30,15 +30,13 @@ export const userRouter = createTRPCRouter({
     input(CreateUserSchema).
     mutation(async ({ ctx, input }) => {
       try {
-        const { email, id } = await ctx.prisma.user.create({
-          data: input,
-        })
-        const { token } = await ctx.prisma.verificationToken.create({
+        const token = randomBytes(48).toString('base64url')
+        const { email } = await ctx.prisma.user.create({
           data: {
-            expires: DateTime.now().plus({ days: 7 }).toJSDate(),
-            identifier: id,
-            token: randomBytes(48).toString('base64url')
-          }
+            ...input,
+            verificationToken: token,
+            verificationTokenExpiresIn: DateTime.now().plus({ days: 7 }).toJSDate()
+          },
         })
         const url = `${env.NEXTAUTH_URL}/verify?token=${token}`
         sendVerificationEmail(email, url)
@@ -73,36 +71,28 @@ export const userRouter = createTRPCRouter({
   }),
   changePassword: publicProcedure.input(VerifyAccountSchema).mutation(async ({ ctx, input }) => {
     try {
-      const token = await ctx.prisma.verificationToken.delete({
+      const user = await ctx.prisma.user.updateMany({
         where: {
-          token: input.token
-        }
-      });
-
-      if (DateTime.fromJSDate(token.expires) < DateTime.now()) {
-        throw new TRPCError({ code: 'NOT_FOUND' });
-      }
-
-      return await ctx.prisma.user.update({
-        where: {
-          id: token.identifier
+          AND: {
+            verificationToken: input.token,
+            verificationTokenExpiresIn: {
+              gt: new Date()
+            },
+          }
         },
         data: {
           emailVerified: DateTime.now().toJSDate(),
-          password: await argon2.hash(input.newPassword)
+          password: await argon2.hash(input.newPassword),
+          verificationToken: null,
+          verificationTokenExpiresIn: null
         }
       })
+      if (user.count === 0) 
+        throw new TRPCError({
+          code: 'NOT_FOUND'
+        })
     } catch (error) {
-      if (error instanceof TRPCError) {
-        throw error;
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-            throw new TRPCError({
-              code: 'NOT_FOUND'
-            })
-        }
-      }
+      if (error instanceof TRPCError) throw error;
       console.log(error);
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR'
@@ -110,34 +100,33 @@ export const userRouter = createTRPCRouter({
     }
   }),
   resetPassword: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
+    const token = randomBytes(48).toString('base64url');
     try {
-      const user = await ctx.prisma.user.findFirst({
+      const user = await ctx.prisma.user.update({
         where: {
           email: input
+        },
+        data: {
+          verificationToken: token,
+          verificationTokenExpiresIn: DateTime.now().plus({ days: 7 }).toJSDate()
         }
       });
-      if (!user) throw new TRPCError({
-        code: 'NOT_FOUND'
-      })
-      const { token } = await ctx.prisma.verificationToken.create({
-        data: {
-          expires: DateTime.now().plus({ days: 7 }).toJSDate(),
-          identifier: user.id,
-          token: randomBytes(48).toString('base64url')
-        }
-      })
+
       const url = `${env.NEXTAUTH_URL}/verify?token=${token}`
       sendVerificationEmail(user.email, url)
 
     } catch (error) {
-      if (error instanceof TRPCError) {
-        throw error;
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new TRPCError({
+            code: 'NOT_FOUND'
+          })
+        }
       }
       console.log(error);
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR'
       })
-
     }
   })
 })

@@ -16,7 +16,7 @@ interface Props {
 
 const Verify: NextPage<Props> = ({ token }) => {
   const router = useRouter();
-  const { register,  handleSubmit, watch, formState: { errors, isLoading }, getValues} = useForm<VerifyAccountModel>({
+  const { register,  handleSubmit, watch, formState: { errors, isLoading }, getValues, clearErrors} = useForm<VerifyAccountModel>({
     resolver: zodResolver(VerifyAccountSchema),
     defaultValues: {
       token
@@ -33,7 +33,11 @@ const Verify: NextPage<Props> = ({ token }) => {
       setError('Errore sconosciuto');
     }
   })
-  const onSubmit = React.useCallback((v: VerifyAccountModel) => mutate(v), [mutate])
+  const onSubmit = React.useCallback((v: VerifyAccountModel) => {
+    clearErrors();
+    mutate(v);
+  }, [mutate, clearErrors]);
+  
   return (
       <Container component="main" maxWidth="xs">
         <CssBaseline />

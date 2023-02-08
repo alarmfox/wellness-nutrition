@@ -1,13 +1,12 @@
-import { Prisma, SubType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { DateTime, } from "luxon";
 import { z } from "zod";
-import { env } from "../../../env/server.mjs";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 const businessWeek = [1, 2, 3, 4, 5, 6];
 
-function isBookeable (d: DateTime): boolean {
+function isBookeable(d: DateTime): boolean {
   return businessWeek.includes(d.weekday) && d.hour > 8 && d.hour < 22;
 }
 
@@ -20,13 +19,13 @@ export const bookingRouter = createTRPCRouter({
       orderBy: {
         startsAt: 'desc',
       },
-      distinct: ['userId', 'startsAt']
     })
   }),
 
   //TODO: send notification
   delete: protectedProcedure.input(z.object({
     id: z.bigint(),
+    startsAt: z.date(),
     isRefundable: z.boolean(),
   })).mutation(async ({ ctx, input }) => {
     try {
@@ -45,7 +44,17 @@ export const bookingRouter = createTRPCRouter({
           }
         }
       })
-      const ops = input.isRefundable ? [deleteBooking, refund] : [deleteBooking]
+      const resetCounter = ctx.prisma.slot.update({
+        where: {
+          startsAt: input.startsAt
+        },
+        data: {
+          peopleCount: {
+            increment: ctx.session.user.subType === 'SHARED' ? 1 : 2
+          }
+        }
+      })
+      const ops = input.isRefundable ? [deleteBooking, resetCounter, refund] : [deleteBooking, resetCounter]
       await ctx.prisma.$transaction(ops);
 
     } catch (error) {
@@ -60,32 +69,27 @@ export const bookingRouter = createTRPCRouter({
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
     const endDate = DateTime.now().endOf('month');
-    const startDate = DateTime.now().plus( { days: 1 }).startOf('day').startOf('hour')
-    const allRecurrences: Date[] = [];
-    const maxUserPerSlot = +env.MAX_USERS_PER_SLOT;
+    const startDate = DateTime.now().plus({ days: 1 }).startOf('day').startOf('hour')
+    const allRecurrences: string[] = [];
 
     let nextOccurrence = null;
     do {
       nextOccurrence = nextOccurrence ? nextOccurrence.plus({ hours: 1 }) : startDate.plus({ hours: 1 })
-      if (isBookeable(nextOccurrence)) 
-        allRecurrences.push(nextOccurrence.toJSDate());
-    } while(nextOccurrence < endDate);
+      if (isBookeable(nextOccurrence))
+        allRecurrences.push(nextOccurrence.toISO());
+    } while (nextOccurrence < endDate);
 
     try {
-      const bookings = await ctx.prisma.booking.groupBy({
-        _count: {
-          startsAt: true,
-        },
-        by: ['startsAt', 'userId']
-      });
+      const slots = (await ctx.prisma.slot.findMany({
+        where: {
+          peopleCount: {
+            gte: ctx.session.user.subType === 'SHARED' ? 2 : 0
+          }
+        }
+      })).map((item) => DateTime.fromJSDate(item.startsAt).toISO());
 
-      const toExclude = bookings.filter(
-        (item) => ctx.session.user.subType === SubType.SHARED ? 
-          maxUserPerSlot - item._count.startsAt < 1 : maxUserPerSlot - item._count.startsAt < 2 
-      ).map((item) => item.startsAt)
+      return allRecurrences.filter((item) => !slots.includes(item));
 
-      return allRecurrences.filter((item) => !toExclude.includes(item));
-      
     } catch (error) {
       console.log(error)
       throw new TRPCError({
@@ -96,15 +100,7 @@ export const bookingRouter = createTRPCRouter({
 
   create: protectedProcedure.input(z.object({
     startsAt: z.date(),
-  })).mutation(async({ctx, input}) => {
-    const booking = {
-      startsAt: input.startsAt,
-      userId: ctx.session.user.id,
-      createdAt: new Date(),
-    };
-    const createBooking = ctx.prisma.booking.createMany({
-      data: ctx.session.user.subType === SubType.SHARED ? [booking] : [booking, booking]
-    });
+  })).mutation(async ({ ctx, input }) => {
 
     const updateAccesses = ctx.prisma.user.update({
       where: {
@@ -116,6 +112,34 @@ export const bookingRouter = createTRPCRouter({
         }
       }
     });
-    await ctx.prisma.$transaction([createBooking, updateAccesses])
+
+    const createSlot = ctx.prisma.slot.upsert({
+      create: {
+        startsAt: input.startsAt,
+        peopleCount: ctx.session.user.subType === 'SHARED' ? 1 : 2,
+        bookings: {
+          create: {
+            createdAt: new Date(),
+            userId: ctx.session.user.id,
+          }
+        }
+      },
+      update: {
+        peopleCount: {
+          increment: ctx.session.user.subType === 'SHARED' ? 1 : 2,
+        },
+        bookings: {
+          create: {
+            createdAt: new Date(),
+            userId: ctx.session.user.id,
+          }
+        }
+      },
+      where: {
+       startsAt: input.startsAt 
+      },
+    });
+
+    await ctx.prisma.$transaction([updateAccesses, createSlot])
   })
 });

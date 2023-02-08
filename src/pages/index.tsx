@@ -82,7 +82,6 @@ function SubscriptionInfo() {
             <Grid item xs={12} >
               <Typography variant="body1" color="text.secondary">{data.email} </Typography>
             </Grid>
-          
             <Grid item xs={6} sx={{display: 'flex', alignItems: 'center'}}> 
               <Typography gutterBottom color="grey" variant="h6">
                 Accessi 
@@ -160,6 +159,7 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
       mutate({
         isRefundable,
         id,
+        startsAt,
       });
       
     } catch (error) {
@@ -216,7 +216,7 @@ function BookingList() {
 }
 
 
-function RenderSlot(props: ListChildComponentProps<Date[]>) {
+function RenderSlot(props: ListChildComponentProps<string[]>) {
   
   const { index, style, data } = props;
   const slot = data[index];
@@ -239,17 +239,17 @@ function RenderSlot(props: ListChildComponentProps<Date[]>) {
     }
   })
   
-  const handleClick = React.useCallback(async (startsAt: Date) => {
+  const handleClick = React.useCallback(async (startsAt: string) => {
     try {
       await confirm({
         description: `Confermi la prenotazione per il giorno:
-         ${DateTime.fromJSDate(startsAt).setLocale('it').toLocaleString(DateTime.DATE_FULL)}` ,
+         ${DateTime.fromISO(startsAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}` ,
           title: 'Conferma',
           cancellationText: 'Annulla',
           confirmationText: 'Conferma',
       })
       mutate({
-        startsAt,
+        startsAt: DateTime.fromISO(startsAt).toJSDate(),
       });
       
     } catch (error) {
@@ -268,13 +268,14 @@ function RenderSlot(props: ListChildComponentProps<Date[]>) {
         </ListItemIcon>
         <ListItemText
           sx={{ my: '1rem' }}
-          primary={DateTime.fromJSDate(slot).setLocale('it').toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY)}
+          primary={DateTime.fromISO(slot).setLocale('it').toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY)}
           primaryTypographyProps={{
             fontSize: 16,
             fontWeight: 'medium',
             letterSpacing: 0,
           }}
-          secondary={`Dalle ${DateTime.fromJSDate(slot).toFormat('HH:mm')} alle ${DateTime.fromJSDate(slot).plus({hours: 1}).toFormat('HH:mm')}`}
+          secondary={`Dalle ${DateTime.fromISO(slot).toFormat('HH:mm')}
+          alle ${DateTime.fromISO(slot).plus({hours: 1}).toFormat('HH:mm')}`}
         />
         </>
     }
