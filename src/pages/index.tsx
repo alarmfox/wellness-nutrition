@@ -16,44 +16,47 @@ import AdminLayout from '../components/AdminLayout';
 
 function Home () {
   const { data: sessionData } = useSession();
-   
+
+  const { data: user, isLoading } = api.user.getCurrent.useQuery();
+  const [ creationMode, setCreationMode ] = React.useState(false);
+  
+  React.useEffect(() => {
+      if (user?.remainingAccesses === 0) setCreationMode(false);
+  }, [user])
+
   if (sessionData?.user.role === 'ADMIN') return <Admin />
 
-  const { data, isLoading } = api.bookings.getCurrent.useQuery();
-  const { data: user, isLoading: userLoading } = api.user.getCurrent.useQuery();
-
-  if (!user) return <div>Caricamento in corso...</div>
 
   return (
-    <><ResponsiveAppBar />
-    <Container fixed component="main" maxWidth="xs">
-      <CssBaseline />
-      <Box
-        sx={{
-          marginTop: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          overflowY: 'hidden',
-          overflowX: 'hidden',
-        }}
-      > {isLoading || userLoading && <CircularProgress />}
-        <SubscriptionInfo />
-        {data && data.length > 0 ? <Box sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}>
-          <Typography gutterBottom variant="h6">Prenotazioni</Typography>
-          <BookingList bookings={data} />
-        </Box> : <Typography color="gray"> Nessuna prenotazione </Typography>}
-        <Button 
-          disabled={user.remainingAccesses === 0 || DateTime.fromJSDate(user.expiresAt) < DateTime.now()} 
-          component="a" href="/new" sx={{ mt: '2rem' }} variant="contained" color="primary" aria-label="nuova prenotazione">
-          Nuova prenotazione
-        </Button>
-      </Box>
-    </Container></>
+    <>
+      <ResponsiveAppBar />
+      <Container fixed component="main" maxWidth="xs">
+        <CssBaseline />
+        <Box
+          sx={{
+            marginTop: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            overflowY: 'hidden',
+            overflowX: 'hidden',
+          }}
+        > {isLoading && <CircularProgress />}
+          <SubscriptionInfo />
+          {!creationMode ? <BookingList />: <SlotList/>}
+          <Button 
+            disabled={user?.remainingAccesses === 0 || DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()} 
+            sx={{ mt: '2rem' }}
+            variant="contained" 
+            color="primary" 
+            aria-label="nuova prenotazione"
+            onClick={() => setCreationMode(!creationMode)}
+          >
+            {creationMode ? 'Le mie prenotazioni' : 'Nuova prenotazione'}
+          </Button>
+        </Box>
+      </Container>
+    </>
   )
 }
 
@@ -65,9 +68,8 @@ Home.auth = {
 export default Home;
 
 function SubscriptionInfo() {
-  const { data, isLoading } = api.user.getCurrent.useQuery();
+  const { data } = api.user.getCurrent.useQuery();
   
-  if (isLoading) return <CircularProgress />
   
   return (
     <Card sx={{ maxWidth: 345 }} variant={'outlined'}>
@@ -122,7 +124,7 @@ function formatDate(s: string, format: Intl.DateTimeFormatOptions = DateTime.DAT
   return DateTime.fromISO(s).setLocale('it').toLocaleString(format)
 }
 
-function RenderRow(props: ListChildComponentProps<Booking[]>) {
+function RenderBooking(props: ListChildComponentProps<Booking[]>) {
   
   const { index, style, data } = props;
   const booking = data[index];
@@ -144,7 +146,7 @@ function RenderRow(props: ListChildComponentProps<Booking[]>) {
     }
   })
   
-  const handleClick = React.useCallback(async ({ id, startsAt}: Booking) => {
+  const handleClick = React.useCallback(async ({ id, startsAt }: Booking) => {
     try {
       const isRefundable = DateTime.fromJSDate(startsAt).diffNow().as('hours') > 3; 
       await confirm({
@@ -193,20 +195,108 @@ function RenderRow(props: ListChildComponentProps<Booking[]>) {
     </ListItemButton>
   );
 }
-function BookingList({ bookings }: { bookings: Booking[]}) {
+function BookingList() {
+  const { data } = api.bookings.getCurrent.useQuery();
+  return (
+  <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
+  {data && data.length > 0 ? 
+    <FixedSizeList
+      height={350}
+      width={360}
+      itemSize={70}
+      itemCount={data.length}
+      itemData={data}
+      >
+      {RenderBooking}
+    </FixedSizeList>
+    : <Typography variant="caption" color="gray">Nessuna prenotazione</Typography>
+  }
+  </Box>
+  );
+}
+
+
+function RenderSlot(props: ListChildComponentProps<Date[]>) {
+  
+  const { index, style, data } = props;
+  const slot = data[index];
+  const confirm = useConfirm();
+  const utils = api.useContext();
+  const  [error, setError] = React.useState<string | undefined>(undefined);
+  
+  const { mutate } = api.bookings.create.useMutation({
+    onSuccess:  () => Promise.all([
+        utils.bookings.getCurrent.invalidate(),
+        utils.user.getCurrent.invalidate(),
+        utils.bookings.getAvailableSlots.invalidate(),
+    ]),
+    onError: (err) => {
+      if (err?.data?.code === 'NOT_FOUND') {
+        setError('Impossibile trovare la prenotazione')
+        return;
+      }
+      setError('Errore sconosciuto')
+    }
+  })
+  
+  const handleClick = React.useCallback(async (startsAt: Date) => {
+    try {
+      await confirm({
+        description: `Confermi la prenotazione per il giorno:
+         ${DateTime.fromJSDate(startsAt).setLocale('it').toLocaleString(DateTime.DATE_FULL)}` ,
+          title: 'Conferma',
+          cancellationText: 'Annulla',
+          confirmationText: 'Conferma',
+      })
+      mutate({
+        startsAt,
+      });
+      
+    } catch (error) {
+      if (error) console.log(error);
+    }
+  }, [confirm, mutate]);
+    
+  if (!data) return <div>no data</div>
+  if (!slot) return <div>no data</div>
+  return (
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      <ListItemButton onClick={() => handleClick(slot)} divider key={index} style={style}>
+        {error ? <Alert severity="error">{error}</Alert> : <>
+        <ListItemIcon sx={{ fontSize: 18 }}>
+          <Event />
+        </ListItemIcon>
+        <ListItemText
+          sx={{ my: '1rem' }}
+          primary={DateTime.fromJSDate(slot).setLocale('it').toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY)}
+          primaryTypographyProps={{
+            fontSize: 16,
+            fontWeight: 'medium',
+            letterSpacing: 0,
+          }}
+          secondary={`Dalle ${DateTime.fromJSDate(slot).toFormat('HH:mm')} alle ${DateTime.fromJSDate(slot).plus({hours: 1}).toFormat('HH:mm')}`}
+        />
+        </>
+    }
+    </ListItemButton>
+  );
+}
+function SlotList() {
+    const { data, isLoading } = api.bookings.getAvailableSlots.useQuery();
     return (
-    <Box
-    sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
-    >
-      <FixedSizeList
-        height={350}
-        width={360}
-        itemSize={70}
-        itemCount={bookings.length}
-        itemData={bookings}
+    <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
+      {isLoading && <CircularProgress/>}
+      {data &&
+        <FixedSizeList
+          height={350}
+          width={360}
+          itemSize={70}
+          itemCount={data.length}
+          itemData={data}
         >
-          {RenderRow}
-      </FixedSizeList>
+          {RenderSlot}
+        </FixedSizeList>
+      }
     </Box>
   );
 }

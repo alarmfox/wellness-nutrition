@@ -7,7 +7,7 @@ import {
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "./db";
 import CredentialsProvider from 'next-auth/providers/credentials';
-import type { Role } from "@prisma/client";
+import type { Role, SubType } from "@prisma/client";
 import argon2 from "argon2";
 
 /**
@@ -23,12 +23,14 @@ declare module "next-auth" {
       id: string;
       // ...other properties
       role: Role;
+      subType: SubType;
     } & DefaultSession["user"];
   }
 
   interface User {
     // ...other properties
     role: Role;
+    subType: SubType;
  }
 }
 
@@ -42,7 +44,8 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        token.role = user.role
+        token.role = user.role;
+        token.subType = user.subType;
       }
       return token
     },
@@ -50,6 +53,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.sub || '';
         session.user.role = token.role as Role;
+        session.user.subType = token.subType as SubType;
       }
       return session;
     },

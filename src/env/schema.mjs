@@ -24,6 +24,7 @@ export const serverSchema = z.object({
   EMAIL_SERVER_USER: z.string(),
   EMAIL_SERVER_PASSWORD: z.string(),
   EMAIL_FROM: z.string().email(),
+  MAX_USERS_PER_SLOT: z.number().default(5)
 });
 
 /**
@@ -40,7 +41,8 @@ export const serverEnv = {
   EMAIL_SERVER_HOST: process.env.EMAIL_SERVER_HOST,
   EMAIL_SERVER_USER: process.env.EMAIL_SERVER_USER,
   EMAIL_SERVER_PORT: process.env.EMAIL_SERVER_PORT,
-  EMAIL_SERVER_PASSWORD: process.env.EMAIL_SERVER_PASSWORD
+  EMAIL_SERVER_PASSWORD: process.env.EMAIL_SERVER_PASSWORD,
+  MAX_USERS_PER_SLOT: process.env.MAX_USERS_PER_SLOT,
 };
 
 /**

@@ -17,11 +17,6 @@ const pages: Page[]= [
     id: 1,
     path: '/',
   },
-  {
-    name: 'Nuova prenotazione',
-    id: 2,
-    path: 'new'
-  }
 ]
 
 type Action = {
