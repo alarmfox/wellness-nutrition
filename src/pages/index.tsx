@@ -4,10 +4,11 @@ import type { Booking, Slot, User } from '@prisma/client';
 import { api } from '../utils/api';
 import { Container, CssBaseline, Box, Typography, Button, Alert, Card, 
   CardContent, Grid, ListItemButton, 
-  ListItemIcon, ListItemText, CircularProgress, useTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, 
+  ListItemIcon, ListItemText, CircularProgress, useTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, 
+  Checkbox, FormControlLabel, FormGroup, FormControl, InputLabel, MenuItem, OutlinedInput, Select, 
   } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
-import { DateTime } from 'luxon';
+import { DateTime, Interval } from 'luxon';
 import { useConfirm } from 'material-ui-confirm';
 import type { ListChildComponentProps} from 'react-window';
 import { FixedSizeList } from 'react-window';
@@ -16,7 +17,10 @@ import AdminLayout from '../components/AdminLayout';
 import type { SlotInfo } from 'react-big-calendar';
 import { Calendar, luxonLocalizer } from 'react-big-calendar'
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import type { IntervalModel } from '../utils/booking.schema';
+import type { AdminDeleteModel, IntervalModel } from '../utils/booking.schema';
+import { AdminDeleteSchema } from '../utils/booking.schema';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 function Home () {
   const { data: sessionData } = useSession();
@@ -306,15 +310,17 @@ function SlotList() {
   );
 }
 
-function getTooltipInfo({firstName, lastName, subType }: User): string {
+function getTooltipInfo({firstName, lastName, subType }: User, slot: Slot): string {
+  if (slot.disabled) return 'Slot disabilitato';
   return `${lastName} ${firstName} - ${subType === 'SHARED' ? 'Condiviso' : 'Singolo'}`
 }
 
 function getBookingInfo(booking: FullBooking): string {
-  console.log('hello')
+  if(booking.slot.disabled) 
+    return `Slot disabilitato ${DateTime.fromJSDate(booking.createdAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}`;
   return `Prenotazione di ${booking.user.lastName} ${booking.user.firstName} 
-  (${booking.user.subType === 'SHARED' ? 'Condiviso' : 'Singolo'}, 
-  effettuata ${DateTime.fromJSDate(booking.createdAt).setLocale('it').toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY)})`;
+  (Abb. ${booking.user.subType === 'SHARED' ? 'Condiviso' : 'Singolo'}), 
+  effettuata ${DateTime.fromJSDate(booking.createdAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)})`;
 }
 
 type FullBooking = Booking &  {
@@ -325,34 +331,42 @@ type FullBooking = Booking &  {
 }
 
 function Admin() {
+  const theme = useTheme();
   const [input, setInput] = React.useState<IntervalModel>({
     from: DateTime.now().startOf('week').toJSDate(),
     to: DateTime.now().endOf('week').toJSDate(),
   })
   
-  const { data, isLoading } = api.bookings.getByInterval.useQuery({
-    from: input.from,
-    to: input.to 
-  });
+  const { data, isLoading } = api.bookings.getByInterval.useQuery(input);
 
-  const [showEventDialog, setShowEventDialog] = React.useState(false);
   const [selected, setSelected] = React.useState<FullBooking | null>(null);
+  const [slotInfo, setSlotInfo] = React.useState<SlotInfo | null>(null);
 
+  const showEventDialog = React.useMemo(() => !(selected === null), [selected]);
+  const showCreateDialog = React.useMemo(() => !(slotInfo === null), [slotInfo]);
+  
   const closeEventDialog = React.useCallback(() => {
-    setShowEventDialog(false);
     setSelected(null);
   }, []);
+
+  const closeCreateDialog = React.useCallback(() => {
+    setSlotInfo(null);
+  }, [])
   
-  const theme = useTheme();
   const handleSelectEvent = React.useCallback((b: FullBooking) => {
+    if (DateTime.fromJSDate(b.startsAt).startOf('day') < DateTime.now().startOf('day')) return;
     setSelected(b);
-    setShowEventDialog(true);
-  }, []); 
-  const handleSelectSlot = React.useCallback((s: SlotInfo) => console.log(s), []);
+  }, []);
+
+  const handleSelectSlot = React.useCallback((s: SlotInfo) => {
+    console.log(s.slots)
+    if (DateTime.fromJSDate(s.start).startOf('day') < DateTime.now().startOf('day')) return;
+    setSlotInfo(s);
+  }, []);
 
   const eventPropGetter = React.useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    (event: FullBooking, start: Date, end: Date,  selected: boolean) => ({
+    (event: FullBooking, start: Date, end: Date,  selected: boolean) => ({ 
       ...(event.user.subType === 'SHARED' && {
         style: {
           backgroundColor: theme.palette.info.main
@@ -360,18 +374,24 @@ function Admin() {
       }),
       ...(event.user.subType === 'SINGLE' &&  {
         style: {
-          backgroundColor: theme.palette.secondary.main
+          backgroundColor: theme.palette.secondary.main,
         }
       }),
       ...(selected && {
         style: {
           backgroundColor: theme.palette.warning.main,
-          borderColor: theme.palette.warning.dark
+          borderColor: theme.palette.warning.dark,
         }
       }),
       ...(event.slot.disabled && {
         style: {
           backgroundColor: theme.palette.info.main,
+        }
+      }),
+      ...((DateTime.fromJSDate(event.startsAt) < DateTime.now() || event.slot.disabled) && {
+        style: {
+          backgroundColor: theme.palette.grey[600],
+          borderColor: theme.palette.grey[900],
         }
       })
     }),
@@ -379,28 +399,9 @@ function Admin() {
   )
   return (
     <AdminLayout>
-      {isLoading && <CircularProgress />}
-      <Dialog open={showEventDialog} onClose={closeEventDialog}>
-        <DialogTitle>Prenotazione</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-           {selected ? getBookingInfo(selected ) :''}
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            id="name"
-            label="Email Address"
-            type="email"
-            fullWidth
-            variant="standard"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeEventDialog}>Annulla</Button>
-          <Button variant="contained" color="error" onClick={closeEventDialog}>Elimina</Button>
-        </DialogActions>
-      </Dialog>
+      {isLoading  && <CircularProgress />}
+      {selected && <BookingAction isOpen={showEventDialog} booking={selected} handleClose={closeEventDialog}/>}
+      {slotInfo && <CreateBooking isOpen={showCreateDialog} slots={slotInfo.slots} handleClose={closeCreateDialog}/> }
       <Calendar
         localizer={luxonLocalizer(DateTime)}
         eventPropGetter={eventPropGetter}
@@ -425,24 +426,223 @@ function Admin() {
           from: DateTime.fromJSDate(d).startOf('week').toJSDate(),
           to: DateTime.fromJSDate(d).endOf('week').toJSDate(),
         })}
-        events={data?.map(({ startsAt, user, ...rest}) => {
+        events={data?.map(({ startsAt, user, slot, ...rest}) => {
           return {
-            startsAt: startsAt,
+            startsAt,
             endsAt: DateTime.fromJSDate(startsAt).plus({hours: 1}).toJSDate(),
-            title: `${user.lastName}`,
+            title: `${slot.disabled ? 'disabilitato' : user.lastName}`,
             user,
+            slot,
             ...rest,
-            info: getTooltipInfo(user)
+            info: getTooltipInfo(user, slot)
           }
         })}
-
         min={DateTime.now().set({hour: 8, minute: 0, second: 0}).toJSDate()}
         max={DateTime.now().set({hour: 22, minute: 0, second: 0}).toJSDate()}
         onSelectEvent={handleSelectEvent}
         onSelectSlot={handleSelectSlot}
         selectable
         selected={selected}
+        step={60}
     />
     </AdminLayout>
+  )
+}
+
+interface BookingActionProps {
+  booking: FullBooking | null;
+  isOpen: boolean;
+  handleClose: () => void;
+}
+
+function BookingAction({ booking, handleClose, isOpen }: BookingActionProps) {
+  const { register, handleSubmit , setValue } = useForm<AdminDeleteModel>({
+    resolver: zodResolver(AdminDeleteSchema),
+  });
+
+  React.useEffect(() => {
+    if (!booking) return;
+
+    setValue('id', booking.id);
+    setValue('startsAt', booking.startsAt);
+
+  }, [booking, setValue]);
+  const [error, setError] = React.useState<string | undefined>(undefined);
+  const utils = api.useContext();
+  const {mutate, isLoading } = api.bookings.adminDelete.useMutation({
+    onSuccess: async () => {
+      try {
+        await utils.bookings.getByInterval.invalidate();
+        handleClose();
+      } catch (error) {
+        console.log(error);
+        setError('Impossibile cancellare la prenotazione');
+      }
+    },
+    onError: (error) => {
+      console.log(error);
+      setError('Impossibile cancellare la prenotazione');
+    }
+  })
+  const onSubmit = React.useCallback((v: AdminDeleteModel) => mutate(v), [mutate]);
+  if (!booking) return <div></div>
+  return (
+    <Dialog open={isOpen} onClose={handleClose}>
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogTitle>{booking.slot.disabled ? 'Slot disabilitato' : 'Prenotazione'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {booking ? getBookingInfo(booking):''}
+          </DialogContentText>
+          {
+            !booking.slot.disabled && 
+          <FormGroup>
+            <FormControlLabel control={<Checkbox defaultChecked {...register('refundAccess')}  />} label="Rimborsa accesso" />
+          </FormGroup>
+          }
+        {error && <Alert severity="error" variant="filled" >{error}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          {isLoading && <CircularProgress />}
+          <Button  onClick={handleClose}>Annulla</Button>
+          <Button variant="contained" color="error" type="submit">Elimina</Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  ) 
+}
+interface CreateBookingProps {
+  slots: Date [];
+  isOpen: boolean;
+  handleClose: () => void;
+}
+
+interface CreateBookingModel {
+  userId?: string;
+  slots: Date[];
+  disable: boolean;
+}
+
+function CreateBooking({ slots, isOpen, handleClose }: CreateBookingProps) {
+  const utils = api.useContext();
+  const { handleSubmit, control, setValue, formState: { errors }, reset, setError: setErrorForm } = useForm<CreateBookingModel>({
+    defaultValues: {
+      disable: false
+    }
+  });
+  const [error, setError] = React.useState<string | undefined>(undefined);
+ 
+  React.useEffect(() =>  {
+    setError(undefined);
+    reset();
+  }, [reset]);
+
+  console.log(errors);
+  const { mutate, isLoading } = api.bookings.adminCreate.useMutation({
+    onSuccess: async () => {
+      try {
+        await utils.bookings.getByInterval.invalidate();
+        handleClose(); 
+      } catch (error) {
+        console.log(error);
+        setError("Impossibile creare la prenotazione");
+      }
+    },
+    onError: (error) => {
+      console.log(error);
+      setError("Impossibile creare la prenotazione");
+    }
+  })
+  const { data, } = api.user.getActive.useQuery();
+
+  const onSubmit = React.useCallback((v: CreateBookingModel) => {
+    if (!v.disable && !v.userId) {
+      setErrorForm('userId', {
+      message: 'Bisogna specificare l\'utente o disabilitare gli slot'
+    });
+      return;
+    }
+
+    const user = data?.find((user) => user.id === v.userId);
+    mutate({
+      userId: user?.id,
+      subType: user?.subType,
+      from: v.slots.at(0) || new Date(),
+      to: v.slots.at(-1) || new Date(),
+      disable: v.disable,
+    });
+  }, [mutate, setErrorForm, data]);
+
+
+  React.useEffect(() => {
+    setValue('slots', slots);
+  }, [setValue, slots])
+
+  return (
+    <Dialog open={isOpen} onClose={handleClose}>
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogTitle>Crea prenotazione</DialogTitle>
+        <DialogContent>
+          {slots && 
+            <DialogContentText>
+                <Typography>
+                  {'Slot: '}
+                  <span style={{fontWeight: 'bold'}}>
+                    {Interval.fromDateTimes(
+                      DateTime.fromJSDate(slots[0] || new Date()),  
+                      DateTime.fromJSDate(slots.at(-1) || new Date())
+                      ).toLocaleString(DateTime.DATETIME_HUGE)}
+                  </span>
+                </Typography>
+            </DialogContentText>
+          }
+        <FormGroup>
+          {data ? 
+            <FormControl sx={{ m: 1 }} fullWidth>
+              <InputLabel id="select-user-label">Cliente</InputLabel>
+              <Controller
+                control={control}
+                name="userId"
+                render={({ field, }) =>
+                 <Select
+                  {...field}
+                  labelId="select-user-label"
+                  id="select-user"
+                  input={<OutlinedInput label="Nome" />}
+                >
+                  {data.map((user) => (
+                    <MenuItem
+                      key={user.id}
+                      value={user.id}
+                    >
+                      {`${user.lastName} ${user.firstName}`} 
+                    </MenuItem>
+                  ))}
+                </Select>
+                }
+            /> 
+            </FormControl>
+            : <Typography variant="caption" color="grey">Nessun utente</Typography>
+          }
+          <FormControl>
+            <Controller
+              control={control}
+              name="disable"
+              render={({field}) => <FormControlLabel control={<Checkbox {...field} /> } label="Disabilita gli slot selezioanti"/> }
+            />
+            </FormControl>
+        </FormGroup>
+        {error && <Alert severity="error" variant="filled" >{error}</Alert>}
+        {errors.userId && <Alert severity="error" variant="filled" >{errors.userId?.message}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          {isLoading && <CircularProgress />}
+          <Button  onClick={handleClose}>Annulla</Button>
+          <Button variant="contained" type="submit">Conferma</Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   )
 }

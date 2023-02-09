@@ -2,17 +2,25 @@ import { SubType } from "@prisma/client";
 import { z } from "zod";
 
 export const AdminCreateSchema = z.object({
-  startsAt: z.date(),
   userId: z.string().optional(),
-  disable: z.boolean(),
+  disable: z.boolean().default(false),
   subType: z.nativeEnum(SubType).optional(),
+  from: z.date(),
+  to: z.date()
 })
 
-export type AdminCreateModel = z.infer<typeof AdminCreateSchema>;
+export const AdminDeleteSchema = z.object({
+  id: z.bigint(),
+  refundAccess: z.boolean(),
+  startsAt: z.date()
+});
 
 export const IntervalSchema = z.object({
   from: z.date(),
   to: z.date(),
 });
 
+
+export type AdminCreateModel = z.infer<typeof AdminCreateSchema>;
+export type AdminDeleteModel = z.infer<typeof AdminDeleteSchema>
 export type IntervalModel = z.infer<typeof IntervalSchema>;

@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
-import { DateTime, } from "luxon";
+import { DateTime, Interval, } from "luxon";
 import { z } from "zod";
-import { AdminCreateSchema, IntervalSchema } from "../../../utils/booking.schema";
+import { AdminCreateSchema, AdminDeleteSchema, IntervalSchema } from "../../../utils/booking.schema";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
 
 const businessWeek = [1, 2, 3, 4, 5, 6];
@@ -83,14 +83,24 @@ export const bookingRouter = createTRPCRouter({
     try {
       const slots = (await ctx.prisma.slot.findMany({
         where: {
-          AND: {
-            peopleCount: {
-              gte: ctx.session.user.subType === 'SHARED' ? 2 : 0
+          OR: [
+            {
+              disabled: true,
             },
-            startsAt: {
-              gte: startDate.toJSDate()
+            {
+              AND: {
+                peopleCount: {
+                  gte: ctx.session.user.subType === 'SHARED' ? 2 : 0
+                },
+                startsAt: {
+                  gte: startDate.toJSDate()
+                }
+              }
             }
-          }
+          ]
+        },
+        select: {
+          startsAt: true
         }
       })).map((item) => DateTime.fromJSDate(item.startsAt).toISO());
 
@@ -125,7 +135,6 @@ export const bookingRouter = createTRPCRouter({
         peopleCount: ctx.session.user.subType === 'SHARED' ? 1 : 2,
         bookings: {
           create: {
-            createdAt: new Date(),
             userId: ctx.session.user.id,
           }
         }
@@ -136,7 +145,6 @@ export const bookingRouter = createTRPCRouter({
         },
         bookings: {
           create: {
-            createdAt: new Date(),
             userId: ctx.session.user.id,
           }
         }
@@ -150,86 +158,96 @@ export const bookingRouter = createTRPCRouter({
   }),
 
   adminCreate: adminProtectedProcedure.input(AdminCreateSchema).mutation(async ({ ctx, input }) => {
-    if (input.disable) {
-      return ctx.prisma.slot.upsert({
-        create: {
-          startsAt: input.startsAt,
-          peopleCount: 2,
-          disabled: true,
-        },
-        update: {
-          peopleCount: {
-            increment: 2,
-          },
-          disabled: true,
-        },
-        where: {
-          startsAt: input.startsAt
-        },
-      });
-    }
-    if (!input.userId) return;
-    const updateAccesses = ctx.prisma.user.update({
-      where: {
-        id: input.userId
-      },
-      data: {
-        remainingAccesses: {
-          decrement: 1
-        }
-      }
-    });
+    const h = Interval.fromDateTimes(
+      DateTime.fromJSDate(input.from),
+      DateTime.fromJSDate(input.to),
+    ).splitBy({ hours: 1 })
 
-    const createSlot = ctx.prisma.slot.upsert({
+    const ops = h.map((item) => ctx.prisma.slot.upsert({
+      where: {
+        startsAt: item.start.toJSDate(),
+      },
       create: {
-        startsAt: input.startsAt,
-        peopleCount: input.subType === 'SHARED' ? 1 : 2,
+        startsAt: item.start.toJSDate(),
+        peopleCount: 1,
         bookings: {
           create: {
-            createdAt: new Date(),
-            userId: input.userId,
+            userId: input.userId || ctx.session.user.id,
           }
-        }
+        },
+        disabled: input.disable,
       },
       update: {
         peopleCount: {
-          increment: input.userId === 'SHARED' ? 1 : 2,
+          increment: 1
         },
         bookings: {
           create: {
-            createdAt: new Date(),
-            userId: input.userId
+            userId: input.userId || ctx.session.user.id,
           }
-        }
+        },
+        disabled: input.disable,
+      }
+    }))
+
+    const decrementAccesses = ctx.prisma.user.update({
+      where: {
+        id: input.userId,
       },
+      data: {
+        remainingAccesses: {
+          decrement: h.length,
+        }
+      }
+    })
+
+    const t = input.disable ? [...ops] : [...ops, decrementAccesses]
+    await ctx.prisma.$transaction(t);
+  }),
+
+  adminDelete: adminProtectedProcedure.input(AdminDeleteSchema).mutation(async ({ ctx, input }) => {
+    const deleteBooking = ctx.prisma.booking.delete({
+      where: {
+        id: input.id
+      }
+    })
+    const refund = ctx.prisma.user.update({
+      where: {
+        id: ctx.session.user.id,
+      },
+      data: {
+        remainingAccesses: {
+          increment: 1
+        }
+      }
+    })
+    const updateCount = ctx.prisma.slot.update({
       where: {
         startsAt: input.startsAt
       },
-    });
-
-    await ctx.prisma.$transaction([updateAccesses, createSlot]);
-  }),
-
-  deleteAdming: adminProtectedProcedure.input(z.bigint()).mutation(({ ctx, input }) => {
-    return ctx.prisma.booking.delete({
-      where: {
-        id: input
+      data: {
+        peopleCount: {
+          decrement: 1
+        }
       }
     })
+    const ops = input.refundAccess ? [deleteBooking, updateCount, refund] : [deleteBooking, updateCount]
+    await ctx.prisma.$transaction(ops);
   }),
 
+  //TODO: compress consecutives disabled
   getByInterval: adminProtectedProcedure.input(IntervalSchema).query(({ ctx, input }) => {
     return ctx.prisma.booking.findMany({
       where: {
         startsAt: {
           gte: input.from,
           lte: input.to
-        }
+        },
       },
       include: {
         user: true,
-        slot: true, 
-      }
+        slot: true,
+      },
     })
-  })
+  }),
 });
