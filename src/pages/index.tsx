@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { useSession } from 'next-auth/react';
-import type { Booking } from '@prisma/client';
+import type { Booking, Slot, User } from '@prisma/client';
 import { api } from '../utils/api';
 import { Container, CssBaseline, Box, Typography, Button, Alert, Card, 
   CardContent, Grid, ListItemButton, 
-  ListItemIcon, ListItemText, CircularProgress, 
+  ListItemIcon, ListItemText, CircularProgress, useTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, 
   } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
 import { DateTime } from 'luxon';
@@ -13,6 +13,7 @@ import type { ListChildComponentProps} from 'react-window';
 import { FixedSizeList } from 'react-window';
 import { Delete, Event } from '@mui/icons-material';
 import AdminLayout from '../components/AdminLayout';
+import type { SlotInfo } from 'react-big-calendar';
 import { Calendar, luxonLocalizer } from 'react-big-calendar'
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import type { IntervalModel } from '../utils/booking.schema';
@@ -305,51 +306,142 @@ function SlotList() {
   );
 }
 
+function getTooltipInfo({firstName, lastName, subType }: User): string {
+  return `${lastName} ${firstName} - ${subType === 'SHARED' ? 'Condiviso' : 'Singolo'}`
+}
+
+function getBookingInfo(booking: FullBooking): string {
+  console.log('hello')
+  return `Prenotazione di ${booking.user.lastName} ${booking.user.firstName} 
+  (${booking.user.subType === 'SHARED' ? 'Condiviso' : 'Singolo'}, 
+  effettuata ${DateTime.fromJSDate(booking.createdAt).setLocale('it').toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY)})`;
+}
+
+type FullBooking = Booking &  {
+  user: User, 
+  slot: Slot, 
+  info: string, 
+  title: string
+}
+
 function Admin() {
   const [input, setInput] = React.useState<IntervalModel>({
     from: DateTime.now().startOf('week').toJSDate(),
     to: DateTime.now().endOf('week').toJSDate(),
   })
+  
   const { data, isLoading } = api.bookings.getByInterval.useQuery({
     from: input.from,
     to: input.to 
   });
-   return (
+
+  const [showEventDialog, setShowEventDialog] = React.useState(false);
+  const [selected, setSelected] = React.useState<FullBooking | null>(null);
+
+  const closeEventDialog = React.useCallback(() => {
+    setShowEventDialog(false);
+    setSelected(null);
+  }, []);
+  
+  const theme = useTheme();
+  const handleSelectEvent = React.useCallback((b: FullBooking) => {
+    setSelected(b);
+    setShowEventDialog(true);
+  }, []); 
+  const handleSelectSlot = React.useCallback((s: SlotInfo) => console.log(s), []);
+
+  const eventPropGetter = React.useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    (event: FullBooking, start: Date, end: Date,  selected: boolean) => ({
+      ...(event.user.subType === 'SHARED' && {
+        style: {
+          backgroundColor: theme.palette.info.main
+        }
+      }),
+      ...(event.user.subType === 'SINGLE' &&  {
+        style: {
+          backgroundColor: theme.palette.secondary.main
+        }
+      }),
+      ...(selected && {
+        style: {
+          backgroundColor: theme.palette.warning.main,
+          borderColor: theme.palette.warning.dark
+        }
+      }),
+      ...(event.slot.disabled && {
+        style: {
+          backgroundColor: theme.palette.info.main,
+        }
+      })
+    }),
+    [theme]
+  )
+  return (
     <AdminLayout>
       {isLoading && <CircularProgress />}
+      <Dialog open={showEventDialog} onClose={closeEventDialog}>
+        <DialogTitle>Prenotazione</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+           {selected ? getBookingInfo(selected ) :''}
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="name"
+            label="Email Address"
+            type="email"
+            fullWidth
+            variant="standard"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeEventDialog}>Annulla</Button>
+          <Button variant="contained" color="error" onClick={closeEventDialog}>Elimina</Button>
+        </DialogActions>
+      </Dialog>
       <Calendar
-      localizer={luxonLocalizer(DateTime)}
-      startAccessor="startsAt"
-      endAccessor="endsAt"
-      titleAccessor="user"
-      selectable={false}
-      culture="it"
-      messages={{
-        month: 'Mese',
-        week: 'Settimana',
-        today: 'Oggi',
-        day: 'Giorno',
-        previous: 'Prec.',
-        next: 'Succ.'
-      }}
-      style={{ height: '100%' }}
-      defaultView="week"
-      views={['week']}
-      
-      onNavigate={(d) => setInput({
-        from: DateTime.fromJSDate(d).startOf('week').toJSDate(),
-        to: DateTime.fromJSDate(d).endOf('week').toJSDate(),
-      })}
-      events={data?.map((item) => {
-        return {
-          startsAt: item.startsAt,
-          endsAt: DateTime.fromJSDate(item.startsAt).plus({hours: 1}).toJSDate(),
-          user: `${item.User.lastName}`
-        }
-      })}
+        localizer={luxonLocalizer(DateTime)}
+        eventPropGetter={eventPropGetter}
+        startAccessor="startsAt"
+        endAccessor="endsAt"
+        titleAccessor="title"
+        culture="it"
+        tooltipAccessor="info"
+        messages={{
+          month: 'Mese',
+          week: 'Settimana',
+          today: 'Oggi',
+          day: 'Giorno',
+          previous: 'Prec.',
+          next: 'Succ.'
+        }}
+        style={{ height: '100%' }}
+        defaultView="week"
+        views={['week']}
+        
+        onNavigate={(d) => setInput({
+          from: DateTime.fromJSDate(d).startOf('week').toJSDate(),
+          to: DateTime.fromJSDate(d).endOf('week').toJSDate(),
+        })}
+        events={data?.map(({ startsAt, user, ...rest}) => {
+          return {
+            startsAt: startsAt,
+            endsAt: DateTime.fromJSDate(startsAt).plus({hours: 1}).toJSDate(),
+            title: `${user.lastName}`,
+            user,
+            ...rest,
+            info: getTooltipInfo(user)
+          }
+        })}
 
-      min={DateTime.now().set({hour: 8, minute: 0, second: 0}).toJSDate()}
-      max={DateTime.now().set({hour: 22, minute: 0, second: 0}).toJSDate()}
+        min={DateTime.now().set({hour: 8, minute: 0, second: 0}).toJSDate()}
+        max={DateTime.now().set({hour: 22, minute: 0, second: 0}).toJSDate()}
+        onSelectEvent={handleSelectEvent}
+        onSelectSlot={handleSelectSlot}
+        selectable
+        selected={selected}
     />
     </AdminLayout>
   )

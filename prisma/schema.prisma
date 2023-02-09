@@ -59,7 +59,7 @@ model Booking {
     createdAt DateTime
     startsAt  DateTime
 
-    User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
     slot Slot @relation(fields: [startsAt], references: [startsAt], onDelete: Cascade)
 
     @@index([userId])

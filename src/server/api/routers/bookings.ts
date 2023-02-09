@@ -227,7 +227,8 @@ export const bookingRouter = createTRPCRouter({
         }
       },
       include: {
-        User: true
+        user: true,
+        slot: true, 
       }
     })
   })
