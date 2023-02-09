@@ -4,9 +4,8 @@ import type { Booking } from '@prisma/client';
 import { api } from '../utils/api';
 import { Container, CssBaseline, Box, Typography, Button, Alert, Card, 
   CardContent, Grid, ListItemButton, 
-  ListItemIcon, ListItemText, CircularProgress, DialogActions, 
-  FormControl, InputLabel, MenuItem, OutlinedInput, Select, Checkbox, 
-  FormControlLabel, FormGroup, useTheme } from '@mui/material';
+  ListItemIcon, ListItemText, CircularProgress, 
+  } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
 import { DateTime } from 'luxon';
 import { useConfirm } from 'material-ui-confirm';
@@ -14,16 +13,9 @@ import type { ListChildComponentProps} from 'react-window';
 import { FixedSizeList } from 'react-window';
 import { Delete, Event } from '@mui/icons-material';
 import AdminLayout from '../components/AdminLayout';
-import { Scheduler } from '@aldabil/react-scheduler';
-import { it } from 'date-fns/locale';
-import type { ProcessedEvent, SchedulerHelpers, Translations, ViewEvent } from '@aldabil/react-scheduler/types';
-import type { WeekProps } from '@aldabil/react-scheduler/views/Week';
-import type { DayProps } from '@aldabil/react-scheduler/views/Day';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import type { AdminCreateModel, IntervalModel} from '../utils/booking.schema';
-import { AdminCreateSchema } from '../utils/booking.schema';
-import type { StateItem } from '@aldabil/react-scheduler/views/Editor';
+import { Calendar, luxonLocalizer } from 'react-big-calendar'
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import type { IntervalModel } from '../utils/booking.schema';
 
 function Home () {
   const { data: sessionData } = useSession();
@@ -313,215 +305,52 @@ function SlotList() {
   );
 }
 
-const translations: Translations = {
-  navigation: {
-    month: 'Mese',
-    day: 'Giorno',
-    today: 'Oggi',
-    week: 'Settimana'
-  },
-  event: {
-    title: 'Titolo',
-    start: 'Inizio',
-    end: 'Fine',
-    allDay: 'Tutto il giorno'
-  },
-  form: {
-    addTitle: 'Crea appuntamento',
-    cancel: 'Annulla',
-    confirm: 'Conferma',
-    delete: 'Elimina',
-    editTitle: 'Modifica'
-  },
-  loading: 'Caricamento in corso...',
-  moreEvents: 'Altri eventi'
-}
-
-const day: DayProps = {
-  startHour: 8,
-  endHour: 21,
-  step: 60,
-}
-
-const week: WeekProps = {
-  startHour: 8,
-  endHour: 21,
-  weekStartOn: 0,
-  step: 60,
-  weekDays: [1, 2, 3, 4, 5, 6]
-}
-
-interface CustomEditorProps {
-  scheduler: SchedulerHelpers;
-}
-
 function Admin() {
   const [input, setInput] = React.useState<IntervalModel>({
     from: DateTime.now().startOf('week').toJSDate(),
-    to: DateTime.now().endOf('week').toJSDate() 
+    to: DateTime.now().endOf('week').toJSDate(),
   })
-  const { isLoading, refetch, } = api.bookings.getByInterval.useQuery({
-      from: input.from,
-      to: input.to,
-  }, {
-    enabled: false,
+  const { data, isLoading } = api.bookings.getByInterval.useQuery({
+    from: input.from,
+    to: input.to 
   });
-
-  const utils = api.useContext();
-  const { mutate } = api.bookings.deleteAdming.useMutation({
-    onSuccess: () => {
-      utils.bookings.getByInterval.invalidate().catch(console.error);
-    } 
-  });
-
-  const onDelete = React.useCallback((id: string | number): Promise<void> => {
-    return new Promise((res) => {
-      res(mutate(BigInt(id)));
-    })
-  }, [mutate]);
-
-  const theme = useTheme();
-
-  const fetchData = async (params: ViewEvent): Promise<ProcessedEvent[]> => {
-    setInput({
-      from: params.start,
-      to: params.end,
-    })
-    console.log(input);
-    
-    const bookings = await refetch();
-    
-    console.log(bookings);
-
-    return new Promise((res) => {
-      setTimeout(() => {
-        res(
-          bookings.data ? bookings.data.map((booking): ProcessedEvent => {
-            return {
-              start: booking.startsAt,
-              end: DateTime.fromJSDate(booking.startsAt).plus({ hours: 1 }).toJSDate(),
-              event_id: booking.id.toString(),
-              title: `${booking.User.lastName} ${booking.User.firstName}`,
-              draggable: false,
-              editable: false,
-              disabled: false,
-              allDay: false,
-              deletable: true,
-              color: booking.User.subType === 'SHARED' ? theme.palette.success.main : theme.palette.secondary.main
-            }
-          }) : []
-        )
-      }, 1000)
-    })
-
-  }
-  
-  return (
+   return (
     <AdminLayout>
-      <Scheduler 
-        onDelete={onDelete}
-        loading={isLoading}
-        customEditor={(scheduler) => <CustomEditor scheduler={scheduler}/>}
-        hourFormat="24"
-        locale={it}
-        week={week}
-        day={day}
-        translations={translations}
-        getRemoteEvents={fetchData}
-      />
+      {isLoading && <CircularProgress />}
+      <Calendar
+      localizer={luxonLocalizer(DateTime)}
+      startAccessor="startsAt"
+      endAccessor="endsAt"
+      titleAccessor="user"
+      selectable={false}
+      culture="it"
+      messages={{
+        month: 'Mese',
+        week: 'Settimana',
+        today: 'Oggi',
+        day: 'Giorno',
+        previous: 'Prec.',
+        next: 'Succ.'
+      }}
+      style={{ height: '100%' }}
+      defaultView="week"
+      views={['week']}
+      
+      onNavigate={(d) => setInput({
+        from: DateTime.fromJSDate(d).startOf('week').toJSDate(),
+        to: DateTime.fromJSDate(d).endOf('week').toJSDate(),
+      })}
+      events={data?.map((item) => {
+        return {
+          startsAt: item.startsAt,
+          endsAt: DateTime.fromJSDate(item.startsAt).plus({hours: 1}).toJSDate(),
+          user: `${item.User.lastName}`
+        }
+      })}
+
+      min={DateTime.now().set({hour: 8, minute: 0, second: 0}).toJSDate()}
+      max={DateTime.now().set({hour: 22, minute: 0, second: 0}).toJSDate()}
+    />
     </AdminLayout>
   )
-}
-
-function formatSlot(s: StateItem | undefined): string {
-  if (!s || s.type !== 'date') return 'invalid';
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  const dt = DateTime.fromJSDate(s.value).setLocale('it');
-  let str = dt.toLocaleString(DateTime.DATE_HUGE);
-  str += ` dalle ${dt.toFormat('HH:mm')} alle ${dt.plus({ hours: 1 }).toFormat('HH:mm')} `
-  return str;
-}
-
-
-function CustomEditor ({ scheduler }: CustomEditorProps) {
-  const { data, isLoading: queryLoading } = api.user.getActive.useQuery();
-  const { register, handleSubmit, setValue, watch, formState: { isLoading }} = useForm<AdminCreateModel>({
-    resolver: zodResolver(AdminCreateSchema),
-    defaultValues: {
-      startsAt: scheduler.state.start?.value as Date,
-    },
-  });
-
-  const [error, setError] = React.useState<string | undefined>(undefined);
-  const utils = api.useContext()
-  const { mutate, isLoading: mutateLoading} = api.bookings.adminCreate.useMutation({
-    onSuccess: () =>  {
-      utils.bookings.getByInterval.invalidate().catch(console.error);
-      void scheduler.close();
-    },
-    onError: (err) => {
-      setError('Errore durante la creazione della prenotazione.')
-      console.log(err);
-    }
-  })
-
-  const userId = watch('userId')
-
-  React.useEffect(() => {
-    const user = data?.find((v) => v.id === userId)
-    if (!user) return;
-    setValue('subType', user.subType)
-  }, [userId, setValue, data])
-
-  const onSubmit = React.useCallback((v: AdminCreateModel) => mutate(v), [mutate])
-
-  if (queryLoading) return <CircularProgress />
-  return (
-    <div>
-      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div style={{ padding: '1rem'}}>
-          {queryLoading && <CircularProgress />}
-            <Typography sx={{fontWeight: 'bold'}}>
-              Nuova prenotazione
-            </Typography>
-            <Typography>
-              Prenota per <span style={{fontWeight: 'bold'}}>{formatSlot(scheduler.state.start)}</span>
-            </Typography>
-              <FormControl sx={{mt: '1rem', mr: '1rem'}} fullWidth >
-                {data && 
-                <>
-                <InputLabel id="select-user-label">{data.length > 0 ? 'Seleziona utente' : 'Nessun utente disponibile'}</InputLabel>
-                  <Select
-                    labelId="select-user-label"
-                    id="select-user"
-                    disabled={data.length === 0 || !isLoading}
-                    input={<OutlinedInput label="Name" />}
-                    {...register('userId')}
-                  >
-                    {data.map((user) => (
-                        <MenuItem
-                          key={user.id}
-                          value={user.id}
-                        >
-                          {`${user.lastName} ${user.firstName}`}
-                        </MenuItem>
-                    ))}
-                  </Select>
-                </>
-            }
-            </FormControl>
-            <FormGroup>
-              <FormControlLabel {...register('disable')} control={<Checkbox />} label="Disabilita lo slot per prenotazioni future" />
-            </FormGroup>
-            {error && <Alert variant="filled" severity="error" >{error}</Alert>}
-          </div>
-          <DialogActions>
-            {mutateLoading && <CircularProgress />}
-            <Button onClick={() => void scheduler.close()}>Cancella</Button>
-            <Button type="submit" variant="contained">Conferma</Button>
-          </DialogActions>
-        </form>
-    </div>
-  );
 }
