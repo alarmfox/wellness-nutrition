@@ -5,6 +5,7 @@ import { DateTime, Interval, } from "luxon";
 import { z } from "zod";
 import { AdminCreateSchema, AdminDeleteSchema, IntervalSchema } from "../../../utils/booking.schema";
 import type { NotificationModel } from "../../../utils/event.schema";
+import { sendOnDeleteBooking, sendOnNewBooking } from "../../mail";
 import { pusher } from "../../pusher";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
 
@@ -91,7 +92,11 @@ export const bookingRouter = createTRPCRouter({
       const res = await ctx.prisma.$transaction(ops);
 
       const createdEvent = (input.isRefundable ? res[3] : res[2]) as Event & {user: User};
-      await pusher.trigger('booking', 'user', createNotification(createdEvent));
+
+      await Promise.all([
+        pusher.trigger('booking', 'user', createNotification(createdEvent)),
+        sendOnDeleteBooking(createdEvent.user, input.startsAt),
+      ]);
 
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -106,7 +111,7 @@ export const bookingRouter = createTRPCRouter({
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
     const endDate = DateTime.now().endOf('month');
-    const startDate = DateTime.now().plus({ days: 1 }).startOf('day').startOf('hour')
+    const startDate = DateTime.now().plus({ days: 2 }).startOf('day').startOf('hour')
     const allRecurrences: string[] = [];
 
     let nextOccurrence = null;
@@ -201,7 +206,10 @@ export const bookingRouter = createTRPCRouter({
       }
     })
     const res = await ctx.prisma.$transaction([updateAccesses, createSlot, logEvent])
-    await pusher.trigger('booking', 'user', createNotification(res[2]));
+    await Promise.all([
+      pusher.trigger('booking', 'user', createNotification(res[2])),
+      sendOnNewBooking(res[2].user, input.startsAt),
+    ]);
   }),
 
   adminCreate: adminProtectedProcedure.input(AdminCreateSchema).mutation(async ({ ctx, input }) => {

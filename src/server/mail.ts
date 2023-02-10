@@ -1,4 +1,5 @@
 import type { User } from '@prisma/client';
+import { DateTime } from 'luxon';
 import Mailgen from 'mailgen';
 import * as nodemailer from 'nodemailer';
 import { env } from '../env/server.mjs';
@@ -26,11 +27,11 @@ const mailGenerator = new Mailgen({
   },
 });
 
-export function sendWelcomeEmail(user: User, verificationUrl: string) {
+export async function sendWelcomeEmail({ email: userEmail, firstName }: User, verificationUrl: string) {
   const email: Mailgen.Content = {
     body: {
       greeting: 'Ciao',
-      name: `${user.firstName}`,
+      name: `${firstName}`,
       signature: 'Grazie per averci scelto',
       intro: 'Benvenuto in Wellness & Nutrition.',
       action: {
@@ -45,27 +46,14 @@ export function sendWelcomeEmail(user: User, verificationUrl: string) {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const html = mailGenerator.generate(email);
-
-  const mailOptions = {
-    from: env.EMAIL_FROM,
-    to: user.email,
-    subject: 'Benvenuto in Wellness e Nutrition',
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    html,
-  };
-
-  transport.sendMail(mailOptions, (error) => {
-    if (error) throw error;
-  });
+  await sendEmail(userEmail, env.EMAIL_FROM, 'Benvenuto in Wellness & Nutrition', email);
 }
 
-export function sendResetEmail(user: User, verificationUrl: string) {
+export async function sendResetEmail({ email: userEmail, firstName }: User, verificationUrl: string) {
   const email: Mailgen.Content = {
     body: {
       greeting: 'Ciao',
-      name: `${user.firstName}`,
+      name: `${firstName}`,
       signature: 'Grazie per averci scelto',
       intro: 'Ricevi questa email per ripristinare la credenziali.',
       action: {
@@ -80,19 +68,63 @@ export function sendResetEmail(user: User, verificationUrl: string) {
     }
   };
 
+  await sendEmail(userEmail, env.EMAIL_FROM, 'Ripristino password', email);
+}
+
+export async function sendOnNewBooking(user: User, startsAt: Date) {
+  const email: Mailgen.Content = {
+    body: {
+      greeting: 'Ciao',
+      name: `amministratore`,
+      signature: 'Grazie per averci scelto',
+      intro: `Una nuova prenotazione è stata inserita da ${user.firstName} ${user.lastName} per 
+      ${DateTime.fromJSDate(startsAt).toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY, { locale: 'it' })}`,
+      title: 'Nuova prenotazione',
+      outro: 'Hai bisogno di aiuto? Rispondi a questa email e saremo felici di aiutarti'
+    }
+  };
+
+  await sendEmail(env.EMAIL_FROM, env.EMAIL_FROM, 'Nuova prenotazione', email)
+
+}
+
+export async function sendOnDeleteBooking(user: User, startsAt: Date) {
+  const email: Mailgen.Content = {
+    body: {
+      greeting: 'Ciao',
+      name: `amministratore`,
+      signature: 'Grazie per averci scelto',
+      intro: `Una prenotazione è stata cancellata da ${user.firstName} ${user.lastName} per 
+      ${DateTime.fromJSDate(startsAt).toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY, { locale: 'it' })}`,
+      title: 'Prenotazione cancellata',
+      outro: 'Hai bisogno di aiuto? Rispondi a questa email e saremo felici di aiutarti'
+    }
+  };
+
+  await sendEmail(env.EMAIL_FROM, env.EMAIL_FROM, 'Prenotazione cancellata', email)
+
+}
+async function sendEmail(to: string, from: string, subject: string, content: Mailgen.Content): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const html = mailGenerator.generate(email);
+  const html = mailGenerator.generate(content);
 
   const mailOptions = {
-    from: env.EMAIL_FROM,
-    to: user.email,
-    subject: 'Ripristino password',
+    from,
+    to,
+    subject,
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     html,
   };
 
-  transport.sendMail(mailOptions, (error) => {
-    if (error) throw error;
-  });
+  await new Promise((res, rej) => {
+    transport.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error(error);
+        rej(error)
+      } else {
+        console.log(info);
+        res(info);
+      }
+    });
+  })
 }
-

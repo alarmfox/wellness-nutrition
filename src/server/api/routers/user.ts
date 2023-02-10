@@ -39,7 +39,7 @@ export const userRouter = createTRPCRouter({
           },
         })
         const url = `${env.NEXTAUTH_URL}/verify?token=${token}`
-        sendWelcomeEmail(user, url)
+        await sendWelcomeEmail(user, url)
       } catch (e) {
         if (e instanceof Prisma.PrismaClientKnownRequestError) {
           // The .code property can be accessed in a type-safe manner
@@ -113,7 +113,7 @@ export const userRouter = createTRPCRouter({
       });
 
       const url = `${env.NEXTAUTH_URL}/verify?token=${token}`
-      sendResetEmail(user, url);
+      await sendResetEmail(user, url);
 
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
