@@ -22,6 +22,7 @@ import { AdminDeleteSchema } from '../utils/booking.schema';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
+
 function Home () {
   const { data: sessionData } = useSession();
 
@@ -359,7 +360,6 @@ function Admin() {
   }, []);
 
   const handleSelectSlot = React.useCallback((s: SlotInfo) => {
-    console.log(s.slots)
     if (DateTime.fromJSDate(s.start).startOf('day') < DateTime.now().startOf('day')) return;
     setSlotInfo(s);
   }, []);

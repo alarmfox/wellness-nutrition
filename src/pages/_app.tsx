@@ -10,6 +10,7 @@ import { ConfirmProvider } from "material-ui-confirm";
 import { useRouter } from "next/router";
 import type { NextComponentType } from "next";
 import type { Role } from "@prisma/client";
+import { SnackbarProvider } from "notistack";
 
 const theme = createTheme();
 
@@ -30,14 +31,16 @@ const MyApp: AppType<{ session: Session | null } > = ({
     <SessionProvider session={session}>
       <ThemeProvider theme={theme}>
         <ConfirmProvider>
-          {
-            Component.auth ? (
-              <Auth auth={Component.auth}>
-                <Component {...pageProps} />
-              </Auth>
-            ):
-            <Component {...pageProps} />
-          }
+          <SnackbarProvider preventDuplicate autoHideDuration={5000}>
+            {
+              Component.auth ? (
+                <Auth auth={Component.auth}>
+                  <Component {...pageProps} />
+                </Auth>
+              ):
+              <Component {...pageProps} />
+            }
+          </SnackbarProvider>
         </ConfirmProvider>
       </ThemeProvider>
     </SessionProvider>

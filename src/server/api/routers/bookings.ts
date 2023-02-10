@@ -1,8 +1,11 @@
+import type { Booking, User } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { DateTime, Interval, } from "luxon";
 import { z } from "zod";
 import { AdminCreateSchema, AdminDeleteSchema, IntervalSchema } from "../../../utils/booking.schema";
+import type { NotificationModel } from "../../../utils/notification.schema";
+import { pusher } from "../../pusher";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
 
 const businessWeek = [1, 2, 3, 4, 5, 6];
@@ -23,7 +26,6 @@ export const bookingRouter = createTRPCRouter({
     })
   }),
 
-  //TODO: send notification
   delete: protectedProcedure.input(z.object({
     id: z.bigint(),
     startsAt: z.date(),
@@ -33,8 +35,11 @@ export const bookingRouter = createTRPCRouter({
       const deleteBooking = ctx.prisma.booking.delete({
         where: {
           id: input.id
+        },
+        include: {
+          user: true
         }
-      })
+      });
       const refund = ctx.prisma.user.update({
         where: {
           id: ctx.session.user.id,
@@ -44,7 +49,7 @@ export const bookingRouter = createTRPCRouter({
             increment: 1
           }
         }
-      })
+      });
       const resetCounter = ctx.prisma.slot.update({
         where: {
           startsAt: input.startsAt
@@ -54,9 +59,19 @@ export const bookingRouter = createTRPCRouter({
             increment: ctx.session.user.subType === 'SHARED' ? 1 : 2
           }
         }
-      })
+      });
       const ops = input.isRefundable ? [deleteBooking, resetCounter, refund] : [deleteBooking, resetCounter]
-      await ctx.prisma.$transaction(ops);
+      const res = await ctx.prisma.$transaction(ops);
+      const { user: { firstName, lastName }, startsAt, id } = res[0] as (Booking & { user: User });
+
+      const payload: NotificationModel = {
+        id: id.toString(),
+        firstName,
+        lastName,
+        startsAt: startsAt.toISOString(),
+        occurredAt: new Date().toISOString(),
+      }
+      await pusher.trigger('booking', 'deleted', payload);
 
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -66,6 +81,7 @@ export const bookingRouter = createTRPCRouter({
           })
         }
       }
+      console.log(error);
     }
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
@@ -107,10 +123,10 @@ export const bookingRouter = createTRPCRouter({
       return allRecurrences.filter((item) => !slots.includes(item));
 
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR'
-      })
+      });
     }
   }),
 
@@ -154,7 +170,15 @@ export const bookingRouter = createTRPCRouter({
       },
     });
 
-    await ctx.prisma.$transaction([updateAccesses, createSlot])
+    const res = await ctx.prisma.$transaction([updateAccesses, createSlot])
+    const payload: NotificationModel = {
+      id: DateTime.fromJSDate(input.startsAt).toMillis().toString(),
+      firstName: res[0].firstName,
+      lastName: res[0].lastName,
+      occurredAt: new Date().toISOString(),
+      startsAt: input.startsAt.toISOString()
+    }
+    await pusher.trigger('booking', 'created', payload);
   }),
 
   adminCreate: adminProtectedProcedure.input(AdminCreateSchema).mutation(async ({ ctx, input }) => {

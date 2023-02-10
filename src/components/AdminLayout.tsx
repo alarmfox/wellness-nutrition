@@ -3,17 +3,21 @@ import { styled, useTheme } from '@mui/material/styles';
 import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
 import { Box, CssBaseline, Toolbar, IconButton, Typography, Drawer,
-    Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
+    Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Menu, MenuItem, Badge } from '@mui/material';
 import type { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import MuiAppBar from '@mui/material/AppBar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useRouter } from 'next/router';
-import { AccountCircle, Logout } from '@mui/icons-material';
+import { AccountCircle, Logout, NotificationsRounded } from '@mui/icons-material';
 import { signOut } from 'next-auth/react';
-const drawerWidth = 240;
+import Pusher from 'pusher-js';
+import { useSnackbar } from 'notistack';
+import type { NotificationModel} from '../utils/notification.schema';
+import { DateTime } from 'luxon';
 
+const drawerWidth = 240;
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -80,15 +84,33 @@ const NavigationOptions: NavigationOption[] = [
     icon: <EventIcon />,
     name: 'Calendario',
     to: '/' 
-  }
-
+  },
 ]
+
+const pusher = new Pusher('a017f5abd9769da5b770', {
+  cluster: 'eu',
+});
+const channel = pusher.subscribe('booking');
+
+function formatNotification(n: NotificationModel, isDeleted: boolean): string {
+  if (isDeleted) {
+    return `${n.firstName} ${n.lastName} ha cancellato la sua prenotazione per
+    ${DateTime.fromISO(n.startsAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}
+    `
+  }
+  return `${n.firstName} ${n.lastName} ha creato una prenotazione per
+    ${DateTime.fromISO(n.startsAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}
+    `
+}
 export default function AdminLayout ({ children }: React.PropsWithChildren) {
   const theme = useTheme();
   const [open, setOpen] = React.useState(true);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [ selected, setSelected ] = React.useState('Utenti');
   const { pathname } = useRouter();
+  const [notifications, setNotifications] = React.useState<NotificationModel[]> ([]);
+
+  const { enqueueSnackbar } = useSnackbar();
 
   const handleMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -106,7 +128,18 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
     setOpen(false);
   }, []);
 
-  const onLogout = React.useCallback(() =>  signOut({callbackUrl: '/'}).catch(console.error), [])
+  const onLogout = React.useCallback(() =>  signOut({callbackUrl: '/'}).catch(console.error), []);
+
+  const handleNotification = React.useCallback((n: NotificationModel, isDeleted: boolean) => {
+    enqueueSnackbar(formatNotification(n, isDeleted));
+    setNotifications(notifications.concat(n));
+  } ,[notifications, setNotifications, enqueueSnackbar]);
+
+  React.useEffect(() => {
+    channel.bind('created', (data: NotificationModel) => handleNotification(data, false));
+    channel.bind('deleted', (data: NotificationModel) => handleNotification(data, true));
+
+  }, [handleNotification])
 
   React.useEffect(() => {
      switch(pathname) {
@@ -137,6 +170,11 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
             {selected}
           </Typography>
           <Box sx={{ display: 'flex', width: '100%', justifyContent: 'end'}}>
+            <IconButton color="inherit">
+              <Badge max={99} badgeContent={notifications.length}>
+                <NotificationsRounded  color="inherit"  />
+              </Badge> 
+            </IconButton>
             <IconButton
               size="large"
               aria-label="account of current user"
