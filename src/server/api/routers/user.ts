@@ -6,7 +6,7 @@ import { CreateUserSchema, UpdateUserSchema } from "../../../utils/user.schema";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { randomBytes } from "crypto";
 import { env } from "../../../env/server.mjs";
-import { sendVerificationEmail } from "../../mail";
+import { sendWelcomeEmail, sendResetEmail } from "../../mail";
 import { VerifyAccountSchema } from "../../../utils/verifiy.schema";
 import argon2 from "argon2";
 
@@ -31,7 +31,7 @@ export const userRouter = createTRPCRouter({
     mutation(async ({ ctx, input }) => {
       try {
         const token = randomBytes(48).toString('base64url')
-        const { email } = await ctx.prisma.user.create({
+        const user = await ctx.prisma.user.create({
           data: {
             ...input,
             verificationToken: token,
@@ -39,7 +39,7 @@ export const userRouter = createTRPCRouter({
           },
         })
         const url = `${env.NEXTAUTH_URL}/verify?token=${token}`
-        sendVerificationEmail(email, url)
+        sendWelcomeEmail(user, url)
       } catch (e) {
         if (e instanceof Prisma.PrismaClientKnownRequestError) {
           // The .code property can be accessed in a type-safe manner
@@ -113,7 +113,7 @@ export const userRouter = createTRPCRouter({
       });
 
       const url = `${env.NEXTAUTH_URL}/verify?token=${token}`
-      sendVerificationEmail(user.email, url)
+      sendResetEmail(user, url);
 
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {

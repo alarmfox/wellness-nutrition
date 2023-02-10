@@ -149,9 +149,12 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
   const onLogout = React.useCallback(() =>  signOut({ callbackUrl: '/' }).catch(console.error), []);
 
   const handleNotification = React.useCallback((n: NotificationModel) => {
-    void utils.bookings.getByInterval.invalidate();
-    enqueueSnackbar(formatNotification(n));
+    enqueueSnackbar(formatNotification(n), {
+      variant: n.type === 'CREATED' ? 'info' : 'warning'
+    });
     setNotifications(notifications.concat(n));
+    void utils.bookings.getByInterval.invalidate();
+    void utils.events.getLatest.invalidate();
   } ,[notifications, setNotifications, enqueueSnackbar, utils]);
 
   const onDelete = React.useCallback((i: number) => {
@@ -194,7 +197,7 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
           <Box sx={{ display: 'flex', width: '100%', justifyContent: 'end'}}>
             <IconButton color="inherit" onClick={(e) => setNotificatioAnchorEl(e.currentTarget)}>
               <Badge max={99} badgeContent={notifications.length}>
-                <NotificationsRounded  color="inherit"  />
+                <NotificationsRounded  color="inherit" />
               </Badge>
               <Popover
                 id={id}
