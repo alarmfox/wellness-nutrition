@@ -577,7 +577,6 @@ function CreateBooking({ slots, isOpen, handleClose }: CreateBookingProps) {
       subType: selected?.subType
     })
   }, [mutate, disable, slots, selected]);
-  console.log(selected);
 
   return (
     <Dialog open={isOpen} onClose={handleClose}>

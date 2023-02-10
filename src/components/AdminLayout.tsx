@@ -3,19 +3,21 @@ import { styled, useTheme } from '@mui/material/styles';
 import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
 import { Box, CssBaseline, Toolbar, IconButton, Typography, Drawer,
-    Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Menu, MenuItem, Badge } from '@mui/material';
+    Divider, List, ListItem, ListItemButton, 
+    ListItemIcon, ListItemText, Menu, MenuItem, Badge, Popover } from '@mui/material';
 import type { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import MuiAppBar from '@mui/material/AppBar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useRouter } from 'next/router';
-import { AccountCircle, Logout, NotificationsRounded } from '@mui/icons-material';
+import { AccountCircle, Close, History, InfoOutlined, Logout, NotificationsRounded } from '@mui/icons-material';
 import { signOut } from 'next-auth/react';
 import Pusher from 'pusher-js';
 import { useSnackbar } from 'notistack';
-import type { NotificationModel} from '../utils/notification.schema';
+import type { NotificationModel} from '../utils/event.schema';
 import { DateTime } from 'luxon';
+import { api } from '../utils/api';
 
 const drawerWidth = 240;
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
@@ -80,11 +82,16 @@ const NavigationOptions: NavigationOption[] = [
     name: 'Utenti',
     to: '/users'
   },
-   {
+  {
     icon: <EventIcon />,
     name: 'Calendario',
     to: '/' 
   },
+  {
+    icon: <History />,
+    name: 'Eventi',
+    to: '/events'
+  }
 ]
 
 const pusher = new Pusher('a017f5abd9769da5b770', {
@@ -92,53 +99,68 @@ const pusher = new Pusher('a017f5abd9769da5b770', {
 });
 const channel = pusher.subscribe('booking');
 
-function formatNotification(n: NotificationModel, isDeleted: boolean): string {
-  if (isDeleted) {
+const formatOpts: Intl.DateTimeFormatOptions = {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  minute: '2-digit',
+  hour: '2-digit',
+  hour12: false
+}
+
+function formatNotification(n: NotificationModel): string {
+  if (n.type === 'DELETED') {
     return `${n.firstName} ${n.lastName} ha cancellato la sua prenotazione per
-    ${DateTime.fromISO(n.startsAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}
+    ${DateTime.fromISO(n.startsAt).toLocaleString(
+      formatOpts, 
+    {
+      locale: 'it',
+    })}
     `
   }
   return `${n.firstName} ${n.lastName} ha creato una prenotazione per
-    ${DateTime.fromISO(n.startsAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}
+    ${DateTime.fromISO(n.startsAt).toLocaleString(formatOpts, {
+      locale: 'it'
+    })}
     `
 }
 export default function AdminLayout ({ children }: React.PropsWithChildren) {
   const theme = useTheme();
   const [open, setOpen] = React.useState(true);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const [ selected, setSelected ] = React.useState('Utenti');
+  const [ selected, setSelected ] = React.useState('Calendario');
   const { pathname } = useRouter();
   const [notifications, setNotifications] = React.useState<NotificationModel[]> ([]);
+  const [notificatioAnchorEl, setNotificatioAnchorEl] = React.useState<HTMLButtonElement | null>(null);
+  const notificationPopoverOpen = React.useMemo(() => !(notificatioAnchorEl === null), [notificatioAnchorEl]);
+  const id = notificationPopoverOpen ? 'notification-popover' : undefined;
 
   const { enqueueSnackbar } = useSnackbar();
+  const utils = api.useContext();
 
-  const handleMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  }, [])
+  const handleMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) =>  setAnchorEl(event.currentTarget), [])
 
-  const handleClose = React.useCallback(() => {
-    setAnchorEl(null);
-  }, []);
+  const handleClose = React.useCallback(() => setAnchorEl(null), []);
 
-  const handleDrawerOpen = React.useCallback(() => {
-    setOpen(true);
-  }, []);
+  const handleDrawerOpen = React.useCallback(() => setOpen(true), []);
 
-  const handleDrawerClose = React.useCallback(() => {
-    setOpen(false);
-  }, []);
+  const handleDrawerClose = React.useCallback(() =>  setOpen(false), []);
 
-  const onLogout = React.useCallback(() =>  signOut({callbackUrl: '/'}).catch(console.error), []);
+  const onLogout = React.useCallback(() =>  signOut({ callbackUrl: '/' }).catch(console.error), []);
 
-  const handleNotification = React.useCallback((n: NotificationModel, isDeleted: boolean) => {
-    enqueueSnackbar(formatNotification(n, isDeleted));
+  const handleNotification = React.useCallback((n: NotificationModel) => {
+    void utils.bookings.getByInterval.invalidate();
+    enqueueSnackbar(formatNotification(n));
     setNotifications(notifications.concat(n));
-  } ,[notifications, setNotifications, enqueueSnackbar]);
+  } ,[notifications, setNotifications, enqueueSnackbar, utils]);
+
+  const onDelete = React.useCallback((i: number) => {
+    notifications.splice(i, 1);
+    setNotifications([...notifications]);
+  }, [notifications, setNotifications])
 
   React.useEffect(() => {
-    channel.bind('created', (data: NotificationModel) => handleNotification(data, false));
-    channel.bind('deleted', (data: NotificationModel) => handleNotification(data, true));
-
+    channel.bind('user', (data: NotificationModel) => handleNotification(data));
   }, [handleNotification])
 
   React.useEffect(() => {
@@ -170,10 +192,32 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
             {selected}
           </Typography>
           <Box sx={{ display: 'flex', width: '100%', justifyContent: 'end'}}>
-            <IconButton color="inherit">
+            <IconButton color="inherit" onClick={(e) => setNotificatioAnchorEl(e.currentTarget)}>
               <Badge max={99} badgeContent={notifications.length}>
                 <NotificationsRounded  color="inherit"  />
-              </Badge> 
+              </Badge>
+              <Popover
+                id={id}
+                open={notificationPopoverOpen}
+                anchorEl={notificatioAnchorEl}
+                onClose={() => setNotificatioAnchorEl(null)}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'left'
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'left'
+                }}
+              >
+                {notifications.length > 0 ? <NotificationList onClose={() => setNotificatioAnchorEl(null)} onDelete={onDelete} notifications={notifications}/> :
+                <div onMouseLeave={() => setNotificatioAnchorEl(null)}>
+                  <Typography variant="caption">
+                    Nessuna notifica
+                  </Typography>
+                </div> 
+                }
+              </Popover>
             </IconButton>
             <IconButton
               size="large"
@@ -257,4 +301,41 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
       </Main>
     </Box>
   );
+}
+interface NotificationListProps {
+  notifications: NotificationModel[];
+  onDelete: (index: number) => void;
+  onClose: () => void;
+}
+
+function NotificationList({ notifications, onDelete, onClose}: NotificationListProps) {
+  return (
+    <div onMouseLeave={onClose}>
+      <List  dense sx={{ width: '100%', bgcolor: 'background.paper' }}>
+        {notifications.map((value, index) => {
+          const labelId = `checkbox-list-secondary-label-${value.id}`;
+          return (
+            <ListItem
+              key={value.id}
+              secondaryAction={
+                <IconButton onClick={() => onDelete(index)} edge="end">
+                  <Close />
+                </IconButton>
+              }
+              disablePadding
+            >
+              <ListItemButton>
+                <ListItemIcon>
+                  <InfoOutlined />
+                </ListItemIcon>
+                <ListItemText id={labelId}
+                  secondary={DateTime.fromISO(value.occurredAt).setLocale('it').toRelativeCalendar()}
+                  primary={formatNotification(value)} />
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
+      </List>
+    </div>
+  ); 
 }

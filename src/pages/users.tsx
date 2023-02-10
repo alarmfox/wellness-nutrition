@@ -697,7 +697,6 @@ function EditUser({ user, handleClose }: EditUserProps) {
 
   return (
     <DialogContent>
-      {isLoading && <CircularProgress />}
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <form onSubmit={handleSubmit(onSubmit)}>
          <Grid container spacing={3}> 
@@ -810,8 +809,9 @@ function EditUser({ user, handleClose }: EditUserProps) {
           </Grid>
          {error && <Alert sx={{mt:'1.5rem'}} variant="filled" severity="error">{error}</Alert>}
          <DialogActions>
-           <Button onClick={handleClose}>Annulla</Button>
-           <Button disabled={!isDirty} variant="contained" type="submit">Conferma</Button>
+            {isLoading && <CircularProgress />}
+            <Button onClick={handleClose}>Annulla</Button>
+            <Button disabled={!isDirty} variant="contained" type="submit">Conferma</Button>
          </DialogActions>
       </form>
 

@@ -33,7 +33,7 @@ const MyApp: AppType<{ session: Session | null } > = ({
         <ConfirmProvider>
           <SnackbarProvider preventDuplicate autoHideDuration={5000}>
             {
-              Component.auth ? (
+              Component.auth && Component.auth.isProtected ? (
                 <Auth auth={Component.auth}>
                   <Component {...pageProps} />
                 </Auth>

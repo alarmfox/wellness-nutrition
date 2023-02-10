@@ -25,6 +25,11 @@ enum Role {
     USER
 }
 
+enum EventType {
+    CREATED
+    DELETED
+}
+
 model User {
     id                         String    @id @default(cuid())
     firstName                  String
@@ -42,6 +47,7 @@ model User {
     verificationToken          String?
     verificationTokenExpiresIn DateTime?
     bookings                   Booking[]
+    events                     Event[]
 
     @@index([verificationToken])
 }
@@ -64,4 +70,15 @@ model Booking {
 
     @@index([userId])
     @@index([startsAt])
+}
+
+model Event {
+    id         Int       @id @default(autoincrement())
+    userId     String
+    startsAt   DateTime
+    user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    type       EventType
+    occurredAt DateTime  @default(now())
+
+    @@index([userId])
 }
