@@ -5,7 +5,7 @@ import { api } from '../utils/api';
 import { Container, CssBaseline, Box, Typography, Button, Alert, Card, 
   CardContent, Grid, ListItemButton, 
   ListItemIcon, ListItemText, CircularProgress, useTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, 
-  Checkbox, FormControlLabel, FormGroup, FormControl, InputLabel, MenuItem, OutlinedInput, Select, 
+  Checkbox, FormControlLabel, FormGroup, FormControl, Autocomplete, TextField, 
   } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
 import { DateTime, Interval } from 'luxon';
@@ -19,15 +19,16 @@ import { Calendar, luxonLocalizer } from 'react-big-calendar'
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import type { AdminDeleteModel, IntervalModel } from '../utils/booking.schema';
 import { AdminDeleteSchema } from '../utils/booking.schema';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
 
 function Home () {
   const { data: sessionData } = useSession();
 
-  const { data: user, isLoading } = api.user.getCurrent.useQuery();
+  const { data: user, isLoading: getCurrentLoading } = api.user.getCurrent.useQuery();
+  const { isLoading: creatingLoading } = api.bookings.create.useMutation();
   const [ creationMode, setCreationMode ] = React.useState(false);
+  const isLoading = React.useMemo(() => creatingLoading || getCurrentLoading, [getCurrentLoading, creatingLoading])
   
   React.useEffect(() => {
       if (user?.remainingAccesses === 0) setCreationMode(false);
@@ -50,9 +51,10 @@ function Home () {
             overflowY: 'hidden',
             overflowX: 'hidden',
           }}
-        > {isLoading && <CircularProgress />}
+        > 
           <SubscriptionInfo />
           {!creationMode ? <BookingList />: <SlotList/>}
+          {isLoading && <CircularProgress />}
           <Button 
             disabled={user?.remainingAccesses === 0 || DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()} 
             sx={{ mt: '2rem' }}
@@ -60,7 +62,7 @@ function Home () {
             color="primary" 
             aria-label="nuova prenotazione"
             onClick={() => setCreationMode(!creationMode)}
-          >
+            >
             {creationMode ? 'Le mie prenotazioni' : 'Nuova prenotazione'}
           </Button>
         </Box>
@@ -518,27 +520,18 @@ interface CreateBookingProps {
   handleClose: () => void;
 }
 
-interface CreateBookingModel {
-  userId?: string;
-  slots: Date[];
-  disable: boolean;
+
+interface SelectUserOptionType {
+  label: string;
+  id: number;
 }
 
 function CreateBooking({ slots, isOpen, handleClose }: CreateBookingProps) {
   const utils = api.useContext();
-  const { handleSubmit, control, setValue, formState: { errors }, reset, setError: setErrorForm } = useForm<CreateBookingModel>({
-    defaultValues: {
-      disable: false
-    }
-  });
   const [error, setError] = React.useState<string | undefined>(undefined);
+  const [disable, setDisable] = React.useState(false);
+  const [selected, setSelected] = React.useState<User | null> (null);
  
-  React.useEffect(() =>  {
-    setError(undefined);
-    reset();
-  }, [reset]);
-
-  console.log(errors);
   const { mutate, isLoading } = api.bookings.adminCreate.useMutation({
     onSuccess: async () => {
       try {
@@ -556,33 +549,40 @@ function CreateBooking({ slots, isOpen, handleClose }: CreateBookingProps) {
   })
   const { data, } = api.user.getActive.useQuery();
 
-  const onSubmit = React.useCallback((v: CreateBookingModel) => {
-    if (!v.disable && !v.userId) {
-      setErrorForm('userId', {
-      message: 'Bisogna specificare l\'utente o disabilitare gli slot'
-    });
+  const selectData = React.useMemo(() => data ? data.map((item, index): SelectUserOptionType => {
+    return {
+      label: `${item.lastName} ${item.firstName}`,
+      id: index,
+    }
+  }
+  ) 
+  : [], [data]);
+
+  const onSubmit = React.useCallback((e: React.SyntheticEvent) => {
+    e.preventDefault();
+    setError(undefined);
+    if(!selected && !disable) {
+      setError('Nessun utente selezionato. Selezionare un utente o disabilitare lo slot');
       return;
     }
-
-    const user = data?.find((user) => user.id === v.userId);
+    if (selected && disable) {
+      setError('Non è possibile disabilitare uno slot con utente selezionato');
+      return;
+    }
     mutate({
-      userId: user?.id,
-      subType: user?.subType,
-      from: v.slots.at(0) || new Date(),
-      to: v.slots.at(-1) || new Date(),
-      disable: v.disable,
-    });
-  }, [mutate, setErrorForm, data]);
-
-
-  React.useEffect(() => {
-    setValue('slots', slots);
-  }, [setValue, slots])
+      from: slots.at(0) || new Date(),
+      to: slots.at(-1) || new Date(),
+      disable,
+      userId: selected?.id,
+      subType: selected?.subType
+    })
+  }, [mutate, disable, slots, selected]);
+  console.log(selected);
 
   return (
     <Dialog open={isOpen} onClose={handleClose}>
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={onSubmit}>
         <DialogTitle>Crea prenotazione</DialogTitle>
         <DialogContent>
           {slots && 
@@ -601,41 +601,23 @@ function CreateBooking({ slots, isOpen, handleClose }: CreateBookingProps) {
         <FormGroup>
           {data ? 
             <FormControl sx={{ m: 1 }} fullWidth>
-              <InputLabel id="select-user-label">Cliente</InputLabel>
-              <Controller
-                control={control}
-                name="userId"
-                render={({ field, }) =>
-                 <Select
-                  {...field}
-                  labelId="select-user-label"
-                  id="select-user"
-                  input={<OutlinedInput label="Nome" />}
-                >
-                  {data.map((user) => (
-                    <MenuItem
-                      key={user.id}
-                      value={user.id}
-                    >
-                      {`${user.lastName} ${user.firstName}`} 
-                    </MenuItem>
-                  ))}
-                </Select>
-                }
-            /> 
+              <Autocomplete
+                noOptionsText="Nessun utente trovato"
+                getOptionLabel={(option: SelectUserOptionType) => option.label}
+                disablePortal
+                onChange={(event, value) => value ? setSelected(data.at(value.id) ?? null) : setSelected(null)}
+                options={selectData}
+                id="select-user"
+                renderInput={(params) => <TextField {...params} label="Utente" />}
+                />
             </FormControl>
             : <Typography variant="caption" color="grey">Nessun utente</Typography>
           }
           <FormControl>
-            <Controller
-              control={control}
-              name="disable"
-              render={({field}) => <FormControlLabel control={<Checkbox {...field} /> } label="Disabilita gli slot selezioanti"/> }
-            />
+              <FormControlLabel control={<Checkbox onChange={(event, value) => setDisable(value)} value={disable} /> } label="Disabilita gli slot selezionati"/>
             </FormControl>
         </FormGroup>
         {error && <Alert severity="error" variant="filled" >{error}</Alert>}
-        {errors.userId && <Alert severity="error" variant="filled" >{errors.userId?.message}</Alert>}
         </DialogContent>
         <DialogActions>
           {isLoading && <CircularProgress />}
