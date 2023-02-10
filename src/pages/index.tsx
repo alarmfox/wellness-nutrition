@@ -36,7 +36,6 @@ function Home () {
 
   if (sessionData?.user.role === 'ADMIN') return <Admin />
 
-
   return (
     <>
       <ResponsiveAppBar />
@@ -57,7 +56,7 @@ function Home () {
           {isLoading && <CircularProgress />}
           <Button 
             disabled={user?.remainingAccesses === 0 || DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()} 
-            sx={{ mt: '2rem' }}
+            sx={{ mt: '2rem', bottom: 0, position: 'absolute' }}
             variant="contained" 
             color="primary" 
             aria-label="nuova prenotazione"
