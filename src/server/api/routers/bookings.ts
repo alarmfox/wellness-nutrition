@@ -16,20 +16,20 @@ function isBookeable(d: DateTime): boolean {
 }
 
 function createNotification(
-  { user: { firstName, lastName }, 
-    id, 
-    occurredAt, 
-    startsAt, 
-    type 
-  }: Event & {user: User}): NotificationModel {
- return {
-  firstName,
-  lastName,
-  id,
-  occurredAt: occurredAt.toISOString(),
-  startsAt: startsAt.toISOString(),
-  type 
- }
+  { user: { firstName, lastName },
+    id,
+    occurredAt,
+    startsAt,
+    type
+  }: Event & { user: User }): NotificationModel {
+  return {
+    firstName,
+    lastName,
+    id,
+    occurredAt: occurredAt.toISOString(),
+    startsAt: startsAt.toISOString(),
+    type
+  }
 }
 
 export const bookingRouter = createTRPCRouter({
@@ -91,7 +91,7 @@ export const bookingRouter = createTRPCRouter({
       const ops = input.isRefundable ? [deleteBooking, resetCounter, refund, logEvent] : [deleteBooking, resetCounter, logEvent]
       const res = await ctx.prisma.$transaction(ops);
 
-      const createdEvent = (input.isRefundable ? res[3] : res[2]) as Event & {user: User};
+      const createdEvent = (input.isRefundable ? res[3] : res[2]) as Event & { user: User };
 
       await Promise.all([
         pusher.trigger('booking', 'user', createNotification(createdEvent)),
@@ -111,7 +111,10 @@ export const bookingRouter = createTRPCRouter({
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
     const endDate = DateTime.now().endOf('month');
-    const startDate = DateTime.now().plus({ days: 2 }).startOf('day').startOf('hour')
+    const startDate = DateTime.now().hour > 16 ?
+      DateTime.now().plus({ days: 2 }).startOf('day').startOf('hour') :
+      DateTime.now().plus({ days: 1 }).startOf('day').startOf('hour');
+
     const allRecurrences: string[] = [];
 
     let nextOccurrence = null;
@@ -131,17 +134,17 @@ export const bookingRouter = createTRPCRouter({
             {
               AND: {
                 peopleCount: {
-                  gte: ctx.session.user.subType === 'SHARED' ? 2 : 0
+                  gte: ctx.session.user.subType === 'SHARED' ? 2 : 0,
                 },
                 startsAt: {
-                  gte: startDate.toJSDate()
+                  gte: startDate.toJSDate(),
                 }
               }
             }
           ]
         },
         select: {
-          startsAt: true
+          startsAt: true,
         }
       })).map((item) => DateTime.fromJSDate(item.startsAt).toISO());
 

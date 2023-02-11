@@ -24,7 +24,12 @@ export const serverSchema = z.object({
   EMAIL_SERVER_USER: z.string(),
   EMAIL_SERVER_PASSWORD: z.string(),
   EMAIL_FROM: z.string().email(),
-  MAX_USERS_PER_SLOT: z.number().default(5)
+  EMAIL_NOTIFY_ADDRESS: z.string().email(),
+  PUSHER_APP_ID: z.string(),
+  PUSHER_APP_KEY: z.string(),
+  PUSHER_APP_SECRET: z.string(),
+  PUSHER_APP_CLUSTER: z.string(),
+  PUSHER_APP_USE_TLS: z.string(),
 });
 
 /**
@@ -42,7 +47,12 @@ export const serverEnv = {
   EMAIL_SERVER_USER: process.env.EMAIL_SERVER_USER,
   EMAIL_SERVER_PORT: process.env.EMAIL_SERVER_PORT,
   EMAIL_SERVER_PASSWORD: process.env.EMAIL_SERVER_PASSWORD,
-  MAX_USERS_PER_SLOT: process.env.MAX_USERS_PER_SLOT,
+  EMAIL_NOTIFY_ADDRESS: process.env.EMAIL_NOTIFY_ADDRESS,
+  PUSHER_APP_ID: process.env.PUSHER_APP_ID,
+  PUSHER_APP_KEY: process.env.PUSHER_APP_KEY,
+  PUSHER_APP_SECRET: process.env.PUSHER_APP_SECRET,
+  PUSHER_APP_USE_TLS: process.env.PUSHER_APP_USE_TLS,
+  PUSHER_APP_CLUSTER: process.env.PUSHER_APP_CLUSTER,
 };
 
 /**

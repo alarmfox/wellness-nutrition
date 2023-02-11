@@ -84,7 +84,7 @@ export async function sendOnNewBooking(user: User, startsAt: Date) {
     }
   };
 
-  await sendEmail(env.EMAIL_FROM, env.EMAIL_FROM, 'Nuova prenotazione', email)
+  await sendEmail(env.EMAIL_NOTIFY_ADDRESS, env.EMAIL_FROM, 'Nuova prenotazione', email)
 
 }
 
@@ -101,7 +101,7 @@ export async function sendOnDeleteBooking(user: User, startsAt: Date) {
     }
   };
 
-  await sendEmail(env.EMAIL_FROM, env.EMAIL_FROM, 'Prenotazione cancellata', email)
+  await sendEmail(env.EMAIL_NOTIFY_ADDRESS, env.EMAIL_FROM, 'Prenotazione cancellata', email)
 
 }
 async function sendEmail(to: string, from: string, subject: string, content: Mailgen.Content): Promise<void> {
