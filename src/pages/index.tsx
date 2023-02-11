@@ -56,7 +56,7 @@ function Home () {
           {isLoading && <CircularProgress />}
           <Button 
             disabled={user?.remainingAccesses === 0 || DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()} 
-            sx={{ mt: '2rem', bottom: 0, position: 'absolute' }}
+            sx={{ mt: '2rem', bottom: 0, position: 'absolute', mb: '1rem' }}
             variant="contained" 
             color="primary" 
             aria-label="nuova prenotazione"
@@ -438,13 +438,13 @@ function Admin() {
             info: getTooltipInfo(user, slot)
           }
         })}
-        min={DateTime.now().set({hour: 8, minute: 0, second: 0}).toJSDate()}
+        min={DateTime.now().set({hour: 7, minute: 0, second: 0}).toJSDate()}
         max={DateTime.now().set({hour: 22, minute: 0, second: 0}).toJSDate()}
         onSelectEvent={handleSelectEvent}
         onSelectSlot={handleSelectSlot}
         selectable
         selected={selected}
-        step={60}
+        step={30}
     />
     </AdminLayout>
   )
