@@ -19,6 +19,8 @@ import type { NotificationModel} from '../utils/event.schema';
 import { DateTime } from 'luxon';
 import { api } from '../utils/api';
 import Image from 'next/image';
+import { env } from '../env/client.mjs';
+import { formatDate } from '../utils/format.utils';
 
 const drawerWidth = 240;
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
@@ -95,36 +97,18 @@ const NavigationOptions: NavigationOption[] = [
   }
 ]
 
-const pusher = new Pusher('a017f5abd9769da5b770', {
-  cluster: 'eu',
+const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
+  cluster: env.NEXT_PUBLIC_PUSHER_APP_CLUSTER
 });
 const channel = pusher.subscribe('booking');
 
-const formatOpts: Intl.DateTimeFormatOptions = {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  minute: '2-digit',
-  hour: '2-digit',
-  hour12: false
-}
-
 function formatNotification(n: NotificationModel): string {
   if (n.type === 'DELETED') {
-    return `${n.firstName} ${n.lastName} ha cancellato la sua prenotazione per
-    ${DateTime.fromISO(n.startsAt).toLocaleString(
-      formatOpts, 
-    {
-      locale: 'it',
-    })}
-    `
+    return `${n.firstName} ${n.lastName} ha cancellato la sua prenotazione per ${formatDate(n.startsAt)} `
   }
-  return `${n.firstName} ${n.lastName} ha creato una prenotazione per
-    ${DateTime.fromISO(n.startsAt).toLocaleString(formatOpts, {
-      locale: 'it'
-    })}
-    `
+  return `${n.firstName} ${n.lastName} ha creato una prenotazione per ${formatDate(n.startsAt)}`
 }
+
 export default function AdminLayout ({ children }: React.PropsWithChildren) {
   const theme = useTheme();
   const [open, setOpen] = React.useState(true);

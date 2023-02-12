@@ -5,28 +5,33 @@ import { api } from '../utils/api';
 import { Container, CssBaseline, Box, Typography, Button, Alert, Card, 
   CardContent, Grid, ListItemButton, 
   ListItemIcon, ListItemText, CircularProgress, useTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, 
-  Checkbox, FormControlLabel, FormGroup, FormControl, Autocomplete, TextField, Stack, CardMedia, Backdrop, 
+  Checkbox, FormControlLabel, FormGroup, FormControl, Autocomplete, TextField, Stack, CardMedia, Backdrop, Divider, 
   } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
-import { DateTime, Interval } from 'luxon';
 import { useConfirm } from 'material-ui-confirm';
 import type { ListChildComponentProps} from 'react-window';
 import { FixedSizeList } from 'react-window';
 import { Delete, Event } from '@mui/icons-material';
 import AdminLayout from '../components/AdminLayout';
 import type { SlotInfo } from 'react-big-calendar';
-import { Calendar, luxonLocalizer } from 'react-big-calendar'
+import { Calendar, luxonLocalizer } from 'react-big-calendar';
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import type { AdminDeleteModel, IntervalModel } from '../utils/booking.schema';
 import { AdminDeleteSchema } from '../utils/booking.schema';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { formatBooking, formatDate } from '../utils/format.utils';
+import { DateTime } from 'luxon';
 
 function Home () {
   const { data: sessionData } = useSession();
 
   const { data: user, isLoading } = api.user.getCurrent.useQuery();
   const [ creationMode, setCreationMode ] = React.useState(false);
+  const cannotCreateBooking = React.useMemo(() =>
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
+    (user?.remainingAccesses! <= 0) || (DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()), 
+  [user]);
   
   React.useEffect(() => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
@@ -58,8 +63,7 @@ function Home () {
           {!creationMode ? 
             <BookingList />: <SlotList/>}
           <Button 
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
-            disabled={user?.remainingAccesses! <= 0 || DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()} 
+            disabled={cannotCreateBooking} 
             sx={{ mt: '2rem', bottom: 0, position: 'absolute', mb: '1rem' }}
             variant="contained" 
             color="primary" 
@@ -84,16 +88,16 @@ export default Home;
 function SubscriptionInfo() {
   const { data } = api.user.getCurrent.useQuery();
   
-  
   return (
-    <Card sx={{ maxWidth: 345 }} variant={'outlined'}>
-      <CardMedia
-        sx={{ height: 140 }}
-        image="/logo_big.png"
-        title="logo"
-      />
+    <Card sx={{ maxWidth: 345 }} variant="outlined">
       {data && 
         <CardContent>
+          <CardMedia
+            sx={{ height: 140, display: 'flex', justifyContent: 'center' }}
+            image="/logo_big.png"
+            title="logo"
+          />
+          <Divider />
           <Grid container>
             <Grid item xs={12} >
               <Typography gutterBottom variant="h4">{data.firstName} {data.lastName}</Typography>
@@ -127,7 +131,7 @@ function SubscriptionInfo() {
             </Grid>
             <Grid item xs={6}>
               <Typography color={DateTime.fromJSDate(data.expiresAt) < DateTime.now() ? 'red' : 'green'} align="right" variant="h5">
-                {formatDate(data.expiresAt.toISOString(), DateTime.DATE_SHORT)}
+                {formatDate(data.expiresAt, DateTime.DATE_SHORT)}
               </Typography>
             </Grid>
           </Grid>
@@ -138,12 +142,7 @@ function SubscriptionInfo() {
 }
 
 
-function formatDate(s: string, format: Intl.DateTimeFormatOptions = DateTime.DATETIME_FULL): string {
-  return DateTime.fromISO(s).setLocale('it').toLocaleString(format)
-}
-
 function RenderBooking(props: ListChildComponentProps<Booking[]>) {
-  
   const { index, style, data } = props;
   const booking = data[index];
   const confirm = useConfirm();
@@ -176,9 +175,9 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
           confirmationText: 'Conferma',
       })
       mutate({
-        isRefundable,
         id,
         startsAt,
+        isRefundable,
       });
       
     } catch (error) {
@@ -191,18 +190,18 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
   return (
       <ListItemButton divider disabled={DateTime.fromJSDate(booking.startsAt) < DateTime.now()} key={index} style={style}>
         {error ? <Alert severity="error">{error}</Alert> : <>
-        <ListItemIcon sx={{ fontSize: 18 }}>
+        <ListItemIcon sx={{ fontSize: 16 }}>
           <Event />
         </ListItemIcon>
         <ListItemText
           sx={{ my: '1rem' }}
-          primary={formatDate(booking.startsAt.toISOString())}
+          primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
           primaryTypographyProps={{
             fontSize: 16,
             fontWeight: 'medium',
             letterSpacing: 0,
           }}
-          secondary={`Effettuata ${formatDate(booking.createdAt.toISOString(), DateTime.DATETIME_MED)}`}
+          secondary={`Effettuata ${formatDate(booking.createdAt, DateTime.DATETIME_MED)}`}
         />
         {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
         {isLoading ? <CircularProgress /> : <ListItemIcon sx={{fontSize: 18}} onClick={() => handleClick(booking)}>
@@ -251,27 +250,27 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
   if (!slot) return <div>no data</div>
   if (!cb) return <div>no data</div>
   return (
-      <ListItemButton onClick={() => void cb(slot)} style={style}>
-        <ListItemIcon>
-          <Event />
-        </ListItemIcon>
-        <ListItemText
-          sx={{my: '1rem'}}
-          primary={DateTime.fromISO(slot).toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY, { locale: 'it' })}
-          primaryTypographyProps={{
-            fontSize: 16,
-            fontWeight: 'medium',
-            letterSpacing: 0,
-          }}
-          secondary={`Dalle ${DateTime.fromISO(slot).toFormat('HH:mm')}
-          alle ${DateTime.fromISO(slot).plus({ hours: 1 }).toFormat('HH:mm')}`}
-        />
-      </ListItemButton>
+    <ListItemButton onClick={() => void cb(slot)} style={style}>
+      <ListItemIcon>
+        <Event />
+      </ListItemIcon>
+      <ListItemText
+        sx={{my: '1rem'}}
+        primary={formatDate(slot, DateTime.DATE_MED_WITH_WEEKDAY)}
+        primaryTypographyProps={{
+          fontSize: 16,
+          fontWeight: 'medium',
+          letterSpacing: 0,
+        }}
+        secondary={`Dalle ${DateTime.fromISO(slot).toFormat('HH:mm')}
+        alle ${DateTime.fromISO(slot).plus({ hours: 1 }).toFormat('HH:mm')}`}
+      />
+    </ListItemButton>
   )
 }
 function SlotList() {
     const utils = api.useContext();
-    const { data, isLoading: isFetching} = api.bookings.getAvailableSlots.useQuery();
+    const { data, isLoading: isFetching } = api.bookings.getAvailableSlots.useQuery();
     const [error, setError] = React.useState<string | undefined>(undefined);
     
     const confirm = useConfirm();
@@ -294,7 +293,7 @@ function SlotList() {
       try {
         await confirm({
           description: `Confermi la prenotazione per il giorno:
-          ${DateTime.fromISO(startsAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}` ,
+          ${formatBooking(startsAt, undefined, DateTime.DATETIME_FULL)}`,
             title: 'Conferma',
             cancellationText: 'Annulla',
             confirmationText: 'Conferma',
@@ -351,12 +350,11 @@ function getTooltipInfo({firstName, lastName, subType }: User, slot: Slot): stri
 }
 
 function getBookingInfo(booking: FullBooking): string {
-  const d = DateTime.fromJSDate(booking.createdAt);
   if(booking.slot.disabled) 
-    return `Slot disabilitato ${d.toLocaleString(DateTime.DATETIME_FULL, {locale: 'it'})}`;
+    return `Slot disabilitato ${formatDate(booking.createdAt)}`;
   return `Prenotazione di ${booking.user.lastName} ${booking.user.firstName} 
   (Abb. ${booking.user.subType === 'SHARED' ? 'Condiviso' : 'Singolo'}), 
-  effettuata ${d.toLocaleString(DateTime.DATETIME_FULL, { locale: 'it' })})`;
+  effettuata ${formatDate(booking.createdAt)})`;
 }
 
 type FullBooking = Booking &  {
@@ -433,6 +431,18 @@ function Admin() {
     }),
     [theme]
   )
+  const slots = React.useMemo(() => data?.map(({ startsAt, user, slot, ...rest}) => {
+    return {
+      startsAt,
+      endsAt: DateTime.fromJSDate(startsAt).plus({ hours: 1 }).toJSDate(),
+      title: `${slot.disabled ? 'disabilitato' : user.lastName}`,
+      user,
+      slot,
+      ...rest,
+      info: getTooltipInfo(user, slot),
+    }
+  }), [data]);
+
   return (
     <AdminLayout>
       {isLoading  && <CircularProgress />}
@@ -462,17 +472,7 @@ function Admin() {
           from: DateTime.fromJSDate(d).startOf('week').toJSDate(),
           to: DateTime.fromJSDate(d).endOf('week').toJSDate(),
         })}
-        events={data?.map(({ startsAt, user, slot, ...rest}) => {
-          return {
-            startsAt,
-            endsAt: DateTime.fromJSDate(startsAt).plus({hours: 1}).toJSDate(),
-            title: `${slot.disabled ? 'disabilitato' : user.lastName}`,
-            user,
-            slot,
-            ...rest,
-            info: getTooltipInfo(user, slot)
-          }
-        })}
+        events={slots}
         min={DateTime.now().set({hour: 7, minute: 0, second: 0}).toJSDate()}
         max={DateTime.now().set({hour: 22, minute: 0, second: 0}).toJSDate()}
         onSelectEvent={handleSelectEvent}
@@ -506,6 +506,7 @@ function BookingAction({ booking, handleClose, isOpen }: BookingActionProps) {
     setValue('startsAt', booking.startsAt);
 
   }, [booking, setValue]);
+
   const [error, setError] = React.useState<string | undefined>(undefined);
   const utils = api.useContext();
   const {mutate, isLoading } = api.bookings.adminDelete.useMutation({
@@ -584,7 +585,7 @@ function CreateBooking({ slots, isOpen, handleClose }: CreateBookingProps) {
       setError("Impossibile creare la prenotazione");
     }
   })
-  const { data, } = api.user.getActive.useQuery();
+  const { data } = api.user.getActive.useQuery();
 
   const selectData = React.useMemo(() => data ? data.map((item, index): SelectUserOptionType => {
     return {
@@ -626,10 +627,7 @@ function CreateBooking({ slots, isOpen, handleClose }: CreateBookingProps) {
                 <Typography>
                   {'Slot: '}
                   <span style={{fontWeight: 'bold'}}>
-                    {Interval.fromDateTimes(
-                      DateTime.fromJSDate(slots[0] || new Date()),  
-                      DateTime.fromJSDate(slots.at(-1) || new Date())
-                      ).toLocaleString(DateTime.DATETIME_HUGE)}
+                    {formatBooking(slots[0] || new Date(), slots.at(-1) || new Date(), DateTime.DATETIME_FULL)}
                   </span>
                 </Typography>
             </DialogContentText>
