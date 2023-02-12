@@ -110,10 +110,11 @@ export const bookingRouter = createTRPCRouter({
     }
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
-    const endDate = DateTime.now().endOf('month');
-    const startDate = DateTime.now().hour > 16 ?
-      DateTime.now().plus({ days: 2 }).startOf('day').startOf('hour') :
-      DateTime.now().plus({ days: 1 }).startOf('day').startOf('hour');
+    const now = DateTime.now();
+    const endDate = now.endOf('month');
+    const startDate = now.hour >= 17 ?
+      now.plus({ days: 2 }).startOf('day').startOf('hour'):
+      now.plus({ days: 1 }).startOf('day').startOf('hour');
 
     const allRecurrences: string[] = [];
 
@@ -217,8 +218,8 @@ export const bookingRouter = createTRPCRouter({
 
   adminCreate: adminProtectedProcedure.input(AdminCreateSchema).mutation(async ({ ctx, input }) => {
     const h = Interval.fromDateTimes(
-      DateTime.fromJSDate(input.from),
-      DateTime.fromJSDate(input.to),
+      DateTime.fromJSDate(input.from).startOf('hour').startOf('second'),
+      DateTime.fromJSDate(input.to).startOf('hour').startOf('second'),
     ).splitBy({ hours: 1 })
 
     const ops = h.map((item) => ctx.prisma.slot.upsert({

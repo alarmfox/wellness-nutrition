@@ -95,25 +95,7 @@ export function ResponsiveAppBar() {
               ))}
             </Menu>
           </Box>
-          <Typography
-            variant="body1"
-            noWrap
-            component="a"
-            href=""
-            sx={{
-              mr: 2,
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              fontFamily: 'monospace',
-              fontWeight: 500,
-              letterSpacing: '.1rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
-            Wellness & Nutrition
-          </Typography>
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+         <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
             {pages.map((page) => (
               <Button
                 key={page.id}
@@ -127,7 +109,7 @@ export function ResponsiveAppBar() {
 
           <Box sx={{ flexGrow: 0 }}>
             <Tooltip title="Open settings">
-              <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
+              <IconButton color="inherit" onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                 <AccountCircle />
               </IconButton>
             </Tooltip>

@@ -5,7 +5,7 @@ import { api } from '../utils/api';
 import { Container, CssBaseline, Box, Typography, Button, Alert, Card, 
   CardContent, Grid, ListItemButton, 
   ListItemIcon, ListItemText, CircularProgress, useTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, 
-  Checkbox, FormControlLabel, FormGroup, FormControl, Autocomplete, TextField, 
+  Checkbox, FormControlLabel, FormGroup, FormControl, Autocomplete, TextField, Stack, CardMedia, Backdrop, 
   } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
 import { DateTime, Interval } from 'luxon';
@@ -25,13 +25,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 function Home () {
   const { data: sessionData } = useSession();
 
-  const { data: user, isLoading: getCurrentLoading } = api.user.getCurrent.useQuery();
-  const { isLoading: creatingLoading } = api.bookings.create.useMutation();
+  const { data: user, isLoading } = api.user.getCurrent.useQuery();
   const [ creationMode, setCreationMode ] = React.useState(false);
-  const isLoading = React.useMemo(() => creatingLoading || getCurrentLoading, [getCurrentLoading, creatingLoading])
   
   React.useEffect(() => {
-      if (user?.remainingAccesses === 0) setCreationMode(false);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
+      if (user?.remainingAccesses! <= 0) setCreationMode(false);
   }, [user])
 
   if (sessionData?.user.role === 'ADMIN') return <Admin />
@@ -52,10 +51,15 @@ function Home () {
           }}
         > 
           <SubscriptionInfo />
-          {!creationMode ? <BookingList />: <SlotList/>}
           {isLoading && <CircularProgress />}
+          <Stack>
+            <Typography gutterBottom variant="h6" >{creationMode ? 'Seleziona uno slot' : 'Lista prenotazioni'}</Typography>
+          </Stack>
+          {!creationMode ? 
+            <BookingList />: <SlotList/>}
           <Button 
-            disabled={user?.remainingAccesses === 0 || DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()} 
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
+            disabled={user?.remainingAccesses! <= 0 || DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()} 
             sx={{ mt: '2rem', bottom: 0, position: 'absolute', mb: '1rem' }}
             variant="contained" 
             color="primary" 
@@ -83,11 +87,16 @@ function SubscriptionInfo() {
   
   return (
     <Card sx={{ maxWidth: 345 }} variant={'outlined'}>
+      <CardMedia
+        sx={{ height: 140 }}
+        image="/logo_big.png"
+        title="logo"
+      />
       {data && 
         <CardContent>
           <Grid container>
             <Grid item xs={12} >
-              <Typography gutterBottom variant="h4">{data.firstName} {data.lastName} </Typography>
+              <Typography gutterBottom variant="h4">{data.firstName} {data.lastName}</Typography>
             </Grid>
             <Grid item xs={12} >
               <Typography variant="body1" color="text.secondary">{data.email} </Typography>
@@ -225,90 +234,114 @@ function BookingList() {
   );
 }
 
+interface CreateBookingFromSlotProps {
+  slot: string;
+  cb: (s: string) => Promise<void>
+}
 
-function RenderSlot(props: ListChildComponentProps<string[]>) {
+
+function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>) {
   
   const { index, style, data } = props;
-  const slot = data[index];
-  const confirm = useConfirm();
-  const utils = api.useContext();
-  const  [error, setError] = React.useState<string | undefined>(undefined);
-  
-  const { mutate } = api.bookings.create.useMutation({
-    onSuccess:  () => Promise.all([
-        utils.bookings.getCurrent.invalidate(),
-        utils.user.getCurrent.invalidate(),
-        utils.bookings.getAvailableSlots.invalidate(),
-    ]),
-    onError: (err) => {
-      if (err?.data?.code === 'NOT_FOUND') {
-        setError('Impossibile trovare la prenotazione')
-        return;
-      }
-      setError('Errore sconosciuto')
-    }
-  })
-  
-  const handleClick = React.useCallback(async (startsAt: string) => {
-    try {
-      await confirm({
-        description: `Confermi la prenotazione per il giorno:
-         ${DateTime.fromISO(startsAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}` ,
-          title: 'Conferma',
-          cancellationText: 'Annulla',
-          confirmationText: 'Conferma',
-      })
-      mutate({
-        startsAt: DateTime.fromISO(startsAt).toJSDate(),
-      });
-      
-    } catch (error) {
-      if (error) console.log(error);
-    }
-  }, [confirm, mutate]);
-    
   if (!data) return <div>no data</div>
+  
+  const slot = data[index]?.slot;
+  const cb = data[index]?.cb;
+  
   if (!slot) return <div>no data</div>
+  if (!cb) return <div>no data</div>
   return (
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      <ListItemButton onClick={() => handleClick(slot)} divider key={index} style={style}>
-        {error ? <Alert severity="error">{error}</Alert> : <>
-        <ListItemIcon sx={{ fontSize: 18 }}>
+      <ListItemButton onClick={() => void cb(slot)} style={style}>
+        <ListItemIcon>
           <Event />
         </ListItemIcon>
         <ListItemText
-          sx={{ my: '1rem' }}
-          primary={DateTime.fromISO(slot).setLocale('it').toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY)}
+          sx={{my: '1rem'}}
+          primary={DateTime.fromISO(slot).toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY, { locale: 'it' })}
           primaryTypographyProps={{
             fontSize: 16,
             fontWeight: 'medium',
             letterSpacing: 0,
           }}
           secondary={`Dalle ${DateTime.fromISO(slot).toFormat('HH:mm')}
-          alle ${DateTime.fromISO(slot).plus({hours: 1}).toFormat('HH:mm')}`}
+          alle ${DateTime.fromISO(slot).plus({ hours: 1 }).toFormat('HH:mm')}`}
         />
-        </>
-    }
-    </ListItemButton>
-  );
+      </ListItemButton>
+  )
 }
 function SlotList() {
-    const { data, isLoading } = api.bookings.getAvailableSlots.useQuery();
-    return (
-    <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
-      {isLoading && <CircularProgress/>}
-      {data &&
-        <FixedSizeList
-          height={350}
-          width={360}
-          itemSize={70}
-          itemCount={data.length}
-          itemData={data}
-        >
-          {RenderSlot}
-        </FixedSizeList>
+    const utils = api.useContext();
+    const { data, isLoading: isFetching} = api.bookings.getAvailableSlots.useQuery();
+    const [error, setError] = React.useState<string | undefined>(undefined);
+    
+    const confirm = useConfirm();
+    const { mutate, isLoading: isCreating } = api.bookings.create.useMutation({
+      onSuccess:  () => Promise.all([
+        utils.bookings.getCurrent.invalidate(),
+        utils.user.getCurrent.invalidate(),
+        utils.bookings.getAvailableSlots.invalidate(),
+      ]),
+      onError: (err) => {
+        if (err?.data?.code === 'NOT_FOUND') {
+          setError('Impossibile trovare la prenotazione')
+          return;
+        }
+        setError('Errore sconosciuto')
       }
-    </Box>
+    });
+
+    const handleClick = React.useCallback(async (startsAt: string) => {
+      try {
+        await confirm({
+          description: `Confermi la prenotazione per il giorno:
+          ${DateTime.fromISO(startsAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}` ,
+            title: 'Conferma',
+            cancellationText: 'Annulla',
+            confirmationText: 'Conferma',
+        });
+        mutate({
+          startsAt: DateTime.fromISO(startsAt).toJSDate(),
+        });
+      
+      } catch (error) {
+        if (error) console.log(error);
+      }
+    }, [confirm, mutate]); 
+
+    const isLoading = React.useMemo(() => isFetching || isCreating,  [isFetching, isCreating]);
+    const rows = React.useMemo(() => {
+      return data?.map((item): CreateBookingFromSlotProps => {
+        return {
+          slot: item,
+          cb: handleClick
+        }
+      })
+    }, [data, handleClick]);
+
+    return (
+      <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
+        <Backdrop
+          sx={{color: 'darkgrey', zIndex: (theme) => theme.zIndex.drawer + 1}}
+          open={isLoading}
+        >
+          <Stack spacing={2}>
+            <CircularProgress sx={{textAlign: 'center'}} />
+          </Stack>
+          
+        </Backdrop>
+          {error && <Alert variant="filled" severity="error">{error}</Alert>}
+          {rows &&
+            <FixedSizeList
+              height={350}
+              width={360}
+              itemSize={70}
+              itemCount={rows.length}
+              itemData={rows}
+            >
+              {RenderSlot}
+            </FixedSizeList>
+          }
+      </Box>
   );
 }
 
@@ -318,11 +351,12 @@ function getTooltipInfo({firstName, lastName, subType }: User, slot: Slot): stri
 }
 
 function getBookingInfo(booking: FullBooking): string {
+  const d = DateTime.fromJSDate(booking.createdAt);
   if(booking.slot.disabled) 
-    return `Slot disabilitato ${DateTime.fromJSDate(booking.createdAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)}`;
+    return `Slot disabilitato ${d.toLocaleString(DateTime.DATETIME_FULL, {locale: 'it'})}`;
   return `Prenotazione di ${booking.user.lastName} ${booking.user.firstName} 
   (Abb. ${booking.user.subType === 'SHARED' ? 'Condiviso' : 'Singolo'}), 
-  effettuata ${DateTime.fromJSDate(booking.createdAt).setLocale('it').toLocaleString(DateTime.DATETIME_FULL)})`;
+  effettuata ${d.toLocaleString(DateTime.DATETIME_FULL, { locale: 'it' })})`;
 }
 
 type FullBooking = Booking &  {
@@ -370,7 +404,8 @@ function Admin() {
     (event: FullBooking, start: Date, end: Date,  selected: boolean) => ({ 
       ...(event.user.subType === 'SHARED' && {
         style: {
-          backgroundColor: theme.palette.info.main
+          backgroundColor: theme.palette.primary.main,
+          borderColor: theme.palette.primary.dark,
         }
       }),
       ...(event.user.subType === 'SINGLE' &&  {
@@ -459,6 +494,9 @@ interface BookingActionProps {
 function BookingAction({ booking, handleClose, isOpen }: BookingActionProps) {
   const { register, handleSubmit , setValue } = useForm<AdminDeleteModel>({
     resolver: zodResolver(AdminDeleteSchema),
+    defaultValues: {
+      refundAccess: false,
+    }
   });
 
   React.useEffect(() => {
