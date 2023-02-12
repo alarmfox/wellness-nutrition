@@ -364,12 +364,24 @@ type FullBooking = Booking &  {
   title: string
 }
 
+function getCurrentWeekParams(d: Date): IntervalModel {
+  const dt = DateTime.fromJSDate(d); 
+  if (dt.weekday === 7) {
+    return {
+     from: dt.startOf('day').toJSDate(),
+     to: dt.plus({ days: 6 }).endOf('day').toJSDate(),
+    }
+  }
+  return {
+    from: dt.startOf('week').toJSDate(),
+    to: dt.endOf('week').toJSDate(),
+  }
+}
+
 function Admin() {
   const theme = useTheme();
-  const [input, setInput] = React.useState<IntervalModel>({
-    from: DateTime.now().startOf('week').toJSDate(),
-    to: DateTime.now().endOf('week').toJSDate(),
-  })
+  const [input, setInput] = React.useState<IntervalModel>(getCurrentWeekParams(new Date()));
+
   
   const { data, isLoading } = api.bookings.getByInterval.useQuery(input);
 
@@ -438,11 +450,14 @@ function Admin() {
       title: `${slot.disabled ? 'disabilitato' : user.lastName}`,
       user,
       slot,
-      ...rest,
       info: getTooltipInfo(user, slot),
+      ...rest,
     }
   }), [data]);
 
+  React.useEffect(() => console.log(slots), [slots]);
+
+  React.useEffect(() => console.log(input), [input])
   return (
     <AdminLayout>
       {isLoading  && <CircularProgress />}
@@ -468,10 +483,7 @@ function Admin() {
         defaultView="week"
         views={['week']}
         
-        onNavigate={(d) => setInput({
-          from: DateTime.fromJSDate(d).startOf('week').toJSDate(),
-          to: DateTime.fromJSDate(d).endOf('week').toJSDate(),
-        })}
+        onNavigate={(d) => setInput(getCurrentWeekParams(d))}
         events={slots}
         min={DateTime.now().set({hour: 7, minute: 0, second: 0}).toJSDate()}
         max={DateTime.now().set({hour: 22, minute: 0, second: 0}).toJSDate()}
