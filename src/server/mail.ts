@@ -23,7 +23,7 @@ const mailGenerator = new Mailgen({
     link: env.NEXTAUTH_URL,
     copyright: 'Tutti i diritti riservati',
     // Optional product logo
-    logo: env.NEXTAUTH_URL + '/logo.jpeg'
+    logo: env.NEXTAUTH_URL + '/logo_big.png'
   },
 });
 
@@ -42,7 +42,7 @@ export async function sendWelcomeEmail({ email: userEmail, firstName }: User, ve
           link: verificationUrl,
         }
       },
-      outro: 'Hai bisogno di aiuto? Rispondi a questa email e saremo felici di aiutarti'
+      outro: `Hai bisogno di aiuto? Invia un messaggio a ${env.EMAIL_NOTIFY_ADDRESS} e saremo felici di aiutarti`
     }
   };
 
