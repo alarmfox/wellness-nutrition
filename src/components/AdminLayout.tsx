@@ -18,6 +18,7 @@ import { useSnackbar } from 'notistack';
 import type { NotificationModel} from '../utils/event.schema';
 import { DateTime } from 'luxon';
 import { api } from '../utils/api';
+import Image from 'next/image';
 
 const drawerWidth = 240;
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
@@ -150,7 +151,7 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
 
   const handleNotification = React.useCallback((n: NotificationModel) => {
     enqueueSnackbar(formatNotification(n), {
-      variant: n.type === 'CREATED' ? 'info' : 'warning'
+      variant: n.type === 'CREATED' ? 'success' : 'warning'
     });
     setNotifications(notifications.concat(n));
     void utils.bookings.getByInterval.invalidate();
@@ -195,7 +196,7 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
             {selected}
           </Typography>
           <Box sx={{ display: 'flex', width: '100%', justifyContent: 'end'}}>
-            <IconButton color="inherit" onClick={(e) => setNotificatioAnchorEl(e.currentTarget)}>
+            <IconButton color="inherit" onClick={(e) => setNotificatioAnchorEl(notificatioAnchorEl ? null : e.currentTarget)}>
               <Badge max={99} badgeContent={notifications.length}>
                 <NotificationsRounded  color="inherit" />
               </Badge>
@@ -213,12 +214,13 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
                   horizontal: 'left'
                 }}
               >
-                {notifications.length > 0 ? <NotificationList onClose={() => setNotificatioAnchorEl(null)} onDelete={onDelete} notifications={notifications}/> :
-                <div onMouseLeave={() => setNotificatioAnchorEl(null)}>
-                  <Typography variant="caption">
-                    Nessuna notifica
-                  </Typography>
-                </div> 
+                {notifications.length > 0 ? 
+                  <NotificationList onClose={() => setNotificatioAnchorEl(null)} onDelete={onDelete} notifications={notifications}/> :
+                  <div onMouseLeave={() => setNotificatioAnchorEl(null)}>
+                    <Typography variant="caption">
+                      Nessuna notifica
+                    </Typography>
+                  </div> 
                 }
               </Popover>
             </IconButton>
@@ -248,7 +250,7 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
               onClose={handleClose}
             >
               {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-              <MenuItem onClick={onLogout}>Logout</MenuItem>
+              <MenuItem onClick={onLogout}>Esci</MenuItem>
             </Menu>
           </Box>
         </Toolbar>
@@ -267,9 +269,15 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
         open={open}
       >
         <DrawerHeader>
-          <IconButton onClick={handleDrawerClose}>
-            {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-          </IconButton>
+          <Box sx={{
+            display: 'flex',
+            width: '100%',
+          }}>
+            <Image style={{ display: 'flex', justifyContent: 'flex-end'}} src="/logo.png" width="60" height="60" alt="logo"/>
+            <IconButton onClick={handleDrawerClose}>
+              {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+            </IconButton>
+          </Box>
         </DrawerHeader>
         <Divider />
         <List>
