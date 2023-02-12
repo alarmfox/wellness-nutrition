@@ -535,87 +535,85 @@ function CreateUser({ handleClose }: CreateUserProps) {
     
     return (
       <DialogContent>
-        {isLoading && <CircularProgress />}
         {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
         <form onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}> 
                 <Grid xs={6} item>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="firstName"
-                        label="Nome"
-                        autoFocus
-                        {...register('firstName')}
-                    />
-                    <ErrorMessage errors={errors} name="firstName" />
+                  <TextField
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="firstName"
+                    label="Nome"
+                    autoFocus
+                    {...register('firstName')}
+                  />
+                  <ErrorMessage errors={errors} name="firstName" />
                 </Grid>
-                 <Grid xs={6} item>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="lastName"
-                        label="Cognome"
-                        {...register('lastName')}
-                    />
-                    <ErrorMessage errors={errors} name="lastName" />
+                <Grid xs={6} item>
+                  <TextField
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="lastName"
+                    label="Cognome"
+                    {...register('lastName')}
+                  />
+                  <ErrorMessage errors={errors} name="lastName" />
                 </Grid>   
                 <Grid xs={6} item>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="address"
-                        label="Indirizzo"
-                        {...register('address')}
-                    />
-                    <ErrorMessage errors={errors} name="address" />
+                  <TextField
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="address"
+                    label="Indirizzo"
+                    {...register('address')}
+                  />
+                  <ErrorMessage errors={errors} name="address" />
                 </Grid>
-                 <Grid xs={6} item>
-                    <TextField
-                        margin="normal"
-                        fullWidth
-                        id="cellphone"
-                        label="Cellulare"
-                        {...register('cellphone')}
-                    />
-                    <ErrorMessage errors={errors} name="cellphone" />
+                <Grid xs={6} item>
+                  <TextField
+                    margin="normal"
+                    fullWidth
+                    id="cellphone"
+                    label="Cellulare"
+                    {...register('cellphone')}
+                  />
+                  <ErrorMessage errors={errors} name="cellphone" />
                 </Grid>
                 <Grid xs={12} item>
-                    <TextField
-                        margin="normal"
-                        fullWidth
-                        id="email"
-                        required
-                        type="email"
-                        label="Indirizzo email"
-                        {...register('email')}
-                    />
-                      <ErrorMessage errors={errors} name="email" />
+                  <TextField
+                    margin="normal"
+                    fullWidth
+                    id="email"
+                    required
+                    type="email"
+                    label="Indirizzo email"
+                    {...register('email')}
+                  />
+                  <ErrorMessage errors={errors} name="email" />
                 </Grid>
                 <Grid xs={4} item>
-                    <FormControl fullWidth>
-                        <InputLabel id="subTypeL">Abbonamento</InputLabel>
-                        <Controller 
-                            name="subType"
-                            control={control}
-                            render={({field}) => 
-                                <Select
-                                    {...field}
-                                    labelId="subTypeL"
-                                    id="subTypeSelect"
-                                    label="Abbonamento"
-                                >
-                                    <MenuItem value={SubType.SINGLE}>Singolo</MenuItem>
-                                    <MenuItem value={SubType.SHARED}>Condiviso</MenuItem>
-                                </Select>            
+                  <FormControl fullWidth>
+                    <InputLabel id="sub-lable-id">Abbonamento</InputLabel>
+                      <Controller 
+                        name="subType"
+                        control={control}
+                        render={({field}) => 
+                        <Select
+                          {...field}
+                          labelId="sub-label-id"
+                          id="subtype"
+                          label="Abbonamento"
+                          >
+                          <MenuItem value={SubType.SINGLE}>Singolo</MenuItem>
+                          <MenuItem value={SubType.SHARED}>Condiviso</MenuItem>
+                        </Select>            
                         } 
-                        />
-
-                      <ErrorMessage errors={errors} name="email" />
+                      />
                     </FormControl> 
+                    <ErrorMessage errors={errors} name="subType" />
                 </Grid>
                 <Grid item xs={2}>
                    <TextField
@@ -644,7 +642,33 @@ function CreateUser({ handleClose }: CreateUserProps) {
                    />
                   <ErrorMessage errors={errors} name="expiresAt" />
                 </Grid>
-                <Grid item>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel id="goals-label-id">Obiettivi</InputLabel>
+                    <Controller 
+                      name="goals"
+                      control={control}
+                      render={({field}) => 
+                        <Select
+                          {...field}
+                          labelId="goals-label-id"
+                          id="goals-select"
+                          multiple
+                          defaultValue={[]}
+                          label="Obiettivi"
+                        >
+                          <MenuItem value="Dimagrimento">Dimagrimento</MenuItem>
+                          <MenuItem value="Posturale">Posturale</MenuItem>
+                          <MenuItem value="Tonificazione">Tonificazione</MenuItem>
+                          <MenuItem value="Potenziamento">Potenziamento</MenuItem>
+                          <MenuItem value="Benessere">Benessere</MenuItem>
+                        </Select>            
+                      }
+                    />
+                    </FormControl> 
+                    <ErrorMessage errors={errors} name="subType" />
+                </Grid>
+                <Grid item xs={6}>
                   <FormGroup>
                     <FormControlLabel {...register('medOk')} control={<Checkbox />} label="Certificato medico" />
                   </FormGroup>
@@ -652,12 +676,12 @@ function CreateUser({ handleClose }: CreateUserProps) {
             </Grid>
             {error && <Alert sx={{mt:'1.5rem'}} variant="filled" severity="error">{error}</Alert>}
             <DialogActions>
+              {isLoading && <CircularProgress />}
               <Button onClick={handleClose}>Annulla</Button>
               <Button variant="contained" type="submit">Conferma</Button>
             </DialogActions>
         </form>
       </DialogContent>
-
   )
 }
 interface EditUserProps {
@@ -665,9 +689,15 @@ interface EditUserProps {
   handleClose: () => void
 }
 
+function toUserModel({ goals, ...rest}: User): UpdateUserModel {
+  return {
+    ...rest,
+    goals: goals ? goals.split('-') : []
+  }
+}
 function EditUser({ user, handleClose }: EditUserProps) {
   const { register, handleSubmit, control, formState: { errors, isDirty }, setValue } = useForm<UpdateUserModel>({
-    defaultValues: user,
+    defaultValues: toUserModel(user),
     resolver: zodResolver(UpdateUserSchema)
   });
   const [error, setError] = React.useState<string | undefined> (undefined);
@@ -700,81 +730,81 @@ function EditUser({ user, handleClose }: EditUserProps) {
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <form onSubmit={handleSubmit(onSubmit)}>
          <Grid container spacing={3}> 
+            <Grid xs={6} item>
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                id="firstName"
+                label="Nome"
+                autoFocus
+                {...register('firstName')}
+               />
+              <ErrorMessage errors={errors} name="firstName" />
+             </Grid>
              <Grid xs={6} item>
                 <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="firstName"
-                  label="Nome"
-                  autoFocus
-                  {...register('firstName')}
-                 />
-                 <ErrorMessage errors={errors} name="firstName" />
-             </Grid>
-             <Grid xs={6} item>
-                 <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="lastName"
-                  label="Cognome"
-                  {...register('lastName')}
-                 />
-                 <ErrorMessage errors={errors} name="lastName" />
+                 margin="normal"
+                 required
+                 fullWidth
+                 id="lastName"
+                 label="Cognome"
+                 {...register('lastName')}
+                />
+                <ErrorMessage errors={errors} name="lastName" />
              </Grid>   
              <Grid xs={6} item>
-                 <TextField
-                  margin="normal"
-                  required
-                  fullWidth
-                  id="address"
-                  label="Indirizzo"
-                  {...register('address')}
-                 />
-                 <ErrorMessage errors={errors} name="address" />
+                <TextField
+                 margin="normal"
+                 required
+                 fullWidth
+                 id="address"
+                 label="Indirizzo"
+                 {...register('address')}
+                />
+                <ErrorMessage errors={errors} name="address" />
              </Grid>
              <Grid xs={6} item>
-                 <TextField
-                  margin="normal"
-                  fullWidth
-                  id="cellphone"
-                  label="Cellulare"
-                  {...register('cellphone')}
-                 />
-                 <ErrorMessage errors={errors} name="cellphone" />
+                <TextField
+                 margin="normal"
+                 fullWidth
+                 id="cellphone"
+                 label="Cellulare"
+                 {...register('cellphone')}
+                />
+                <ErrorMessage errors={errors} name="cellphone" />
              </Grid>
              <Grid xs={12} item>
-                 <TextField
-                  margin="normal"
-                  fullWidth
-                  id="email"
-                  disabled
-                  type="email"
-                  label="Indirizzo email"
-                  value={user.email}
-                 />
+                <TextField
+                 margin="normal"
+                 fullWidth
+                 id="email"
+                 disabled
+                 type="email"
+                 label="Indirizzo email"
+                 value={user.email}
+                />
              </Grid>
              <Grid xs={4} item>
-                 <FormControl fullWidth>
+                <FormControl fullWidth>
                   <InputLabel id="subTypeL">Abbonamento</InputLabel>
                   <Controller 
-                   name="subType"
-                   control={control}
-                   render={({field}) => 
-                     <Select
-                     {...field}
-                     labelId="subTypeL"
-                     id="subTypeSelect"
-                     label="Abbonamento"
-                     >
-                       <MenuItem value={SubType.SINGLE}>Singolo</MenuItem>
-                       <MenuItem value={SubType.SHARED}>Condiviso</MenuItem>
-                     </Select>            
+                    name="subType"
+                    control={control}
+                    render={({field}) => 
+                      <Select
+                        {...field}
+                        labelId="subTypeL"
+                        id="subTypeSelect"
+                        label="Abbonamento"
+                      >
+                        <MenuItem value={SubType.SINGLE}>Singolo</MenuItem>
+                        <MenuItem value={SubType.SHARED}>Condiviso</MenuItem>
+                      </Select>            
                   } 
-                  />
+                 />
                   <ErrorMessage errors={errors} name="subType" />
-                 </FormControl> 
+                </FormControl> 
              </Grid>
              <Grid item xs={2}>
                <TextField
@@ -800,7 +830,34 @@ function EditUser({ user, handleClose }: EditUserProps) {
                 }}
                />
                <ErrorMessage errors={errors} name="expiresAt" />
-             </Grid>
+            </Grid>
+            <Grid item xs={6}>
+              <FormControl fullWidth>
+                <InputLabel id="goals-label-id">Obiettivi</InputLabel>
+                <Controller 
+                  name="goals"
+                  control={control}
+                  render={({field}) => 
+                    <Select
+                      {...field}
+                      labelId="goals-label-id"
+                      id="goals-select"
+                      multiple
+                      defaultValue={[]}
+                      label="Obiettivi"
+                    >
+                      <MenuItem value="Dimagrimento">Dimagrimento</MenuItem>
+                      <MenuItem value="Posturale">Posturale</MenuItem>
+                      <MenuItem value="Tonificazione">Tonificazione</MenuItem>
+                      <MenuItem value="Potenziamento">Potenziamento</MenuItem>
+                      <MenuItem value="Benessere">Benessere</MenuItem>
+                    </Select>            
+                  }
+                />
+                </FormControl> 
+                <ErrorMessage errors={errors} name="subType" />
+                </Grid>
+
             <Grid item>
               <FormGroup>
                 <FormControlLabel {...register('medOk')} control={<Checkbox defaultChecked={user.medOk}/>} label="Certificato medico" />

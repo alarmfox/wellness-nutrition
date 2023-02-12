@@ -81,14 +81,14 @@ type NavigationOption = {
 
 const NavigationOptions: NavigationOption[] = [
   {
-    icon: <PeopleIcon />,
-    name: 'Utenti',
-    to: '/users'
-  },
-  {
     icon: <EventIcon />,
     name: 'Calendario',
     to: '/' 
+  },
+  {
+    icon: <PeopleIcon />,
+    name: 'Utenti',
+    to: '/users'
   },
   {
     icon: <History />,
@@ -257,7 +257,7 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
             display: 'flex',
             width: '100%',
           }}>
-            <Image style={{ display: 'flex', justifyContent: 'flex-end'}} src="/logo.png" width="60" height="60" alt="logo"/>
+            <Image src="/logo_big.png" width="175" height="50" alt="logo"/>
             <IconButton onClick={handleDrawerClose}>
               {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
             </IconButton>

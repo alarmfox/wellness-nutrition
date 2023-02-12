@@ -30,10 +30,12 @@ export const userRouter = createTRPCRouter({
     input(CreateUserSchema).
     mutation(async ({ ctx, input }) => {
       try {
+        const { goals, ...rest } = input; 
         const token = randomBytes(48).toString('base64url')
         const user = await ctx.prisma.user.create({
           data: {
-            ...input,
+            ...rest,
+            goals: goals.join('-'),
             verificationToken: token,
             verificationTokenExpiresIn: DateTime.now().plus({ days: 7 }).toJSDate()
           },
@@ -62,11 +64,15 @@ export const userRouter = createTRPCRouter({
     })
   }),
   update: adminProtectedProcedure.input(UpdateUserSchema).mutation(({ ctx, input }) => {
+    const { goals, ...rest } = input; 
     return ctx.prisma.user.update({
       where: {
         id: input.id
       },
-      data: input
+      data: {
+        ...rest,
+        goals: goals.join('-'),
+      }
     })
   }),
   changePassword: publicProcedure.input(VerifyAccountSchema).mutation(async ({ ctx, input }) => {

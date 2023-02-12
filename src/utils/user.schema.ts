@@ -10,7 +10,8 @@ export const CreateUserSchema = z.object({
     expiresAt: z.date(),
     subType: z.nativeEnum(SubType), 
     address: z.string(),
-    medOk: z.boolean()
+    medOk: z.boolean(),
+    goals: z.array(z.string()),
 })
 
 
@@ -23,7 +24,8 @@ export const UpdateUserSchema = z.object({
     expiresAt: z.date(),
     subType: z.nativeEnum(SubType), 
     address: z.string(),
-    medOk: z.boolean()
+    medOk: z.boolean(),
+    goals: z.array(z.string()),
 })
 export type CreateUserModel = z.infer<typeof CreateUserSchema>;
 export type UpdateUserModel = z.infer<typeof UpdateUserSchema>;

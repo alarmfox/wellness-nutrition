@@ -6,18 +6,23 @@ import { DataGrid } from '@mui/x-data-grid';
 import { api } from "../utils/api";
 import React from "react";
 import { CircularProgress } from "@mui/material";
+import { formatDate } from "../utils/format.utils";
+import { DateTime } from "luxon";
 
 const columns: GridColDef[] = [
   { field: 'id', headerName: 'ID', width: 70, type: 'number', headerAlign: 'left', align: 'left' },
   { field: 'firstName', headerName: 'Nome', flex: 1, },
   { field: 'lastName', headerName: 'Cognome', flex: 1 },
-  { field: 'occurredAt', headerName: 'Data', flex: 1 },
-  { field: 'startsAt', headerName: 'Data prenotazione', flex: 1 },
+  { field: 'occurredAt', headerName: 'Data', flex: 1, 
+    valueFormatter: (params: GridValueFormatterParams<Date>) => formatDate(params.value, DateTime.DATETIME_FULL) 
+  },
+  { field: 'startsAt', headerName: 'Data prenotazione', flex: 1,  
+    valueFormatter: (params: GridValueFormatterParams<Date>) => formatDate(params.value, DateTime.DATETIME_FULL) 
+  },
   { field: 'type', headerName: 'Operazione', flex: 1, 
     valueFormatter: (params: GridValueFormatterParams<EventType>) => params.value === 'CREATED' ? 'Creata' : 'Cancellata' 
   }
 ];
-const pageSize = 20
 
 function EventsPage() {
   const { data, isLoading } = api.events.getLatest.useQuery();
@@ -38,7 +43,7 @@ function EventsPage() {
         <DataGrid
           rows={rows || []}
           columns={columns}
-          pageSize={pageSize}
+          pageSize={20}
           disableSelectionOnClick
         />
     </div>

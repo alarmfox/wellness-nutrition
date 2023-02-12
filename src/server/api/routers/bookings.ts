@@ -12,7 +12,8 @@ import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from ".
 const businessWeek = [1, 2, 3, 4, 5, 6];
 
 function isBookeable(d: DateTime): boolean {
-  return businessWeek.includes(d.weekday) && d.hour > 8 && d.hour < 22;
+  if (d.weekday === 6) return d.hour >= 7 && d.hour <= 11;
+  return businessWeek.includes(d.weekday) && d.hour >= 7 && d.hour <= 21;
 }
 
 function createNotification(

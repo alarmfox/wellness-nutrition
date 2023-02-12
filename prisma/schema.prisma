@@ -46,6 +46,7 @@ model User {
     remainingAccesses          Int
     verificationToken          String?
     verificationTokenExpiresIn DateTime?
+    goals                      String?
     bookings                   Booking[]
     events                     Event[]
 

@@ -2,10 +2,10 @@ import * as React from 'react';
 import { useSession } from 'next-auth/react';
 import type { Booking } from '@prisma/client';
 import { api } from '../utils/api';
-import { Container, CssBaseline, Box, Typography, Button, Alert, Card, 
-  CardContent, Grid, ListItemButton, 
+import { Container, CssBaseline, Box, Typography, Button, Alert, 
+  ListItemButton, 
   ListItemIcon, ListItemText, CircularProgress,
-  Stack, CardMedia, Backdrop, Divider, 
+  Stack, Backdrop, 
   } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
 import { useConfirm } from 'material-ui-confirm';
@@ -18,6 +18,7 @@ import { DateTime } from 'luxon';
 import { Scheduler } from '../components/Scheduler';
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import { Subscription } from '../components/Subscription';
 
 function Home () {
   const { data: sessionData } = useSession();
@@ -57,7 +58,7 @@ function Home () {
             overflowX: 'hidden',
           }}
         > 
-          <SubscriptionInfo />
+          <Subscription />
           {isLoading && <CircularProgress />}
           <Stack>
             <Typography gutterBottom variant="h6" >{creationMode ? 'Seleziona uno slot' : 'Lista prenotazioni'}</Typography>
@@ -86,63 +87,6 @@ Home.auth = {
 }
 
 export default Home;
-
-function SubscriptionInfo() {
-  const { data } = api.user.getCurrent.useQuery();
-  
-  return (
-    <Card sx={{ maxWidth: 345 }} variant="outlined">
-      {data && 
-        <CardContent>
-          <CardMedia
-            sx={{ height: 140, display: 'flex', justifyContent: 'center' }}
-            image="/logo_big.png"
-            title="logo"
-          />
-          <Divider />
-          <Grid container>
-            <Grid item xs={12} >
-              <Typography gutterBottom variant="h4">{data.firstName} {data.lastName}</Typography>
-            </Grid>
-            <Grid item xs={12} >
-              <Typography variant="body1" color="text.secondary">{data.email} </Typography>
-            </Grid>
-            <Grid item xs={6} sx={{display: 'flex', alignItems: 'center'}}> 
-              <Typography gutterBottom color="grey" variant="h6">
-                Accessi 
-              </Typography>
-            </Grid>
-            <Grid item xs={6} >
-              <Typography align="right" color={data.remainingAccesses > 0 ? 'green': 'red'} gutterBottom variant="h5">{data.remainingAccesses}
-              </Typography>
-            </Grid>
-            <Grid item xs={6}>
-              <Typography color="grey" gutterBottom variant="h6">
-                Abb.
-              </Typography>
-            </Grid>
-            <Grid item xs={6}>
-              <Typography align="right" gutterBottom variant="h5" >
-                {data.subType === 'SHARED' ? 'Condiviso' : 'Singolo'}
-              </Typography>
-            </Grid>
-            <Grid item xs={6} >
-              <Typography gutterBottom variant="h6" color="text.secondary"  >
-                Scadenza
-              </Typography>
-            </Grid>
-            <Grid item xs={6}>
-              <Typography color={DateTime.fromJSDate(data.expiresAt) < DateTime.now() ? 'red' : 'green'} align="right" variant="h5">
-                {formatDate(data.expiresAt, DateTime.DATE_SHORT)}
-              </Typography>
-            </Grid>
-          </Grid>
-        </CardContent>
-    }
-    </Card> 
-  );
-}
-
 
 function RenderBooking(props: ListChildComponentProps<Booking[]>) {
   const { index, style, data } = props;
@@ -229,7 +173,10 @@ function BookingList() {
       >
       {RenderBooking}
     </FixedSizeList>
-    : <Typography variant="caption" color="gray">Nessuna prenotazione</Typography>
+    : 
+    <Typography variant="caption" color="gray">
+      Nessuna prenotazione
+    </Typography>
   }
   </Box>
   );
@@ -252,12 +199,12 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
   if (!slot) return <div>no data</div>
   if (!cb) return <div>no data</div>
   return (
-    <ListItemButton onClick={() => void cb(slot)} style={style}>
+    <ListItemButton divider onClick={() => void cb(slot)} style={style}>
       <ListItemIcon>
         <Event />
       </ListItemIcon>
       <ListItemText
-        sx={{my: '1rem'}}
+        sx={{ my: '1rem' }}
         primary={formatDate(slot, DateTime.DATE_MED_WITH_WEEKDAY)}
         primaryTypographyProps={{
           fontSize: 16,
