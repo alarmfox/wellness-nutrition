@@ -11,8 +11,16 @@ import { useRouter } from "next/router";
 import type { NextComponentType } from "next";
 import type { Role } from "@prisma/client";
 import { SnackbarProvider } from "notistack";
+import { pink } from "@mui/material/colors";
 
-const theme = createTheme();
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#2e7d32'
+    },
+    secondary: pink
+  }
+});
 
 export type AuthProps = {
   isProtected: boolean;
