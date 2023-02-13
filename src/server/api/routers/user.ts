@@ -148,7 +148,8 @@ export const userRouter = createTRPCRouter({
           },
           emailVerified: {
             not: null
-          }
+          },
+          role: Role.USER,
         }
       }
     })
