@@ -64,7 +64,7 @@ export async function sendResetEmail({ email: userEmail, firstName }: User, veri
           link: verificationUrl,
         }
       },
-      outro: 'Hai bisogno di aiuto? Rispondi a questa email e saremo felici di aiutarti'
+      outro: `Hai bisogno di aiuto? Invia un messaggio a ${env.EMAIL_NOTIFY_ADDRESS} e saremo felici di aiutarti`
     }
   };
 
@@ -80,7 +80,6 @@ export async function sendOnNewBooking(user: User, startsAt: Date) {
       intro: `Una nuova prenotazione è stata inserita da ${user.firstName} ${user.lastName} per 
       ${DateTime.fromJSDate(startsAt).toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY, { locale: 'it' })}`,
       title: 'Nuova prenotazione',
-      outro: 'Hai bisogno di aiuto? Rispondi a questa email e saremo felici di aiutarti'
     }
   };
 
@@ -97,7 +96,6 @@ export async function sendOnDeleteBooking(user: User, startsAt: Date) {
       intro: `Una prenotazione è stata cancellata da ${user.firstName} ${user.lastName} per 
       ${DateTime.fromJSDate(startsAt).toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY, { locale: 'it' })}`,
       title: 'Prenotazione cancellata',
-      outro: 'Hai bisogno di aiuto? Rispondi a questa email e saremo felici di aiutarti'
     }
   };
 
