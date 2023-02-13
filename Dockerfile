@@ -24,6 +24,8 @@ RUN \
 FROM --platform=linux/amd64 node:lts AS builder
 
 # client var
+ARG NEXT_PUBLIC_PUSHER_APP_HOST
+ARG NEXT_PUBLIC_PUSHER_APP_PORT
 ARG NEXT_PUBLIC_PUSHER_APP_KEY
 ARG NEXT_PUBLIC_PUSHER_APP_CLUSTER
 
@@ -35,6 +37,8 @@ ARG EMAIL_SERVER_USER
 ARG EMAIL_SERVER_PASSWORD
 ARG EMAIL_FROM
 ARG EMAIL_NOTIFY_ADDRESS
+ARG PUSHER_APP_PORT
+ARG PUSHER_APP_HOST
 ARG PUSHER_APP_ID
 ARG PUSHER_APP_KEY
 ARG PUSHER_APP_SECRET
@@ -46,6 +50,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV IS_DOCKER 1
 
 RUN npx prisma generate
 
@@ -76,12 +81,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 COPY --chown=nextjs:nodejs prisma ./prisma
-COPY --chown=nextjs:nodejs docker-bootstrap-app.sh ./
-
-RUN chmod +x docker-bootstrap-app.sh 
 
 USER nextjs
 EXPOSE 3000
 ENV PORT 3000
 
-CMD ["./docker-bootstrap-app.sh"]
+CMD ["node", "server.js"]

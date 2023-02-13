@@ -98,8 +98,13 @@ const NavigationOptions: NavigationOption[] = [
 ]
 
 const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
-  cluster: env.NEXT_PUBLIC_PUSHER_APP_CLUSTER
+  cluster: env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
+  wsHost: env.NEXT_PUBLIC_PUSHER_APP_HOST,
+  wsPort: env.NEXT_PUBLIC_PUSHER_APP_PORT ? parseInt(env.NEXT_PUBLIC_PUSHER_APP_PORT) : undefined,
+  forceTLS: env.NEXT_PUBLIC_PUSHER_APP_USE_TLS === 'true',
+  enabledTransports: env.NEXT_PUBLIC_PUSHER_APP_HOST ? ['ws', 'wss'] : undefined,
 });
+
 const channel = pusher.subscribe('booking');
 
 function formatNotification(n: NotificationModel): string {

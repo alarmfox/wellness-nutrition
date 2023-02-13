@@ -7,13 +7,6 @@ export const pusher = new Pusher({
   secret: env.PUSHER_APP_SECRET,
   cluster: env.PUSHER_APP_CLUSTER,
   useTLS: env.PUSHER_APP_USE_TLS === 'true',
+  host: env.PUSHER_APP_HOST,
+  port: env.PUSHER_APP_PORT,
 });
-
-/* const pusher = new Pusher({
-  appId: "1552406",
-  key: "a017f5abd9769da5b770",
-  secret: "17d3e9411e7a65ce6e15",
-  cluster: "eu",
-  useTLS: true
-});
- */

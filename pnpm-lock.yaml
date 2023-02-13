@@ -26,7 +26,6 @@ specifiers:
   '@typescript-eslint/eslint-plugin': ^5.47.1
   '@typescript-eslint/parser': ^5.47.1
   argon2: ^0.30.3
-  date-fns: ^2.29.3
   eslint: ^8.30.0
   eslint-config-next: 13.1.6
   luxon: ^3.2.1
@@ -65,7 +64,6 @@ dependencies:
   '@trpc/react-query': 10.10.0_5mhyv2iryamqlilh5gtjpyz23q
   '@trpc/server': 10.10.0
   argon2: 0.30.3
-  date-fns: 2.29.3
   luxon: 3.2.1
   mailgen: 2.0.27
   material-ui-confirm: 3.0.8_juhrskmuvyorwpajghq6zhdw2q
@@ -1470,11 +1468,6 @@ packages:
 
   /date-arithmetic/4.1.0:
     resolution: {integrity: sha512-QWxYLR5P/6GStZcdem+V1xoto6DMadYWpMXU82ES3/RfR3Wdwr3D0+be7mgOJ+Ov0G9D5Dmb9T17sNLQYj9XOg==}
-    dev: false
-
-  /date-fns/2.29.3:
-    resolution: {integrity: sha512-dDCnyH2WnnKusqvZZ6+jA1O51Ibt8ZMRNkDZdyAyK4YfbDwa/cEmuztzG5pk6hqlp9aSBPYcjOlktquahGwGeA==}
-    engines: {node: '>=0.11'}
     dev: false
 
   /dayjs/1.11.7:

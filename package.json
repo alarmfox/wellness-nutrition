@@ -26,7 +26,6 @@
     "@trpc/react-query": "^10.9.0",
     "@trpc/server": "^10.9.0",
     "argon2": "^0.30.3",
-    "date-fns": "^2.29.3",
     "luxon": "^3.2.1",
     "mailgen": "^2.0.27",
     "material-ui-confirm": "^3.0.8",
