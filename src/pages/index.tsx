@@ -19,7 +19,6 @@ import { Scheduler } from '../components/Scheduler';
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Subscription } from '../components/Subscription';
-import { useSnackbar } from 'notistack';
 
 function Home () {
   const { data: sessionData } = useSession();
@@ -29,8 +28,6 @@ function Home () {
   const [expanded, setExpanded] = React.useState(false);
   const theme = useTheme();
   const matches = useMediaQuery(theme.breakpoints.up('sm'));
-  const { enqueueSnackbar } = useSnackbar();
-  const [remainingAccesses, setRemainingAccesses] = React.useState(user?.remainingAccesses);
   
   const cannotCreateBooking = React.useMemo(() =>
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
@@ -40,23 +37,6 @@ function Home () {
   React.useEffect(() => {
       if (cannotCreateBooking) setCreationMode(false);
   }, [cannotCreateBooking]);
-
-
-  React.useEffect(() => {
-    if (user?.remainingAccesses === undefined) return;
-    if (user.remainingAccesses === remainingAccesses) return;
-
-    setRemainingAccesses(remainingAccesses);
-
-    enqueueSnackbar(`Accessi rimasti: ${user?.remainingAccesses}`, {
-      variant: user?.remainingAccesses <= 0 ? 'warning' : 'success',
-      anchorOrigin: {
-        vertical: 'top',
-        horizontal: 'right',
-      },
-    });
-  }, [user?.remainingAccesses, enqueueSnackbar, setRemainingAccesses, remainingAccesses]);
-
 
   const height = React.useMemo(() =>  !matches && expanded ? 150 : !matches && !expanded ? 350 : matches ? 350 : 150, [matches, expanded]);
 

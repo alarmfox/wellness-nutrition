@@ -3,6 +3,8 @@ import { AppBar, Container, Toolbar, Box, IconButton, Menu, MenuItem, Typography
 import MenuIcon from '@mui/icons-material/Menu';
 import { signOut } from 'next-auth/react';
 import { AccountCircle } from '@mui/icons-material';
+import { useSnackbar } from 'notistack';
+import { api } from '../utils/api';
 
 type Page = {
   name: string;
@@ -35,10 +37,15 @@ const actions: Action[] = [
 ];
 
 export function ResponsiveAppBar() {
-
+  
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
-
+  
+  const { data: user } = api.user.getCurrent.useQuery();
+  
+  const { enqueueSnackbar } = useSnackbar();
+  const [remainingAccesses, setRemainingAccesses] = React.useState(user?.remainingAccesses);
+  
   const handleOpenNavMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
   }, []);
@@ -54,6 +61,22 @@ export function ResponsiveAppBar() {
   const handleCloseUserMenu = React.useCallback(() => {
     setAnchorElUser(null);
   },[]);
+
+
+  React.useEffect(() => {
+    if (user?.remainingAccesses === undefined) return;
+    if (user.remainingAccesses === remainingAccesses) return;
+
+    setRemainingAccesses(remainingAccesses);
+
+    enqueueSnackbar(`Accessi rimasti: ${user?.remainingAccesses}`, {
+      variant: user?.remainingAccesses <= 0 ? 'warning' : 'success',
+      anchorOrigin: {
+        vertical: 'top',
+        horizontal: 'right',
+      },
+    });
+  }, [user?.remainingAccesses, enqueueSnackbar, setRemainingAccesses, remainingAccesses]);
 
   return (
     <AppBar position="static">
