@@ -124,8 +124,6 @@ export const bookingRouter = createTRPCRouter({
       now.plus({ days: 2 }).startOf('day').startOf('hour'):
       now.plus({ days: 1 }).startOf('day').startOf('hour');
 
-    console.log(startDate);
-    
     const allRecurrences: string[] = [];
     let nextOccurrence = null;
     do {
@@ -217,7 +215,7 @@ export const bookingRouter = createTRPCRouter({
       include: {
         user: true
       }
-    })
+    });
     const res = await ctx.prisma.$transaction([updateAccesses, createSlot, logEvent])
     await Promise.all([
       pusher.trigger('booking', 'user', createNotification(res[2])),
@@ -229,7 +227,7 @@ export const bookingRouter = createTRPCRouter({
     const h = Interval.fromDateTimes(
       DateTime.fromJSDate(input.from).startOf('hour').startOf('second'),
       DateTime.fromJSDate(input.to).startOf('hour').startOf('second'),
-    ).splitBy({ hours: 1 })
+    ).splitBy({ hours: 1 });
 
     const ops = h.map((item) => ctx.prisma.slot.upsert({
       where: {
@@ -256,7 +254,7 @@ export const bookingRouter = createTRPCRouter({
         },
         disabled: input.disable,
       }
-    }))
+    }));
 
     const decrementAccesses = ctx.prisma.user.update({
       where: {
@@ -267,7 +265,7 @@ export const bookingRouter = createTRPCRouter({
           decrement: h.length,
         }
       }
-    })
+    });
 
     const t = input.disable ? [...ops] : [...ops, decrementAccesses]
     await ctx.prisma.$transaction(t);
@@ -278,27 +276,27 @@ export const bookingRouter = createTRPCRouter({
       where: {
         id: input.id
       }
-    })
+    });
     const refund = ctx.prisma.user.update({
       where: {
-        id: ctx.session.user.id,
+        id: input.userId || ctx.session.user.id,
       },
       data: {
         remainingAccesses: {
-          increment: 1
+          increment: 1,
         }
       }
-    })
+    });
     const updateCount = ctx.prisma.slot.update({
       where: {
         startsAt: input.startsAt
       },
       data: {
         peopleCount: {
-          decrement: 1
+          decrement: 1,
         }
       }
-    })
+    });
     const ops = input.refundAccess ? [deleteBooking, updateCount, refund] : [deleteBooking, updateCount]
     await ctx.prisma.$transaction(ops);
   }),

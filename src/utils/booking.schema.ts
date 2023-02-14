@@ -12,7 +12,8 @@ export const AdminCreateSchema = z.object({
 export const AdminDeleteSchema = z.object({
   id: z.bigint(),
   refundAccess: z.boolean(),
-  startsAt: z.date()
+  startsAt: z.date(),
+  userId: z.string().optional(),
 });
 
 export const IntervalSchema = z.object({

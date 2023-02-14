@@ -174,7 +174,8 @@ function BookingAction({ booking, handleClose, isOpen }: BookingActionProps) {
   const { register, handleSubmit , setValue } = useForm<AdminDeleteModel>({
     resolver: zodResolver(AdminDeleteSchema),
     defaultValues: {
-      refundAccess: false,
+      refundAccess: true,
+      userId: booking?.userId,
     }
   });
 
