@@ -82,7 +82,7 @@ export const bookingRouter = createTRPCRouter({
         },
         data: {
           peopleCount: {
-            increment: ctx.session.user.subType === 'SHARED' ? 1 : 2
+            decrement: ctx.session.user.subType === 'SHARED' ? 1 : 2
           }
         }
       });
