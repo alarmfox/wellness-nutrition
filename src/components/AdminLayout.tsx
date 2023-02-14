@@ -22,7 +22,6 @@ import Image from 'next/image';
 import { env } from '../env/client.mjs';
 import { formatDate } from '../utils/format.utils';
 
-const drawerWidth = 240;
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
@@ -46,6 +45,7 @@ interface AppBarProps extends MuiAppBarProps {
   open?: boolean;
 }
 
+const drawerWidth = 240;
 const AppBar = styled(MuiAppBar, {
   shouldForwardProp: (prop) => prop !== 'open',
 })<AppBarProps>(({ theme, open }) => ({
