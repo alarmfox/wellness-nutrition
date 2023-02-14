@@ -52,7 +52,6 @@ const Verify: NextPage<Props> = ({ token }) => {
           <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
             <LockOutlinedIcon />
           </Avatar>
-          {requestLoading && <CircularProgress />}
           <Typography component="h1" variant="h5">
            Ripristino password 
           </Typography>
@@ -68,7 +67,7 @@ const Verify: NextPage<Props> = ({ token }) => {
               id="password"
               {...register('newPassword')}
               disabled={!isLoading}
-            />
+              />
             <ErrorMessage errors={errors} name="newPassword" />
             <TextField
               margin="normal"
@@ -80,9 +79,10 @@ const Verify: NextPage<Props> = ({ token }) => {
               error={watch("newPassword") !== watch("confirmPassword") && !!getValues("confirmPassword")}
               disabled={!isLoading}
               {...register('confirmPassword')}
-            />
+              />
             <ErrorMessage errors={errors} name="confirmPassword" />
             {error && <Alert variant='filled' severity="error">{error}</Alert> }
+            {requestLoading && <CircularProgress />}
             <Button
               type="submit"
               fullWidth

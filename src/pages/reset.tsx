@@ -37,7 +37,6 @@ export default function Reset() {
           <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
             <LockOutlinedIcon />
           </Avatar>
-          {requestLoading && <CircularProgress />}
           <Typography component="h1" variant="h5">
            Password dimenticata 
           </Typography>
@@ -53,6 +52,7 @@ export default function Reset() {
               disabled={!isLoading}
               {...register('email')}
             />
+            {requestLoading && <CircularProgress />}
             {message && <Alert variant='filled' severity={isError ? 'error' : 'info'}>{message}</Alert> } 
             <Button
               type="submit"

@@ -120,7 +120,6 @@ async function sendEmail(to: string, from: string, subject: string, content: Mai
         console.error(error);
         rej(error)
       } else {
-        console.log(info);
         res(info);
       }
     });

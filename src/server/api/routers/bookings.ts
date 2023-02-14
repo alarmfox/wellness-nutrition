@@ -9,7 +9,7 @@ import { sendOnDeleteBooking, sendOnNewBooking } from "../../mail";
 import { pusher } from "../../pusher";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
 
-const businessWeek = [1, 2, 3, 4, 5, 6];
+const businessWeek = [1, 2, 3, 4, 5];
 
 function isBookeable(d: DateTime): boolean {
   if (d.weekday === 6) return d.hour >= 7 && d.hour <= 11;
@@ -33,11 +33,18 @@ function createNotification(
   }
 }
 
+const zone = 'Europe/Rome';
+
 export const bookingRouter = createTRPCRouter({
   getCurrent: protectedProcedure.query(({ ctx }) => {
     return ctx.prisma.booking.findMany({
       where: {
-        userId: ctx.session.user.id
+        AND: {
+          userId: ctx.session.user.id,
+          startsAt: {
+            gt: DateTime.now().setZone(zone).startOf('month').toJSDate(),
+          }
+        }
       },
       orderBy: {
         startsAt: 'desc',
@@ -111,14 +118,15 @@ export const bookingRouter = createTRPCRouter({
     }
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
-    const now = DateTime.now();
+    const now = DateTime.now().setZone(zone);
     const endDate = now.endOf('month');
     const startDate = now.hour >= 17 ?
       now.plus({ days: 2 }).startOf('day').startOf('hour'):
       now.plus({ days: 1 }).startOf('day').startOf('hour');
 
+    console.log(startDate);
+    
     const allRecurrences: string[] = [];
-
     let nextOccurrence = null;
     do {
       nextOccurrence = nextOccurrence ? nextOccurrence.plus({ hours: 1 }) : startDate.plus({ hours: 1 })
