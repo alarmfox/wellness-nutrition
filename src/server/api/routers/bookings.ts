@@ -110,7 +110,7 @@ export const bookingRouter = createTRPCRouter({
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
           throw new TRPCError({
-            code: 'NOT_FOUND'
+            code: 'NOT_FOUND',
           })
         }
       }
@@ -161,7 +161,7 @@ export const bookingRouter = createTRPCRouter({
     } catch (error) {
       console.log(error);
       throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR'
+        code: 'INTERNAL_SERVER_ERROR',
       });
     }
   }),
