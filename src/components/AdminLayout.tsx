@@ -97,16 +97,6 @@ const NavigationOptions: NavigationOption[] = [
   }
 ]
 
-const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
-  cluster: env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
-  wsHost: env.NEXT_PUBLIC_PUSHER_APP_HOST,
-  wsPort: env.NEXT_PUBLIC_PUSHER_APP_PORT ? parseInt(env.NEXT_PUBLIC_PUSHER_APP_PORT) : undefined,
-  forceTLS: env.NEXT_PUBLIC_PUSHER_APP_USE_TLS === 'true',
-  enabledTransports: env.NEXT_PUBLIC_PUSHER_APP_HOST ? ['ws', 'wss'] : undefined,
-});
-
-const channel = pusher.subscribe('booking');
-
 function formatNotification(n: NotificationModel): string {
   if (n.type === 'DELETED') {
     return `${n.firstName} ${n.lastName} ha cancellato la sua prenotazione per ${formatDate(n.startsAt)} `
@@ -153,7 +143,20 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
   }, [notifications, setNotifications])
 
   React.useEffect(() => {
+    const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
+      cluster: env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
+      wsHost: env.NEXT_PUBLIC_PUSHER_APP_HOST,
+      wsPort: env.NEXT_PUBLIC_PUSHER_APP_PORT ? parseInt(env.NEXT_PUBLIC_PUSHER_APP_PORT) : undefined,
+      forceTLS: env.NEXT_PUBLIC_PUSHER_APP_USE_TLS === 'true',
+      enabledTransports: env.NEXT_PUBLIC_PUSHER_APP_HOST ? ['ws', 'wss'] : undefined,
+    });
+
+    const channel = pusher.subscribe('booking');
     channel.bind('user', (data: NotificationModel) => handleNotification(data));
+
+    return () => {
+      pusher.disconnect();
+    }
   }, [handleNotification])
 
   React.useEffect(() => {
@@ -163,6 +166,9 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
         break;
       case "/":
         setSelected('Calendario');
+        break;
+      case "/events":
+        setSelected('Eventi');
         break;
      }
   }, [pathname])
