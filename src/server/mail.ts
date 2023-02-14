@@ -19,7 +19,7 @@ const mailGenerator = new Mailgen({
   theme: 'default',
   product: {
     // Appears in header & footer of e-mails
-    name: 'Wellness & Nutrition',
+    name: 'Wellness & Nutrition - Staff',
     link: env.NEXTAUTH_URL,
     copyright: 'Tutti i diritti riservati',
     // Optional product logo
@@ -76,7 +76,7 @@ export async function sendOnNewBooking(user: User, startsAt: Date) {
     body: {
       greeting: 'Ciao',
       name: `amministratore`,
-      signature: 'Grazie per averci scelto',
+      signature: "",
       intro: `Una nuova prenotazione è stata inserita da ${user.firstName} ${user.lastName} per 
       ${DateTime.fromJSDate(startsAt).toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY, { locale: 'it' })}`,
       title: 'Nuova prenotazione',
@@ -92,7 +92,7 @@ export async function sendOnDeleteBooking(user: User, startsAt: Date) {
     body: {
       greeting: 'Ciao',
       name: `amministratore`,
-      signature: 'Grazie per averci scelto',
+      signature: "",
       intro: `Una prenotazione è stata cancellata da ${user.firstName} ${user.lastName} per 
       ${DateTime.fromJSDate(startsAt).toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY, { locale: 'it' })}`,
       title: 'Prenotazione cancellata',
