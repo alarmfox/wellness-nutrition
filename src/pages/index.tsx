@@ -50,7 +50,7 @@ function Home () {
         <CssBaseline />
         <Box
           sx={{
-            marginTop: 3,
+            marginTop: '.5rem',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -65,16 +65,19 @@ function Home () {
           </Stack>
           {!creationMode ? 
             <BookingList />: <SlotList/>}
-          <Button 
-            disabled={cannotCreateBooking} 
-            sx={{ mt: '2rem', bottom: 0, position: 'absolute', mb: '1rem' }}
-            variant="contained" 
-            color="primary" 
-            aria-label="nuova prenotazione"
-            onClick={() => setCreationMode(!creationMode)}
+            <Box
+                sx={{ mt: '2rem', bottom: 0, position: 'absolute', mb: '1rem' }}
             >
-            {creationMode ? 'Le mie prenotazioni' : 'Nuova prenotazione'}
-          </Button>
+              <Button 
+                disabled={cannotCreateBooking} 
+                variant="contained" 
+                color="primary" 
+                aria-label="nuova prenotazione"
+                onClick={() => setCreationMode(!creationMode)}
+                >
+                {creationMode ? 'Le mie prenotazioni' : 'Nuova prenotazione'}
+              </Button>
+            </Box>
         </Box>
       </Container>
     </>
@@ -140,7 +143,7 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
           <Event />
         </ListItemIcon>
         <ListItemText
-          sx={{ my: '1rem' }}
+          sx={{ my: '.5rem' }}
           primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
           primaryTypographyProps={{
             fontSize: 16,
@@ -204,7 +207,7 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
         <Event />
       </ListItemIcon>
       <ListItemText
-        sx={{ my: '1rem' }}
+        sx={{ my: '.5rem' }}
         primary={formatDate(slot, DateTime.DATE_MED_WITH_WEEKDAY)}
         primaryTypographyProps={{
           fontSize: 16,
@@ -267,7 +270,7 @@ function SlotList() {
     }, [data, handleClick]);
 
     return (
-      <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
+      <Box sx={{ width: '100%', bgcolor: 'background.paper', overflowY: 'hidden' }}>
         <Backdrop
           sx={{color: 'darkgrey', zIndex: (theme) => theme.zIndex.drawer + 1}}
           open={isLoading}
