@@ -5,7 +5,7 @@ import { api } from '../utils/api';
 import { Container, CssBaseline, Box, Typography, Button, Alert, 
   ListItemButton, 
   ListItemIcon, ListItemText, CircularProgress,
-  Stack, Backdrop, 
+  Stack, Backdrop, useMediaQuery, useTheme, 
   } from '@mui/material';
 import { ResponsiveAppBar } from '../components/AppBar';
 import { useConfirm } from 'material-ui-confirm';
@@ -19,12 +19,17 @@ import { Scheduler } from '../components/Scheduler';
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Subscription } from '../components/Subscription';
+import { useSnackbar } from 'notistack';
 
 function Home () {
   const { data: sessionData } = useSession();
 
   const { data: user, isLoading } = api.user.getCurrent.useQuery();
   const [ creationMode, setCreationMode ] = React.useState(false);
+  const [expanded, setExpanded] = React.useState(false);
+  const theme = useTheme();
+  const matches = useMediaQuery(theme.breakpoints.up('sm'));
+  const { enqueueSnackbar } = useSnackbar();
   const cannotCreateBooking = React.useMemo(() =>
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
     (user?.remainingAccesses! <= 0) || (DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()), 
@@ -33,7 +38,23 @@ function Home () {
   React.useEffect(() => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
       if (user?.remainingAccesses! <= 0) setCreationMode(false);
-  }, [user])
+  }, [user]);
+
+
+  React.useEffect(() => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
+    enqueueSnackbar(`Accessi rimasti: ${user?.remainingAccesses!}`, {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
+      variant: user?.remainingAccesses! <= 0 ? 'warning' : 'success',
+      anchorOrigin: {
+        vertical: 'top',
+        horizontal: 'right'
+      },
+      
+    });
+  }, [user?.remainingAccesses, enqueueSnackbar])
+
+const height = React.useMemo(() =>  !matches && expanded ? 150 : !matches && !expanded ? 350 : 150, [matches, expanded]);
 
   if (sessionData?.user.role === 'ADMIN') {
     return (
@@ -42,7 +63,6 @@ function Home () {
       </AdminLayout>
     )
   }
-
   return (
     <>
       <ResponsiveAppBar />
@@ -58,26 +78,23 @@ function Home () {
             overflowX: 'hidden',
           }}
         > 
-          <Subscription />
+          <Subscription setExpanded={setExpanded}/>
           {isLoading && <CircularProgress />}
           <Stack>
             <Typography gutterBottom variant="h6" >{creationMode ? 'Seleziona uno slot' : 'Lista prenotazioni'}</Typography>
           </Stack>
           {!creationMode ? 
-            <BookingList />: <SlotList/>}
-            <Box
-                sx={{ mt: '2rem', bottom: 0, position: 'absolute', mb: '1rem' }}
+            <BookingList height={height} />: <SlotList height={height}/>}
+            <Button 
+              sx={{ bottom: 0, position: 'absolute', mb: '.5rem' }}
+              disabled={cannotCreateBooking} 
+              variant="contained" 
+              color="primary" 
+              aria-label="nuova prenotazione"
+              onClick={() => setCreationMode(!creationMode)}
             >
-              <Button 
-                disabled={cannotCreateBooking} 
-                variant="contained" 
-                color="primary" 
-                aria-label="nuova prenotazione"
-                onClick={() => setCreationMode(!creationMode)}
-                >
-                {creationMode ? 'Le mie prenotazioni' : 'Nuova prenotazione'}
-              </Button>
-            </Box>
+              {creationMode ? 'Le mie prenotazioni' : 'Nuova prenotazione'}
+            </Button>
         </Box>
       </Container>
     </>
@@ -162,13 +179,18 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
     </ListItemButton>
   );
 }
-function BookingList() {
+
+interface BookingListProps {
+  height: number;
+}
+
+function BookingList({ height }: BookingListProps) {
   const { data } = api.bookings.getCurrent.useQuery();
   return (
   <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
   {data && data.length > 0 ? 
     <FixedSizeList
-      height={350}
+      height={height}
       width={360}
       itemSize={70}
       itemCount={data.length}
@@ -220,7 +242,12 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
     </ListItemButton>
   )
 }
-function SlotList() {
+
+interface SlotListProps {
+  height: number;
+}
+
+function SlotList({ height }: SlotListProps) {
     const utils = api.useContext();
     const { data, isLoading: isFetching } = api.bookings.getAvailableSlots.useQuery();
     const [error, setError] = React.useState<string | undefined>(undefined);
@@ -275,15 +302,12 @@ function SlotList() {
           sx={{color: 'darkgrey', zIndex: (theme) => theme.zIndex.drawer + 1}}
           open={isLoading}
         >
-          <Stack spacing={2}>
-            <CircularProgress sx={{textAlign: 'center'}} />
-          </Stack>
-          
+          <CircularProgress sx={{textAlign: 'center'}} />
         </Backdrop>
           {error && <Alert variant="filled" severity="error">{error}</Alert>}
           {rows &&
             <FixedSizeList
-              height={350}
+              height={height}
               width={360}
               itemSize={70}
               itemCount={rows.length}
