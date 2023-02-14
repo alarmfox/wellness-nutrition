@@ -35,7 +35,7 @@ export const userRouter = createTRPCRouter({
         const user = await ctx.prisma.user.create({
           data: {
             ...rest,
-            goals: goals.join('-'),
+            goals: goals?.join('-'),
             verificationToken: token,
             verificationTokenExpiresIn: DateTime.now().plus({ days: 7 }).toJSDate()
           },
@@ -71,7 +71,7 @@ export const userRouter = createTRPCRouter({
       },
       data: {
         ...rest,
-        goals: goals.join('-'),
+        goals: goals?.join('-'),
       }
     })
   }),

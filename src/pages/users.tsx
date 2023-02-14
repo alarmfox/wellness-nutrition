@@ -692,7 +692,7 @@ interface EditUserProps {
 function toUserModel({ goals, ...rest}: User): UpdateUserModel {
   return {
     ...rest,
-    goals: goals ? goals.split('-') : []
+    goals: goals?.split('-')
   }
 }
 function EditUser({ user, handleClose }: EditUserProps) {
@@ -855,9 +855,8 @@ function EditUser({ user, handleClose }: EditUserProps) {
                   }
                 />
                 </FormControl> 
-                <ErrorMessage errors={errors} name="subType" />
-                </Grid>
-
+                  <ErrorMessage errors={errors} name="goals" />
+            </Grid>
             <Grid item>
               <FormGroup>
                 <FormControlLabel {...register('medOk')} control={<Checkbox defaultChecked={user.medOk}/>} label="Certificato medico" />
