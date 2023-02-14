@@ -30,31 +30,35 @@ function Home () {
   const theme = useTheme();
   const matches = useMediaQuery(theme.breakpoints.up('sm'));
   const { enqueueSnackbar } = useSnackbar();
+  const [remainingAccesses, setRemainingAccesses] = React.useState(user?.remainingAccesses);
+  
   const cannotCreateBooking = React.useMemo(() =>
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
     (user?.remainingAccesses! <= 0) || (DateTime.fromJSDate(user?.expiresAt || new Date()) < DateTime.now()), 
   [user]);
   
   React.useEffect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
-      if (user?.remainingAccesses! <= 0) setCreationMode(false);
-  }, [user]);
+      if (cannotCreateBooking) setCreationMode(false);
+  }, [cannotCreateBooking]);
 
 
   React.useEffect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
-    enqueueSnackbar(`Accessi rimasti: ${user?.remainingAccesses!}`, {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
-      variant: user?.remainingAccesses! <= 0 ? 'warning' : 'success',
+    if (user?.remainingAccesses === undefined) return;
+    if (user.remainingAccesses === remainingAccesses) return;
+
+    setRemainingAccesses(remainingAccesses);
+
+    enqueueSnackbar(`Accessi rimasti: ${user?.remainingAccesses}`, {
+      variant: user?.remainingAccesses <= 0 ? 'warning' : 'success',
       anchorOrigin: {
         vertical: 'top',
-        horizontal: 'right'
+        horizontal: 'right',
       },
-      
     });
-  }, [user?.remainingAccesses, enqueueSnackbar])
+  }, [user?.remainingAccesses, enqueueSnackbar, setRemainingAccesses, remainingAccesses]);
 
-const height = React.useMemo(() =>  !matches && expanded ? 150 : !matches && !expanded ? 350 : 150, [matches, expanded]);
+
+  const height = React.useMemo(() =>  !matches && expanded ? 150 : !matches && !expanded ? 350 : matches ? 350 : 150, [matches, expanded]);
 
   if (sessionData?.user.role === 'ADMIN') {
     return (
