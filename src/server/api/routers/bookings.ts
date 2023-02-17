@@ -119,9 +119,10 @@ export const bookingRouter = createTRPCRouter({
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
     const now = DateTime.now().setZone(zone);
-    const endDate = now.endOf('month');
+    const isLastWeekOfMonth = now.endOf('month').weekNumber - 1 === now.weekNumber;
+    const endDate = isLastWeekOfMonth ? now.plus({ months: 1 }).endOf('month') : now.endOf('month');
     const startDate = now.hour >= 17 ?
-      now.plus({ days: 2 }).startOf('day').startOf('hour'):
+      now.plus({ days: 2 }).startOf('day').startOf('hour') :
       now.plus({ days: 1 }).startOf('day').startOf('hour');
 
     const allRecurrences: string[] = [];
