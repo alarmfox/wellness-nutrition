@@ -13,9 +13,9 @@ import { api } from "../utils/api";
 import type { AdminDeleteModel, IntervalModel } from "../utils/booking.schema";
 import { AdminDeleteSchema } from "../utils/booking.schema";
 import { formatBooking, formatDate } from "../utils/format.utils";
-import WorkWeek from './WorkWeek'
-import "react-big-calendar/lib/css/react-big-calendar.css";
+import WorkWeek from "./WorkWeek";
 
+import "react-big-calendar/lib/css/react-big-calendar.css";
 
 function getTooltipInfo({ firstName, lastName, subType }: User, slot: Slot): string {
   if (slot.disabled) return 'Slot disabilitato';
@@ -163,7 +163,7 @@ export function Scheduler() {
         selected={selected}
         step={30}
         defaultDate={new Date()}
-        defaultView={'week'}
+        defaultView={'myweek'}
         views={{
           myweek: WorkWeek
         }}
