@@ -73,7 +73,7 @@ export function ResponsiveAppBar() {
       variant: user?.remainingAccesses <= 0 ? 'warning' : 'success',
       anchorOrigin: {
         vertical: 'top',
-        horizontal: 'right',
+        horizontal: 'center',
       },
     });
   }, [user?.remainingAccesses, enqueueSnackbar, setRemainingAccesses, remainingAccesses]);

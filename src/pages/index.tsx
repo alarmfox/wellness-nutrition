@@ -17,7 +17,6 @@ import { formatBooking, formatDate } from '../utils/format.utils';
 import { DateTime } from 'luxon';
 import { Scheduler } from '../components/Scheduler';
 
-import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Subscription } from '../components/Subscription';
 
 function Home () {

@@ -19,6 +19,7 @@ specifiers:
   '@types/luxon': ^3.2.0
   '@types/node': ^18.11.18
   '@types/nodemailer': ^6.4.7
+  '@types/prop-types': ^15.7.5
   '@types/react': ^18.0.26
   '@types/react-big-calendar': ^1.6.0
   '@types/react-dom': ^18.0.10
@@ -36,6 +37,7 @@ specifiers:
   nodemailer: ^6.9.1
   notistack: ^2.0.8
   prisma: ^4.9.0
+  prop-types: ^15.8.1
   pusher: ^5.1.2
   pusher-js: ^8.0.1
   react: 18.2.0
@@ -72,6 +74,7 @@ dependencies:
   next-auth: 4.19.2_phzvn2nhb6zk7o4ds4z4gvqlei
   nodemailer: 6.9.1
   notistack: 2.0.8_qo5tbv3wjsnulj3odbgeoxieku
+  prop-types: 15.8.1
   pusher: 5.1.2
   pusher-js: 8.0.1
   react: 18.2.0
@@ -87,6 +90,7 @@ devDependencies:
   '@types/luxon': 3.2.0
   '@types/node': 18.11.18
   '@types/nodemailer': 6.4.7
+  '@types/prop-types': 15.7.5
   '@types/react': 18.0.27
   '@types/react-big-calendar': 1.6.0
   '@types/react-dom': 18.0.10

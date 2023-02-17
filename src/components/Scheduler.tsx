@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Autocomplete, Button, Checkbox, CircularProgress, Dialog, DialogActions, 
   DialogContent, DialogContentText, DialogTitle, FormControl, FormControlLabel, FormGroup, 
@@ -5,13 +6,16 @@ import { Alert, Autocomplete, Button, Checkbox, CircularProgress, Dialog, Dialog
 import type { Slot, Booking, User } from "@prisma/client";
 import { DateTime } from "luxon";
 import React from "react";
-import type { SlotInfo } from "react-big-calendar";
+import type { SlotInfo} from "react-big-calendar";
 import { Calendar, luxonLocalizer } from "react-big-calendar";
 import { useForm } from "react-hook-form";
 import { api } from "../utils/api";
 import type { AdminDeleteModel, IntervalModel } from "../utils/booking.schema";
 import { AdminDeleteSchema } from "../utils/booking.schema";
 import { formatBooking, formatDate } from "../utils/format.utils";
+import WorkWeek from './WorkWeek'
+import "react-big-calendar/lib/css/react-big-calendar.css";
+
 
 function getTooltipInfo({ firstName, lastName, subType }: User, slot: Slot): string {
   if (slot.disabled) return 'Slot disabilitato';
@@ -111,7 +115,7 @@ export function Scheduler() {
       })
     }),
     [theme]
-  )
+  );
   const slots = React.useMemo(() => data?.map(({ startsAt, user, slot, ...rest}) => {
     return {
       startsAt,
@@ -129,8 +133,9 @@ export function Scheduler() {
       {isLoading  && <CircularProgress />}
       {selected && <BookingAction isOpen={showEventDialog} booking={selected} handleClose={closeEventDialog}/>}
       {slotInfo && <CreateBooking isOpen={showCreateDialog} slots={slotInfo.slots} handleClose={closeCreateDialog}/> }
+      {/* @ts-ignore */}
       <Calendar
-        localizer={luxonLocalizer(DateTime)}
+        localizer={luxonLocalizer(DateTime, { firstDayOfWeek: 1 })}
         eventPropGetter={eventPropGetter}
         startAccessor="startsAt"
         endAccessor="endsAt"
@@ -143,12 +148,11 @@ export function Scheduler() {
           today: 'Oggi',
           day: 'Giorno',
           previous: 'Prec.',
-          next: 'Succ.'
+          next: 'Succ.',
+          date: 'Data',
+          myweek: '',
         }}
         style={{ height: '100%' }}
-        defaultView="week"
-        views={['week']}
-        
         onNavigate={(d) => setInput(getCurrentWeekParams(d))}
         events={slots}
         min={DateTime.now().set({ hour: 7, minute: 0, second: 0 }).toJSDate()}
@@ -158,6 +162,11 @@ export function Scheduler() {
         selectable
         selected={selected}
         step={30}
+        defaultDate={new Date()}
+        defaultView={'week'}
+        views={{
+          myweek: WorkWeek
+        }}
     />
     </> 
   )
