@@ -3,7 +3,7 @@ import { useSession } from 'next-auth/react';
 import type { Booking } from '@prisma/client';
 import { api } from '../utils/api';
 import {
-  Container, CssBaseline, Box, Typography, Button, Alert,
+  Container, CssBaseline, Box, Typography, Button, 
   ListItemButton,
   ListItemIcon, ListItemText, CircularProgress,
   Stack, Backdrop, useMediaQuery, useTheme,
@@ -255,7 +255,8 @@ function SlotList({ height }: SlotListProps) {
         return;
       }
       enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
-    }
+      utils.bookings.getAvailableSlots.invalidate();
+    }, 
   });
 
   const handleClick = React.useCallback(async (startsAt: string) => {
