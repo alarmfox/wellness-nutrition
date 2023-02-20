@@ -249,13 +249,13 @@ function SlotList({ height }: SlotListProps) {
       utils.user.getCurrent.invalidate(),
       utils.bookings.getAvailableSlots.invalidate(),
     ]),
-    onError: (err) => {
+    onError: async (err) => {
       if (err?.data?.code === 'BAD_REQUEST') {
         enqueueSnackbar('Lo slot è stato disabilitato dall\'amministratore', { variant: 'error' });
         return;
       }
       enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
-      utils.bookings.getAvailableSlots.invalidate();
+      await utils.bookings.getAvailableSlots.invalidate();
     }, 
   });
 
