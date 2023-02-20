@@ -2,9 +2,11 @@ import * as React from 'react';
 import { styled, useTheme } from '@mui/material/styles';
 import PeopleIcon from '@mui/icons-material/People';
 import EventIcon from '@mui/icons-material/Event';
-import { Box, CssBaseline, Toolbar, IconButton, Typography, Drawer,
-    Divider, List, ListItem, ListItemButton, 
-    ListItemIcon, ListItemText, Menu, MenuItem, Badge, Popover } from '@mui/material';
+import {
+  Box, CssBaseline, Toolbar, IconButton, Typography, Drawer,
+  Divider, List, ListItem, ListItemButton,
+  ListItemIcon, ListItemText, Menu, MenuItem, Badge, Popover
+} from '@mui/material';
 import type { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import MuiAppBar from '@mui/material/AppBar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -15,7 +17,7 @@ import { AccountCircle, Close, History, InfoOutlined, Logout, NotificationsRound
 import { signOut } from 'next-auth/react';
 import Pusher from 'pusher-js';
 import { useSnackbar } from 'notistack';
-import type { NotificationModel} from '../utils/event.schema';
+import type { NotificationModel } from '../utils/event.schema';
 import { DateTime } from 'luxon';
 import { api } from '../utils/api';
 import Image from 'next/image';
@@ -83,7 +85,7 @@ const NavigationOptions: NavigationOption[] = [
   {
     icon: <EventIcon />,
     name: 'Calendario',
-    to: '/' 
+    to: '/'
   },
   {
     icon: <PeopleIcon />,
@@ -104,13 +106,13 @@ function formatNotification(n: NotificationModel): string {
   return `${n.firstName} ${n.lastName} ha creato una prenotazione per ${formatDate(n.startsAt)}`
 }
 
-export default function AdminLayout ({ children }: React.PropsWithChildren) {
+export default function AdminLayout({ children }: React.PropsWithChildren) {
   const theme = useTheme();
   const [open, setOpen] = React.useState(true);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const [ selected, setSelected ] = React.useState('Calendario');
+  const [selected, setSelected] = React.useState('Calendario');
   const { pathname } = useRouter();
-  const [notifications, setNotifications] = React.useState<NotificationModel[]> ([]);
+  const [notifications, setNotifications] = React.useState<NotificationModel[]>([]);
   const [notificatioAnchorEl, setNotificatioAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   const notificationPopoverOpen = React.useMemo(() => !(notificatioAnchorEl === null), [notificatioAnchorEl]);
   const id = notificationPopoverOpen ? 'notification-popover' : undefined;
@@ -118,15 +120,15 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
   const { enqueueSnackbar } = useSnackbar();
   const utils = api.useContext();
 
-  const handleMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) =>  setAnchorEl(event.currentTarget), [])
+  const handleMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget), [])
 
   const handleClose = React.useCallback(() => setAnchorEl(null), []);
 
   const handleDrawerOpen = React.useCallback(() => setOpen(true), []);
 
-  const handleDrawerClose = React.useCallback(() =>  setOpen(false), []);
+  const handleDrawerClose = React.useCallback(() => setOpen(false), []);
 
-  const onLogout = React.useCallback(() =>  signOut({ callbackUrl: '/' }).catch(console.error), []);
+  const onLogout = React.useCallback(() => signOut({ callbackUrl: '/' }).catch(console.error), []);
 
   const handleNotification = React.useCallback((n: NotificationModel) => {
     enqueueSnackbar(formatNotification(n), {
@@ -135,7 +137,7 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
     setNotifications(notifications.concat(n));
     void utils.bookings.getByInterval.invalidate();
     void utils.events.getLatest.invalidate();
-  } ,[notifications, setNotifications, enqueueSnackbar, utils]);
+  }, [notifications, setNotifications, enqueueSnackbar, utils]);
 
   const onDelete = React.useCallback((i: number) => {
     notifications.splice(i, 1);
@@ -157,10 +159,10 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
     return () => {
       pusher.disconnect();
     }
-  }, [handleNotification])
+  }, [handleNotification]);
 
   React.useEffect(() => {
-     switch(pathname) {
+    switch (pathname) {
       case "/users":
         setSelected('Utenti');
         break;
@@ -170,7 +172,7 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
       case "/events":
         setSelected('Eventi');
         break;
-     }
+    }
   }, [pathname])
 
   return (
@@ -190,10 +192,10 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
           <Typography variant="h6" component="div">
             {selected}
           </Typography>
-          <Box sx={{ display: 'flex', width: '100%', justifyContent: 'end'}}>
+          <Box sx={{ display: 'flex', width: '100%', justifyContent: 'end' }}>
             <IconButton color="inherit" onClick={(e) => setNotificatioAnchorEl(notificatioAnchorEl ? null : e.currentTarget)}>
               <Badge max={99} badgeContent={notifications.length}>
-                <NotificationsRounded  color="inherit" />
+                <NotificationsRounded color="inherit" />
               </Badge>
               <Popover
                 id={id}
@@ -209,13 +211,13 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
                   horizontal: 'left'
                 }}
               >
-                {notifications.length > 0 ? 
-                  <NotificationList onClose={() => setNotificatioAnchorEl(null)} onDelete={onDelete} notifications={notifications}/> :
+                {notifications.length > 0 ?
+                  <NotificationList onClose={() => setNotificatioAnchorEl(null)} onDelete={onDelete} notifications={notifications} /> :
                   <div onMouseLeave={() => setNotificatioAnchorEl(null)}>
                     <Typography variant="caption">
                       Nessuna notifica
                     </Typography>
-                  </div> 
+                  </div>
                 }
               </Popover>
             </IconButton>
@@ -268,7 +270,7 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
             display: 'flex',
             width: '100%',
           }}>
-            <Image src="/logo_big.png" width="175" height="50" alt="logo"/>
+            <Image src="/logo_big.png" width="175" height="50" alt="logo" />
             <IconButton onClick={handleDrawerClose}>
               {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
             </IconButton>
@@ -287,23 +289,23 @@ export default function AdminLayout ({ children }: React.PropsWithChildren) {
             </ListItem>
           ))}
         </List>
-        
+
         <Divider />
         <List>
           <ListItem key="logout" disablePadding>
             {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-            <ListItemButton onClick={onLogout}> 
+            <ListItemButton onClick={onLogout}>
               <ListItemIcon>
                 <Logout />
               </ListItemIcon>
-              <ListItemText primary="Esci"/>
+              <ListItemText primary="Esci" />
             </ListItemButton>
           </ListItem>
         </List>
       </Drawer>
       <Main open={open}>
         <DrawerHeader />
-        { children }
+        {children}
       </Main>
     </Box>
   );
@@ -314,10 +316,10 @@ interface NotificationListProps {
   onClose: () => void;
 }
 
-function NotificationList({ notifications, onDelete, onClose}: NotificationListProps) {
+function NotificationList({ notifications, onDelete, onClose }: NotificationListProps) {
   return (
     <div onMouseLeave={onClose}>
-      <List  dense sx={{ width: '100%', bgcolor: 'background.paper' }}>
+      <List dense sx={{ width: '100%', bgcolor: 'background.paper' }}>
         {notifications.map((value, index) => {
           const labelId = `checkbox-list-secondary-label-${value.id}`;
           return (
@@ -343,5 +345,5 @@ function NotificationList({ notifications, onDelete, onClose}: NotificationListP
         })}
       </List>
     </div>
-  ); 
+  );
 }

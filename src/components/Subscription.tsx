@@ -7,17 +7,17 @@ import { formatDate } from "../utils/format.utils";
 
 export interface SubscriptionProps {
   setExpanded: (v: boolean) => void
-} 
+}
 
 export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps) {
   const { data } = api.user.getCurrent.useQuery();
   const theme = useTheme();
   const matches = useMediaQuery(theme.breakpoints.up('sm'));
   const [expanded, setExpanded] = React.useState(matches);
-  const handleExpandClick = React.useCallback(() =>  setExpanded(!expanded), [expanded, setExpanded]);
+  const handleExpandClick = React.useCallback(() => setExpanded(!expanded), [expanded, setExpanded]);
 
-  React.useEffect(() => setExpandedProp(expanded) ,[expanded, setExpandedProp]);
-  
+  React.useEffect(() => setExpandedProp(expanded), [expanded, setExpandedProp]);
+
   return (
     <Card sx={{ maxWidth: 345 }} variant="outlined">
       {data &&
@@ -32,8 +32,8 @@ export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps
               onClick={handleExpandClick}
               aria-expanded={expanded}
               aria-label="Mostra di piu"
-              >
-            { !expanded ? <ExpandMore /> : <ExpandLess /> }
+            >
+              {!expanded ? <ExpandMore /> : <ExpandLess />}
             </IconButton>
           </CardActions>
           <Collapse in={expanded}>
@@ -45,13 +45,13 @@ export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps
               <Grid item xs={12} >
                 <Typography variant="body1" color="text.secondary">{data.email}</Typography>
               </Grid>
-              <Grid item xs={6} sx={{ display: 'flex', alignItems: 'center' }}> 
+              <Grid item xs={6} sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography color="grey" variant="body1">
-                  Accessi 
+                  Accessi
                 </Typography>
               </Grid>
               <Grid item xs={6} >
-                <Typography align="right" color={data.remainingAccesses > 0 ? 'green': 'red'} variant="h6">
+                <Typography align="right" color={data.remainingAccesses > 0 ? 'green' : 'red'} variant="h6">
                   {data.remainingAccesses}
                 </Typography>
               </Grid>
@@ -88,7 +88,7 @@ export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps
             </Grid>
           </Collapse>
         </CardContent>
-    }
-    </Card> 
+      }
+    </Card>
   );
 }

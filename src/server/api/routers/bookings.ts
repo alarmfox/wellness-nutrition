@@ -60,10 +60,10 @@ export const bookingRouter = createTRPCRouter({
     try {
       const deleteBooking = ctx.prisma.booking.delete({
         where: {
-          id: input.id
+          id: input.id,
         },
         include: {
-          user: true
+          user: true,
         }
       });
       const refund = ctx.prisma.user.update({
@@ -72,17 +72,17 @@ export const bookingRouter = createTRPCRouter({
         },
         data: {
           remainingAccesses: {
-            increment: 1
+            increment: 1,
           }
         }
       });
       const resetCounter = ctx.prisma.slot.update({
         where: {
-          startsAt: input.startsAt
+          startsAt: input.startsAt,
         },
         data: {
           peopleCount: {
-            decrement: ctx.session.user.subType === 'SHARED' ? 1 : 2
+            decrement: ctx.session.user.subType === 'SHARED' ? 1 : 2,
           }
         }
       });
@@ -104,6 +104,7 @@ export const bookingRouter = createTRPCRouter({
       await Promise.all([
         pusher.trigger('booking', 'user', createNotification(createdEvent)),
         sendOnDeleteBooking(createdEvent.user, input.startsAt),
+        pusher.trigger('booking', 'refresh', {}),
       ]);
 
     } catch (error) {
@@ -170,14 +171,25 @@ export const bookingRouter = createTRPCRouter({
   create: protectedProcedure.input(z.object({
     startsAt: z.date(),
   })).mutation(async ({ ctx, input }) => {
+    const slot = await ctx.prisma.slot.findUnique({
+      where: {
+        startsAt: input.startsAt,
+      }
+    });
+    if (slot?.disabled) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Slot disabled'
+      });
+    }
 
     const updateAccesses = ctx.prisma.user.update({
       where: {
-        id: ctx.session.user.id
+        id: ctx.session.user.id,
       },
       data: {
         remainingAccesses: {
-          decrement: 1
+          decrement: 1,
         }
       }
     });
@@ -203,7 +215,7 @@ export const bookingRouter = createTRPCRouter({
         }
       },
       where: {
-        startsAt: input.startsAt
+        startsAt: input.startsAt,
       },
     });
 
@@ -211,16 +223,17 @@ export const bookingRouter = createTRPCRouter({
       data: {
         type: 'CREATED',
         startsAt: input.startsAt,
-        userId: ctx.session.user.id
+        userId: ctx.session.user.id,
       },
       include: {
-        user: true
+        user: true,
       }
     });
-    const res = await ctx.prisma.$transaction([updateAccesses, createSlot, logEvent])
+    const res = await ctx.prisma.$transaction([updateAccesses, createSlot, logEvent]);
     await Promise.all([
       pusher.trigger('booking', 'user', createNotification(res[2])),
       sendOnNewBooking(res[2].user, input.startsAt),
+      pusher.trigger('booking', 'refresh', {}),
     ]);
   }),
 
@@ -246,7 +259,7 @@ export const bookingRouter = createTRPCRouter({
       },
       update: {
         peopleCount: {
-          increment: 1
+          increment: 1,
         },
         bookings: {
           create: {
@@ -269,13 +282,23 @@ export const bookingRouter = createTRPCRouter({
     });
 
     const t = input.disable ? [...ops] : [...ops, decrementAccesses]
-    await ctx.prisma.$transaction(t);
+    await Promise.all([
+      ctx.prisma.$transaction(t),
+      pusher.trigger('booking', 'refresh', {}),
+    ]);
   }),
 
   adminDelete: adminProtectedProcedure.input(AdminDeleteSchema).mutation(async ({ ctx, input }) => {
+    if (input.isDisabled) {
+      return ctx.prisma.slot.delete({
+        where: {
+          startsAt: input.startsAt,
+        }
+      });
+    }
     const deleteBooking = ctx.prisma.booking.delete({
       where: {
-        id: input.id
+        id: input.id,
       }
     });
     const refund = ctx.prisma.user.update({
@@ -290,7 +313,7 @@ export const bookingRouter = createTRPCRouter({
     });
     const updateCount = ctx.prisma.slot.update({
       where: {
-        startsAt: input.startsAt
+        startsAt: input.startsAt,
       },
       data: {
         peopleCount: {
@@ -299,7 +322,10 @@ export const bookingRouter = createTRPCRouter({
       }
     });
     const ops = input.refundAccess ? [deleteBooking, updateCount, refund] : [deleteBooking, updateCount]
-    await ctx.prisma.$transaction(ops);
+    await Promise.all([
+      ctx.prisma.$transaction(ops),
+      pusher.trigger('booking', 'refresh', {}),
+    ]);
   }),
 
   //TODO: compress consecutives disabled

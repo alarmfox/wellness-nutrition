@@ -46,7 +46,7 @@ class WorkWeek extends React.Component {
       enableAutoScroll = true,
       ...props
     }: InferProps<typeof WorkWeek.propTypes> = this.props
-    const range = workWeekRange(date , this.props);
+    const range = workWeekRange(date, this.props);
     return (
       <TimeGrid
         {...props}
@@ -79,7 +79,7 @@ WorkWeek.navigate = Week.navigate
 
 WorkWeek.title = (date: Date, { formats, culture, ...props }) => {
   const start = DateTime.fromJSDate(date).startOf('week');
-  const int = Interval.fromDateTimes(start, start.endOf('week').minus({days: 1}));
+  const int = Interval.fromDateTimes(start, start.endOf('week').minus({ days: 1 }));
   return int.toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY, {
     locale: 'it'
   });

@@ -31,7 +31,7 @@ declare module "next-auth" {
     // ...other properties
     role: Role;
     subType: SubType;
- }
+  }
 }
 
 /**
@@ -49,7 +49,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token
     },
-    session({ session , token}) {
+    session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub || '';
         session.user.role = token.role as Role;
@@ -62,7 +62,7 @@ export const authOptions: NextAuthOptions = {
 
     }
   },
-  
+
   session: {
     strategy: 'jwt',
     // Seconds - How long until an idle session expires and is no longer valid.
@@ -71,12 +71,12 @@ export const authOptions: NextAuthOptions = {
     // Seconds - Throttle how frequently to write to database to extend a session.
     // Use it to limit write operations. Set to 0 to always update the database.
     // Note: This option is ignored if using JSON Web Tokens
-    
+
     updateAge: 24 * 60 * 60, // 24 hours
   },
 
   adapter: PrismaAdapter(prisma),
-  
+
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -95,13 +95,13 @@ export const authOptions: NextAuthOptions = {
           }
         })
 
-        if (!user || !user.emailVerified || !user.password) 
+        if (!user || !user.emailVerified || !user.password)
           return null;
-        
+
         if (await argon2.verify(user.password, credentials?.password || '')) {
           return user;
         }
-        return null 
+        return null
 
       },
     })

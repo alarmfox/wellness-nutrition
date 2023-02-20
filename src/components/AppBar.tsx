@@ -5,15 +5,17 @@ import { signOut } from 'next-auth/react';
 import { AccountCircle } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import { api } from '../utils/api';
+import { env } from '../env/client.mjs';
+import Pusher from 'pusher-js';
 
 type Page = {
   name: string;
   id: number;
   path: string;
 }
- 
 
-const pages: Page[]= [
+
+const pages: Page[] = [
   {
     name: 'Home',
     id: 1,
@@ -32,20 +34,20 @@ const actions: Action[] = [
     id: 1,
     name: 'Esci',
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    callback: () => signOut({ callbackUrl: '/'})
+    callback: () => signOut({ callbackUrl: '/' })
   }
 ];
 
 export function ResponsiveAppBar() {
-  
+
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
-  
+
   const { data: user } = api.user.getCurrent.useQuery();
-  
+
   const { enqueueSnackbar } = useSnackbar();
   const [remainingAccesses, setRemainingAccesses] = React.useState(user?.remainingAccesses);
-  
+
   const handleOpenNavMenu = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
   }, []);
@@ -60,8 +62,14 @@ export function ResponsiveAppBar() {
 
   const handleCloseUserMenu = React.useCallback(() => {
     setAnchorElUser(null);
-  },[]);
+  }, []);
 
+  const utils = api.useContext();
+
+  const handleNotifications = React.useCallback(() => Promise.all([
+    utils.bookings.getAvailableSlots.invalidate(),
+    utils.bookings.getCurrent.invalidate(),
+  ]), [utils]);
 
   React.useEffect(() => {
     if (user?.remainingAccesses === undefined) return;
@@ -77,6 +85,23 @@ export function ResponsiveAppBar() {
       },
     });
   }, [user?.remainingAccesses, enqueueSnackbar, setRemainingAccesses, remainingAccesses]);
+
+  React.useEffect(() => {
+    const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_APP_KEY, {
+      cluster: env.NEXT_PUBLIC_PUSHER_APP_CLUSTER,
+      wsHost: env.NEXT_PUBLIC_PUSHER_APP_HOST,
+      wsPort: env.NEXT_PUBLIC_PUSHER_APP_PORT ? parseInt(env.NEXT_PUBLIC_PUSHER_APP_PORT) : undefined,
+      forceTLS: env.NEXT_PUBLIC_PUSHER_APP_USE_TLS === 'true',
+      enabledTransports: env.NEXT_PUBLIC_PUSHER_APP_HOST ? ['ws', 'wss'] : undefined,
+    });
+
+    const channel = pusher.subscribe('booking');
+    channel.bind('refresh', handleNotifications);
+
+    return () => {
+      pusher.disconnect();
+    }
+  }, [handleNotifications]);
 
   return (
     <AppBar position="static">
@@ -118,7 +143,7 @@ export function ResponsiveAppBar() {
               ))}
             </Menu>
           </Box>
-         <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
             {pages.map((page) => (
               <Button
                 key={page.id}
@@ -144,7 +169,7 @@ export function ResponsiveAppBar() {
                 vertical: 'top',
                 horizontal: 'right',
               }}
-              
+
               keepMounted
               transformOrigin={{
                 vertical: 'top',

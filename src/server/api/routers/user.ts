@@ -30,7 +30,7 @@ export const userRouter = createTRPCRouter({
     input(CreateUserSchema).
     mutation(async ({ ctx, input }) => {
       try {
-        const { goals, ...rest } = input; 
+        const { goals, ...rest } = input;
         const token = randomBytes(48).toString('base64url')
         const user = await ctx.prisma.user.create({
           data: {
@@ -64,7 +64,7 @@ export const userRouter = createTRPCRouter({
     })
   }),
   update: adminProtectedProcedure.input(UpdateUserSchema).mutation(({ ctx, input }) => {
-    const { goals, ...rest } = input; 
+    const { goals, ...rest } = input;
     return ctx.prisma.user.update({
       where: {
         id: input.id
@@ -93,7 +93,7 @@ export const userRouter = createTRPCRouter({
           verificationTokenExpiresIn: null
         }
       })
-      if (user.count === 0) 
+      if (user.count === 0)
         throw new TRPCError({
           code: 'NOT_FOUND'
         })
@@ -136,7 +136,7 @@ export const userRouter = createTRPCRouter({
     }
   }),
 
-  getActive: adminProtectedProcedure.query(( { ctx } ) => {
+  getActive: adminProtectedProcedure.query(({ ctx }) => {
     return ctx.prisma.user.findMany({
       where: {
         AND: {
