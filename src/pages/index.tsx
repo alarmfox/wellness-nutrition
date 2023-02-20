@@ -240,7 +240,7 @@ interface SlotListProps {
 
 function SlotList({ height }: SlotListProps) {
   const utils = api.useContext();
-  const { data, isLoading: isFetching } = api.bookings.getAvailableSlots.useQuery();
+  const { data, isLoading: isFetching, refetch } = api.bookings.getAvailableSlots.useQuery();
   const { enqueueSnackbar } = useSnackbar();
   const confirm = useConfirm();
   const { mutate, isLoading: isCreating } = api.bookings.create.useMutation({
@@ -249,13 +249,13 @@ function SlotList({ height }: SlotListProps) {
       utils.user.getCurrent.invalidate(),
       utils.bookings.getAvailableSlots.invalidate(),
     ]),
-    onError: async (err) => {
+    onError: (err) => {
       if (err?.data?.code === 'BAD_REQUEST') {
         enqueueSnackbar('Lo slot è stato disabilitato dall\'amministratore', { variant: 'error' });
         return;
       }
       enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
-      await utils.bookings.getAvailableSlots.invalidate();
+      void refetch();
     }, 
   });
 

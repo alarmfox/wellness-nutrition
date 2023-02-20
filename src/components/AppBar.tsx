@@ -66,10 +66,13 @@ export function ResponsiveAppBar() {
 
   const utils = api.useContext();
 
-  const handleNotifications = React.useCallback(() => Promise.all([
-    utils.bookings.getAvailableSlots.invalidate(),
-    utils.bookings.getCurrent.invalidate(),
-  ]), [utils]);
+  const handleNotifications = React.useCallback(async () => {
+    console.log('event');
+    await Promise.all([
+      utils.bookings.getAvailableSlots.invalidate(),
+      utils.bookings.getCurrent.invalidate(),
+    ]);
+  }, [utils]);
 
   React.useEffect(() => {
     if (user?.remainingAccesses === undefined) return;

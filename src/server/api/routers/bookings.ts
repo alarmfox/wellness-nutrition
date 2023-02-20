@@ -104,7 +104,7 @@ export const bookingRouter = createTRPCRouter({
       await Promise.all([
         pusher.trigger('booking', 'user', createNotification(createdEvent)),
         sendOnDeleteBooking(createdEvent.user, input.startsAt),
-        pusher.trigger('booking', 'refresh', {}),
+        pusher.trigger('booking', 'refresh', { startsAt: input.startsAt }),
       ]);
 
     } catch (error) {
@@ -176,11 +176,11 @@ export const bookingRouter = createTRPCRouter({
         startsAt: input.startsAt,
       }
     });
-  
+
     if (slot?.disabled) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
-        message:'Slot disabled'
+        message: 'Slot disabled'
       });
     }
 
@@ -234,7 +234,7 @@ export const bookingRouter = createTRPCRouter({
     await Promise.all([
       pusher.trigger('booking', 'user', createNotification(res[2])),
       sendOnNewBooking(res[2].user, input.startsAt),
-      pusher.trigger('booking', 'refresh', {}),
+      pusher.trigger('booking', 'refresh', { startsAt: input.startsAt }),
     ]);
   }),
 
@@ -325,7 +325,7 @@ export const bookingRouter = createTRPCRouter({
     const ops = input.refundAccess ? [deleteBooking, updateCount, refund] : [deleteBooking, updateCount]
     await Promise.all([
       ctx.prisma.$transaction(ops),
-      pusher.trigger('booking', 'refresh', {}),
+      pusher.trigger('booking', 'refresh', { startsAt: input.startsAt }),
     ]);
   }),
 
