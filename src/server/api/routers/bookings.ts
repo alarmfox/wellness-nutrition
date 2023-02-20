@@ -176,9 +176,10 @@ export const bookingRouter = createTRPCRouter({
         startsAt: input.startsAt,
       }
     });
+  
     if (slot?.disabled) {
       throw new TRPCError({
-        code: 'NOT_FOUND',
+        code: 'BAD_REQUEST',
         message: 'Slot disabled'
       });
     }

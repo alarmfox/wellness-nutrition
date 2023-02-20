@@ -1,11 +1,11 @@
 import * as React from 'react'
-import { 
-    Stack, Button, Typography, CircularProgress, Paper, styled,
-    Toolbar, alpha, IconButton, Tooltip, Box, Checkbox, Table, TableBody,
-    TableCell, TableContainer, TablePagination, TableRow, TableHead,
-    TableSortLabel, FormControl, InputAdornment, InputLabel, 
-    OutlinedInput, Dialog, DialogActions, DialogContent,
-    DialogTitle, TextField, Grid, Alert, MenuItem, Select, FormControlLabel, FormGroup
+import {
+  Stack, Button, Typography, CircularProgress, Paper, styled,
+  Toolbar, alpha, IconButton, Tooltip, Box, Checkbox, Table, TableBody,
+  TableCell, TableContainer, TablePagination, TableRow, TableHead,
+  TableSortLabel, FormControl, InputAdornment, InputLabel,
+  OutlinedInput, Dialog, DialogActions, DialogContent,
+  DialogTitle, TextField, Grid, Alert, MenuItem, Select, FormControlLabel, FormGroup
 } from "@mui/material";
 import { api } from "../utils/api";
 import AddIcon from "@mui/icons-material/Add"
@@ -20,7 +20,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import { ErrorMessage } from '@hookform/error-message';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { CreateUserModel, UpdateUserModel} from '../utils/user.schema';
+import type { CreateUserModel, UpdateUserModel } from '../utils/user.schema';
 import { CreateUserSchema, UpdateUserSchema } from '../utils/user.schema';
 import { DateTime } from 'luxon';
 import { useConfirm } from 'material-ui-confirm';
@@ -35,33 +35,33 @@ const Item = styled(Paper)(({ theme }) => ({
 
 
 export default function Users() {
-    const [showForm, setShowForm] = React.useState(false);
-    const handleClose = React.useCallback(() => setShowForm(false), []); 
-    return (
-      <AdminLayout>
-        <Dialog open={showForm} onClose={handleClose}>
-          <DialogTitle>Nuovo utente</DialogTitle>
-          {/* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */}
-          <CreateUser handleClose={handleClose} />
-        </Dialog>
+  const [showForm, setShowForm] = React.useState(false);
+  const handleClose = React.useCallback(() => setShowForm(false), []);
+  return (
+    <AdminLayout>
+      <Dialog open={showForm} onClose={handleClose}>
+        <DialogTitle>Nuovo utente</DialogTitle>
+        {/* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */}
+        <CreateUser handleClose={handleClose} />
+      </Dialog>
 
-        <Stack>
-          <Item>
-            <UsersTable />
-          </Item>
-          <Item sx={{display: 'flex', justifyContent: 'end'}}>
-            <Button variant="contained" onClick={() => setShowForm(true)} endIcon={<AddIcon />}>
-              Aggiungi Utente
-            </Button>
-          </Item>
-        </Stack>
-      </AdminLayout>
-    )
+      <Stack>
+        <Item>
+          <UsersTable />
+        </Item>
+        <Item sx={{ display: 'flex', justifyContent: 'end' }}>
+          <Button variant="contained" onClick={() => setShowForm(true)} endIcon={<AddIcon />}>
+            Aggiungi Utente
+          </Button>
+        </Item>
+      </Stack>
+    </AdminLayout>
+  )
 }
 
 Users.auth = {
   isProtected: true,
-  role: [ Role.ADMIN ]
+  role: [Role.ADMIN]
 }
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
@@ -127,7 +127,7 @@ const headCells: readonly HeadCell[] = [
     sorteable: true,
   },
   {
-   id: 'firstName',
+    id: 'firstName',
     numeric: false,
     disablePadding: false,
     label: 'Nome',
@@ -210,7 +210,7 @@ function EnhancedTableHead(props: EnhancedTableProps) {
               >
                 {headCell.label}
                 {orderBy === headCell.id ? (
-                  <Box component="span" sx={visuallyHidden}> 
+                  <Box component="span" sx={visuallyHidden}>
                     {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
                   </Box>
                 ) : null}
@@ -236,7 +236,7 @@ function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
     onSuccess: () => utils.user.getAll.invalidate()
   })
 
-  const handleDelete = React.useCallback(async() => {
+  const handleDelete = React.useCallback(async () => {
     try {
       await confirm({
         description: 'Sicuro di voler cancellare gli utenti selezionati? L\'azione non sarà reversibile.',
@@ -246,11 +246,11 @@ function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
       })
       mutate(selected);
     } catch (error) {
-     console.log(error); 
+      console.log(error);
     }
   }, [selected, mutate, confirm])
 
-  if(isLoading) return <CircularProgress />
+  if (isLoading) return <CircularProgress />
 
   return (
     <Toolbar
@@ -291,7 +291,7 @@ function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
         </Tooltip>
       ) : (
         <Tooltip title="Ricerca per cognome">
-          <FormControl sx={{ m : '.5rem'}} variant="outlined">
+          <FormControl sx={{ m: '.5rem' }} variant="outlined">
             <InputLabel htmlFor="search">Cerca per congnome</InputLabel>
             <OutlinedInput
               id="search"
@@ -311,7 +311,7 @@ function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
 }
 
 function UsersTable() {
-  const { data: rows, isLoading,  } = api.user.getAll.useQuery();
+  const { data: rows, isLoading, } = api.user.getAll.useQuery();
   const [order, setOrder] = React.useState<Order>('asc');
   const [orderBy, setOrderBy] = React.useState<keyof SorteableProperties>('lastName');
   const [selected, setSelected] = React.useState<string[]>([]);
@@ -320,8 +320,8 @@ function UsersTable() {
   const [filteredRows, setFilteredRows] = React.useState<User[]>(rows || [])
   const [search, setSearch] = React.useState<string>('');
   const [showEdit, setShowEdit] = React.useState(false);
-  const [editUser, setEditUser] = React.useState<User | undefined>(undefined); 
-  
+  const [editUser, setEditUser] = React.useState<User | undefined>(undefined);
+
   React.useEffect(() => {
     if (search.length < 2) {
       setFilteredRows(rows || []);
@@ -334,8 +334,8 @@ function UsersTable() {
     })
     setFilteredRows(f || []);
   }, [search, rows])
-  
-  
+
+
   const handleRequestSort = (
     event: React.MouseEvent<unknown>,
     property: keyof User,
@@ -346,7 +346,7 @@ function UsersTable() {
       setOrderBy(property as keyof SorteableProperties);
     }
   };
-  
+
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
       const newSelected = filteredRows.map((n) => n.id);
@@ -355,11 +355,11 @@ function UsersTable() {
     }
     setSelected([]);
   };
-  
+
   const handleClick = React.useCallback((event: React.MouseEvent<unknown>, id: string) => {
     const selectedIndex = selected.indexOf(id);
     let newSelected: string[] = [];
-    
+
     if (selectedIndex === -1) {
       newSelected = newSelected.concat(selected, id);
     } else if (selectedIndex === 0) {
@@ -370,19 +370,19 @@ function UsersTable() {
       newSelected = newSelected.concat(
         selected.slice(0, selectedIndex),
         selected.slice(selectedIndex + 1),
-        );
-      }
-      
-      setSelected(newSelected);
-    }, [selected]);
-    
-    
-    const handleEdit = React.useCallback((event: React.MouseEvent, user: User) => {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      setEditUser(user);
-      setShowEdit(true);
+      );
+    }
+
+    setSelected(newSelected);
+  }, [selected]);
+
+
+  const handleEdit = React.useCallback((event: React.MouseEvent, user: User) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setEditUser(user);
+    setShowEdit(true);
   }, []);
 
   const handleCloseEdit = React.useCallback(() => setShowEdit(false), []);
@@ -395,107 +395,107 @@ function UsersTable() {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-  
+
   const isSelected = (name: string) => selected.indexOf(name) !== -1;
 
   if (!rows || rows.length === 0) return <Typography variant="caption" color="grey">Nessun utente trovato</Typography>
   if (isLoading) return <CircularProgress />
-  
+
   // Avoid a layout jump when reaching the last page with empty rows.
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
-    
+
   return (
     <Box sx={{ width: '100%', mb: 2 }}>
-        <EnhancedTableToolbar setSearch={setSearch} selected={selected} />
-        <TableContainer>
-          <Table
-            sx={{ minWidth: 750 }}
-            aria-labelledby="tableTitle"
-            size="medium"
-          >
-            <EnhancedTableHead
-              numSelected={selected.length}
-              order={order}
-              orderBy={orderBy}
-              onSelectAllClick={handleSelectAllClick}
-              onRequestSort={handleRequestSort}
-              rowCount={rows.length}
-            />
-            <TableBody>
-              {stableSort(filteredRows, getComparator(order, orderBy))
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((row, index) => {
-                  const isItemSelected = isSelected(row.id);
-                  const labelId = `enhanced-table-checkbox-${index}`;
+      <EnhancedTableToolbar setSearch={setSearch} selected={selected} />
+      <TableContainer>
+        <Table
+          sx={{ minWidth: 750 }}
+          aria-labelledby="tableTitle"
+          size="medium"
+        >
+          <EnhancedTableHead
+            numSelected={selected.length}
+            order={order}
+            orderBy={orderBy}
+            onSelectAllClick={handleSelectAllClick}
+            onRequestSort={handleRequestSort}
+            rowCount={rows.length}
+          />
+          <TableBody>
+            {stableSort(filteredRows, getComparator(order, orderBy))
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((row, index) => {
+                const isItemSelected = isSelected(row.id);
+                const labelId = `enhanced-table-checkbox-${index}`;
 
-                  return (
-                    <TableRow
-                      hover
-                      onClick={(event) => handleClick(event, row.id)}
-                      role="checkbox"
-                      aria-checked={isItemSelected}
-                      tabIndex={-1}
-                      key={row.id}
-                      selected={isItemSelected}
+                return (
+                  <TableRow
+                    hover
+                    onClick={(event) => handleClick(event, row.id)}
+                    role="checkbox"
+                    aria-checked={isItemSelected}
+                    tabIndex={-1}
+                    key={row.id}
+                    selected={isItemSelected}
+                  >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        color="primary"
+                        checked={isItemSelected}
+                        inputProps={{
+                          'aria-labelledby': labelId,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell
+                      component="th"
+                      id={labelId}
+                      scope="row"
+                      padding="none"
                     >
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          color="primary"
-                          checked={isItemSelected}
-                          inputProps={{
-                            'aria-labelledby': labelId,
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell
-                        component="th"
-                        id={labelId}
-                        scope="row"
-                        padding="none"
-                      >
-                        {row.lastName}
-                      </TableCell>
-                      <TableCell>{row.firstName}</TableCell>
-                      <TableCell>{row.email}</TableCell>
-                      <TableCell>{row.subType === SubType.SHARED ? 'Condiviso' : 'Singolo'}</TableCell>
-                      <TableCell>{row.expiresAt.toISOString().split('T')[0]}</TableCell>
-                      <TableCell align="right">{row.remainingAccesses}</TableCell>
-                      <TableCell>
-                        <Button onClick={(e) => handleEdit(e, row)}>
-                          <EditIcon />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              {emptyRows > 0 && (
-                <TableRow
-                  style={{
-                    height: 53 * emptyRows,
-                  }}
-                >
-                  <TableCell colSpan={6} />
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={rows.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-        <Dialog open={showEdit} onClose={handleCloseEdit}>
-          <DialogTitle>Modifica utente</DialogTitle>
-          {/* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */}
-          <EditUser handleClose={handleCloseEdit} user={editUser!}/>
+                      {row.lastName}
+                    </TableCell>
+                    <TableCell>{row.firstName}</TableCell>
+                    <TableCell>{row.email}</TableCell>
+                    <TableCell>{row.subType === SubType.SHARED ? 'Condiviso' : 'Singolo'}</TableCell>
+                    <TableCell>{row.expiresAt.toISOString().split('T')[0]}</TableCell>
+                    <TableCell align="right">{row.remainingAccesses}</TableCell>
+                    <TableCell>
+                      <Button onClick={(e) => handleEdit(e, row)}>
+                        <EditIcon />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            {emptyRows > 0 && (
+              <TableRow
+                style={{
+                  height: 53 * emptyRows,
+                }}
+              >
+                <TableCell colSpan={6} />
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25]}
+        component="div"
+        count={rows.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+      <Dialog open={showEdit} onClose={handleCloseEdit}>
+        <DialogTitle>Modifica utente</DialogTitle>
+        {/* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */}
+        <EditUser handleClose={handleCloseEdit} user={editUser!} />
 
-        </Dialog>
+      </Dialog>
     </Box>
   );
 }
@@ -511,177 +511,177 @@ function CreateUser({ handleClose }: CreateUserProps) {
     },
     resolver: zodResolver(CreateUserSchema),
   });
-  const [error, setError] = React.useState<string | undefined> (undefined);
+  const [error, setError] = React.useState<string | undefined>(undefined);
   const utils = api.useContext();
   const { mutate, isLoading } = api.user.create.useMutation({
-    onSuccess: ( async () => {
+    onSuccess: (async () => {
       try {
         await utils.user.getAll.invalidate();
         handleClose();
       } catch (error) {
-        setError('Error sconosciuto') 
-      }          
-      }),
+        setError('Error sconosciuto')
+      }
+    }),
     onError: ((error) => {
-      if(error.data?.code === 'CONFLICT') {
-            setError('L\'email risulta gia resgistrata nel sistema!');
-            return;
-        }
-        setError('Impossibile creare l\'utente. Contattare l\'amministatore');
-      }),
-    });
-    
-    const onSubmit = React.useCallback((v: CreateUserModel) => mutate(v), [mutate])
-    
-    return (
-      <DialogContent>
-        {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-        <form onSubmit={handleSubmit(onSubmit)}>
-            <Grid container spacing={3}> 
-                <Grid xs={6} item>
-                  <TextField
-                    margin="normal"
-                    required
-                    fullWidth
-                    id="firstName"
-                    label="Nome"
-                    autoFocus
-                    {...register('firstName')}
-                  />
-                  <ErrorMessage errors={errors} name="firstName" />
-                </Grid>
-                <Grid xs={6} item>
-                  <TextField
-                    margin="normal"
-                    required
-                    fullWidth
-                    id="lastName"
-                    label="Cognome"
-                    {...register('lastName')}
-                  />
-                  <ErrorMessage errors={errors} name="lastName" />
-                </Grid>   
-                <Grid xs={6} item>
-                  <TextField
-                    margin="normal"
-                    required
-                    fullWidth
-                    id="address"
-                    label="Indirizzo"
-                    {...register('address')}
-                  />
-                  <ErrorMessage errors={errors} name="address" />
-                </Grid>
-                <Grid xs={6} item>
-                  <TextField
-                    margin="normal"
-                    fullWidth
-                    id="cellphone"
-                    label="Cellulare"
-                    {...register('cellphone')}
-                  />
-                  <ErrorMessage errors={errors} name="cellphone" />
-                </Grid>
-                <Grid xs={12} item>
-                  <TextField
-                    margin="normal"
-                    fullWidth
-                    id="email"
-                    required
-                    type="email"
-                    label="Indirizzo email"
-                    {...register('email')}
-                  />
-                  <ErrorMessage errors={errors} name="email" />
-                </Grid>
-                <Grid xs={4} item>
-                  <FormControl fullWidth>
-                    <InputLabel id="sub-lable-id">Abbonamento</InputLabel>
-                      <Controller 
-                        name="subType"
-                        control={control}
-                        render={({field}) => 
-                        <Select
-                          {...field}
-                          labelId="sub-label-id"
-                          id="subtype"
-                          label="Abbonamento"
-                          >
-                          <MenuItem value={SubType.SINGLE}>Singolo</MenuItem>
-                          <MenuItem value={SubType.SHARED}>Condiviso</MenuItem>
-                        </Select>            
-                        } 
-                      />
-                    </FormControl> 
-                    <ErrorMessage errors={errors} name="subType" />
-                </Grid>
-                <Grid item xs={2}>
-                   <TextField
-                    fullWidth
-                    type="number"
-                    id="remainingAccesses"
-                    label="Accessi"
-                    required
-                    {...register('remainingAccesses', { valueAsNumber: true, })}
-                   />
+      if (error.data?.code === 'CONFLICT') {
+        setError('L\'email risulta gia resgistrata nel sistema!');
+        return;
+      }
+      setError('Impossibile creare l\'utente. Contattare l\'amministatore');
+    }),
+  });
 
-                  <ErrorMessage errors={errors} name="remainingAccesses" />
-                </Grid>
-                <Grid item xs={6}>
-                   <TextField
-                    fullWidth
-                    type="date"
-                    id="expiresAt"
-                    defaultValue={DateTime.now().plus({ months: 1}).toFormat('yyyy-LL-dd')}
-                    required
-                    {...register('expiresAt', { valueAsDate: true } )}
-                    label="Scadenza"
-                    InputLabelProps={{
-                        shrink: true,
-                    }}
-                   />
-                  <ErrorMessage errors={errors} name="expiresAt" />
-                </Grid>
-                <Grid item xs={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="goals-label-id">Obiettivi</InputLabel>
-                    <Controller 
-                      name="goals"
-                      control={control}
-                      render={({field}) => 
-                        <Select
-                          {...field}
-                          labelId="goals-label-id"
-                          id="goals-select"
-                          multiple
-                          defaultValue={[]}
-                          label="Obiettivi"
-                        >
-                          <MenuItem value="Dimagrimento">Dimagrimento</MenuItem>
-                          <MenuItem value="Posturale">Posturale</MenuItem>
-                          <MenuItem value="Tonificazione">Tonificazione</MenuItem>
-                          <MenuItem value="Potenziamento">Potenziamento</MenuItem>
-                          <MenuItem value="Benessere">Benessere</MenuItem>
-                        </Select>            
-                      }
-                    />
-                    </FormControl> 
-                    <ErrorMessage errors={errors} name="subType" />
-                </Grid>
-                <Grid item xs={6}>
-                  <FormGroup>
-                    <FormControlLabel {...register('medOk')} control={<Checkbox />} label="Certificato medico" />
-                  </FormGroup>
-                </Grid>
-            </Grid>
-            {error && <Alert sx={{mt:'1.5rem'}} variant="filled" severity="error">{error}</Alert>}
-            <DialogActions>
-              {isLoading && <CircularProgress />}
-              <Button onClick={handleClose}>Annulla</Button>
-              <Button variant="contained" type="submit">Conferma</Button>
-            </DialogActions>
-        </form>
-      </DialogContent>
+  const onSubmit = React.useCallback((v: CreateUserModel) => mutate(v), [mutate])
+
+  return (
+    <DialogContent>
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Grid container spacing={3}>
+          <Grid xs={6} item>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="firstName"
+              label="Nome"
+              autoFocus
+              {...register('firstName')}
+            />
+            <ErrorMessage errors={errors} name="firstName" />
+          </Grid>
+          <Grid xs={6} item>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="lastName"
+              label="Cognome"
+              {...register('lastName')}
+            />
+            <ErrorMessage errors={errors} name="lastName" />
+          </Grid>
+          <Grid xs={6} item>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="address"
+              label="Indirizzo"
+              {...register('address')}
+            />
+            <ErrorMessage errors={errors} name="address" />
+          </Grid>
+          <Grid xs={6} item>
+            <TextField
+              margin="normal"
+              fullWidth
+              id="cellphone"
+              label="Cellulare"
+              {...register('cellphone')}
+            />
+            <ErrorMessage errors={errors} name="cellphone" />
+          </Grid>
+          <Grid xs={12} item>
+            <TextField
+              margin="normal"
+              fullWidth
+              id="email"
+              required
+              type="email"
+              label="Indirizzo email"
+              {...register('email')}
+            />
+            <ErrorMessage errors={errors} name="email" />
+          </Grid>
+          <Grid xs={4} item>
+            <FormControl fullWidth>
+              <InputLabel id="sub-lable-id">Abbonamento</InputLabel>
+              <Controller
+                name="subType"
+                control={control}
+                render={({ field }) =>
+                  <Select
+                    {...field}
+                    labelId="sub-label-id"
+                    id="subtype"
+                    label="Abbonamento"
+                  >
+                    <MenuItem value={SubType.SINGLE}>Singolo</MenuItem>
+                    <MenuItem value={SubType.SHARED}>Condiviso</MenuItem>
+                  </Select>
+                }
+              />
+            </FormControl>
+            <ErrorMessage errors={errors} name="subType" />
+          </Grid>
+          <Grid item xs={2}>
+            <TextField
+              fullWidth
+              type="number"
+              id="remainingAccesses"
+              label="Accessi"
+              required
+              {...register('remainingAccesses', { valueAsNumber: true, })}
+            />
+
+            <ErrorMessage errors={errors} name="remainingAccesses" />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField
+              fullWidth
+              type="date"
+              id="expiresAt"
+              defaultValue={DateTime.now().plus({ months: 1 }).toFormat('yyyy-LL-dd')}
+              required
+              {...register('expiresAt', { valueAsDate: true })}
+              label="Scadenza"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+            <ErrorMessage errors={errors} name="expiresAt" />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControl fullWidth>
+              <InputLabel id="goals-label-id">Obiettivi</InputLabel>
+              <Controller
+                name="goals"
+                control={control}
+                render={({ field }) =>
+                  <Select
+                    {...field}
+                    labelId="goals-label-id"
+                    id="goals-select"
+                    multiple
+                    defaultValue={[]}
+                    label="Obiettivi"
+                  >
+                    <MenuItem value="Dimagrimento">Dimagrimento</MenuItem>
+                    <MenuItem value="Posturale">Posturale</MenuItem>
+                    <MenuItem value="Tonificazione">Tonificazione</MenuItem>
+                    <MenuItem value="Potenziamento">Potenziamento</MenuItem>
+                    <MenuItem value="Benessere">Benessere</MenuItem>
+                  </Select>
+                }
+              />
+            </FormControl>
+            <ErrorMessage errors={errors} name="subType" />
+          </Grid>
+          <Grid item xs={6}>
+            <FormGroup>
+              <FormControlLabel {...register('medOk')} control={<Checkbox />} label="Certificato medico" />
+            </FormGroup>
+          </Grid>
+        </Grid>
+        {error && <Alert sx={{ mt: '1.5rem' }} variant="filled" severity="error">{error}</Alert>}
+        <DialogActions>
+          {isLoading && <CircularProgress />}
+          <Button onClick={handleClose}>Annulla</Button>
+          <Button variant="contained" type="submit">Conferma</Button>
+        </DialogActions>
+      </form>
+    </DialogContent>
   )
 }
 interface EditUserProps {
@@ -689,7 +689,7 @@ interface EditUserProps {
   handleClose: () => void
 }
 
-function toUserModel({ goals, ...rest}: User): UpdateUserModel {
+function toUserModel({ goals, ...rest }: User): UpdateUserModel {
   return {
     ...rest,
     goals: goals?.split('-')
@@ -700,13 +700,13 @@ function EditUser({ user, handleClose }: EditUserProps) {
     defaultValues: toUserModel(user),
     resolver: zodResolver(UpdateUserSchema)
   });
-  const [error, setError] = React.useState<string | undefined> (undefined);
+  const [error, setError] = React.useState<string | undefined>(undefined);
   const utils = api.useContext();
   const { mutate: updateUser, isLoading, } = api.user.update.useMutation({
     onSuccess: async () => {
       try {
         await utils.user.getAll.invalidate();
-        handleClose();        
+        handleClose();
       } catch (error) {
         setError('Error sconosciuto');
       }
@@ -714,7 +714,7 @@ function EditUser({ user, handleClose }: EditUserProps) {
     },
     onError: () => setError('Impossibile modificare l\'utente. Contattare l\'amministratore.')
   })
-  
+
   React.useEffect(() => {
     setTimeout(() => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -729,146 +729,146 @@ function EditUser({ user, handleClose }: EditUserProps) {
     <DialogContent>
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <form onSubmit={handleSubmit(onSubmit)}>
-         <Grid container spacing={3}> 
-            <Grid xs={6} item>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="firstName"
-                label="Nome"
-                autoFocus
-                {...register('firstName')}
-               />
-              <ErrorMessage errors={errors} name="firstName" />
-             </Grid>
-             <Grid xs={6} item>
-                <TextField
-                 margin="normal"
-                 required
-                 fullWidth
-                 id="lastName"
-                 label="Cognome"
-                 {...register('lastName')}
-                />
-                <ErrorMessage errors={errors} name="lastName" />
-             </Grid>   
-             <Grid xs={6} item>
-                <TextField
-                 margin="normal"
-                 required
-                 fullWidth
-                 id="address"
-                 label="Indirizzo"
-                 {...register('address')}
-                />
-                <ErrorMessage errors={errors} name="address" />
-             </Grid>
-             <Grid xs={6} item>
-                <TextField
-                 margin="normal"
-                 fullWidth
-                 id="cellphone"
-                 label="Cellulare"
-                 {...register('cellphone')}
-                />
-                <ErrorMessage errors={errors} name="cellphone" />
-             </Grid>
-             <Grid xs={12} item>
-                <TextField
-                 margin="normal"
-                 fullWidth
-                 id="email"
-                 disabled
-                 type="email"
-                 label="Indirizzo email"
-                 value={user.email}
-                />
-             </Grid>
-             <Grid xs={4} item>
-                <FormControl fullWidth>
-                  <InputLabel id="subTypeL">Abbonamento</InputLabel>
-                  <Controller 
-                    name="subType"
-                    control={control}
-                    render={({field}) => 
-                      <Select
-                        {...field}
-                        labelId="subTypeL"
-                        id="subTypeSelect"
-                        label="Abbonamento"
-                      >
-                        <MenuItem value={SubType.SINGLE}>Singolo</MenuItem>
-                        <MenuItem value={SubType.SHARED}>Condiviso</MenuItem>
-                      </Select>            
-                  } 
-                 />
-                  <ErrorMessage errors={errors} name="subType" />
-                </FormControl> 
-             </Grid>
-             <Grid item xs={2}>
-               <TextField
-                 fullWidth
-                 type="number"
-                 id="remainingAccesses"
-                 label="Accessi"
-                 required
-                 {...register('remainingAccesses', { valueAsNumber: true, })}
-               />
-               <ErrorMessage errors={errors} name="remainingAccesses" />
-             </Grid>
-             <Grid item xs={6}>
-               <TextField
-                fullWidth
-                type="date"
-                id="expiresAt"
-                required
-                {...register('expiresAt', {valueAsDate: true} )}
-                label="Scadenza"
-                InputLabelProps={{
-                    shrink: true,
-                }}
-               />
-               <ErrorMessage errors={errors} name="expiresAt" />
-            </Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth>
-                <InputLabel id="goals-label-id">Obiettivi</InputLabel>
-                <Controller 
-                  name="goals"
-                  control={control}
-                  render={({field}) => 
-                    <Select
-                      {...field}
-                      labelId="goals-label-id"
-                      id="goals-select"
-                      multiple
-                      defaultValue={[]}
-                      label="Obiettivi"
-                    >
-                      <MenuItem value="Dimagrimento">Dimagrimento</MenuItem>
-                      <MenuItem value="Posturale">Posturale</MenuItem>
-                      <MenuItem value="Tonificazione">Tonificazione</MenuItem>
-                      <MenuItem value="Potenziamento">Potenziamento</MenuItem>
-                      <MenuItem value="Benessere">Benessere</MenuItem>
-                    </Select>            
-                  }
-                />
-                </FormControl> 
-                  <ErrorMessage errors={errors} name="goals" />
-            </Grid>
-            <Grid item>
-              <FormGroup>
-                <FormControlLabel {...register('medOk')} control={<Checkbox defaultChecked={user.medOk}/>} label="Certificato medico" />
-              </FormGroup>
-            </Grid>
+        <Grid container spacing={3}>
+          <Grid xs={6} item>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="firstName"
+              label="Nome"
+              autoFocus
+              {...register('firstName')}
+            />
+            <ErrorMessage errors={errors} name="firstName" />
           </Grid>
-         {error && <Alert sx={{mt:'1.5rem'}} variant="filled" severity="error">{error}</Alert>}
-         <DialogActions>
-            {isLoading && <CircularProgress />}
-            <Button onClick={handleClose}>Annulla</Button>
-            <Button disabled={!isDirty} variant="contained" type="submit">Conferma</Button>
-         </DialogActions>
+          <Grid xs={6} item>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="lastName"
+              label="Cognome"
+              {...register('lastName')}
+            />
+            <ErrorMessage errors={errors} name="lastName" />
+          </Grid>
+          <Grid xs={6} item>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="address"
+              label="Indirizzo"
+              {...register('address')}
+            />
+            <ErrorMessage errors={errors} name="address" />
+          </Grid>
+          <Grid xs={6} item>
+            <TextField
+              margin="normal"
+              fullWidth
+              id="cellphone"
+              label="Cellulare"
+              {...register('cellphone')}
+            />
+            <ErrorMessage errors={errors} name="cellphone" />
+          </Grid>
+          <Grid xs={12} item>
+            <TextField
+              margin="normal"
+              fullWidth
+              id="email"
+              disabled
+              type="email"
+              label="Indirizzo email"
+              value={user.email}
+            />
+          </Grid>
+          <Grid xs={4} item>
+            <FormControl fullWidth>
+              <InputLabel id="subTypeL">Abbonamento</InputLabel>
+              <Controller
+                name="subType"
+                control={control}
+                render={({ field }) =>
+                  <Select
+                    {...field}
+                    labelId="subTypeL"
+                    id="subTypeSelect"
+                    label="Abbonamento"
+                  >
+                    <MenuItem value={SubType.SINGLE}>Singolo</MenuItem>
+                    <MenuItem value={SubType.SHARED}>Condiviso</MenuItem>
+                  </Select>
+                }
+              />
+              <ErrorMessage errors={errors} name="subType" />
+            </FormControl>
+          </Grid>
+          <Grid item xs={2}>
+            <TextField
+              fullWidth
+              type="number"
+              id="remainingAccesses"
+              label="Accessi"
+              required
+              {...register('remainingAccesses', { valueAsNumber: true, })}
+            />
+            <ErrorMessage errors={errors} name="remainingAccesses" />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField
+              fullWidth
+              type="date"
+              id="expiresAt"
+              required
+              {...register('expiresAt', { valueAsDate: true })}
+              label="Scadenza"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+            <ErrorMessage errors={errors} name="expiresAt" />
+          </Grid>
+          <Grid item xs={6}>
+            <FormControl fullWidth>
+              <InputLabel id="goals-label-id">Obiettivi</InputLabel>
+              <Controller
+                name="goals"
+                control={control}
+                render={({ field }) =>
+                  <Select
+                    {...field}
+                    labelId="goals-label-id"
+                    id="goals-select"
+                    multiple
+                    defaultValue={[]}
+                    label="Obiettivi"
+                  >
+                    <MenuItem value="Dimagrimento">Dimagrimento</MenuItem>
+                    <MenuItem value="Posturale">Posturale</MenuItem>
+                    <MenuItem value="Tonificazione">Tonificazione</MenuItem>
+                    <MenuItem value="Potenziamento">Potenziamento</MenuItem>
+                    <MenuItem value="Benessere">Benessere</MenuItem>
+                  </Select>
+                }
+              />
+            </FormControl>
+            <ErrorMessage errors={errors} name="goals" />
+          </Grid>
+          <Grid item>
+            <FormGroup>
+              <FormControlLabel {...register('medOk')} control={<Checkbox defaultChecked={user.medOk} />} label="Certificato medico" />
+            </FormGroup>
+          </Grid>
+        </Grid>
+        {error && <Alert sx={{ mt: '1.5rem' }} variant="filled" severity="error">{error}</Alert>}
+        <DialogActions>
+          {isLoading && <CircularProgress />}
+          <Button onClick={handleClose}>Annulla</Button>
+          <Button disabled={!isDirty} variant="contained" type="submit">Conferma</Button>
+        </DialogActions>
       </form>
 
     </DialogContent>

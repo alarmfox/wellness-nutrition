@@ -19,7 +19,7 @@ import { DateTime } from 'luxon';
 import { Scheduler } from '../components/Scheduler';
 
 import { Subscription } from '../components/Subscription';
-import exp from 'constants';
+import { useSnackbar } from 'notistack';
 
 function Home() {
   const { data: sessionData } = useSession();
@@ -103,7 +103,7 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
   const booking = data[index];
   const confirm = useConfirm();
   const utils = api.useContext();
-  const [error, setError] = React.useState<string | undefined>(undefined);
+  const { enqueueSnackbar } = useSnackbar();
 
   const { mutate, isLoading } = api.bookings.delete.useMutation({
     onSuccess: () => Promise.all([
@@ -112,10 +112,14 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
     ]),
     onError: (err) => {
       if (err?.data?.code === 'NOT_FOUND') {
-        setError('Impossibile trovare la prenotazione')
+        enqueueSnackbar('Impossibile trovare la prenotazione', {
+          variant: 'error'
+        });
         return;
       }
-      setError('Errore sconosciuto')
+      enqueueSnackbar('Impossibile cancellare la prenotazione. Contattare l\'amministratore del sistema', {
+        variant: 'error',
+      });
     }
   })
 
@@ -145,26 +149,23 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
   if (!booking) return <div>no data</div>
   return (
     <ListItemButton divider disabled={DateTime.fromJSDate(booking.startsAt) < DateTime.now()} key={index} style={style}>
-      {error ? <Alert severity="error">{error}</Alert> : <>
-        <ListItemIcon sx={{ fontSize: 16 }}>
-          <Event />
-        </ListItemIcon>
-        <ListItemText
-          sx={{ my: '.5rem' }}
-          primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
-          primaryTypographyProps={{
-            fontSize: 16,
-            fontWeight: 'medium',
-            letterSpacing: 0,
-          }}
-          secondary={`Effettuata ${formatDate(booking.createdAt, DateTime.DATETIME_MED)}`}
-        />
-        {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-        {isLoading ? <CircularProgress /> : <ListItemIcon sx={{ fontSize: 18 }} onClick={() => handleClick(booking)}>
-          <Delete />
-        </ListItemIcon>
-        }
-      </>
+      <ListItemIcon sx={{ fontSize: 16 }}>
+        <Event />
+      </ListItemIcon>
+      <ListItemText
+        sx={{ my: '.5rem' }}
+        primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
+        primaryTypographyProps={{
+          fontSize: 16,
+          fontWeight: 'medium',
+          letterSpacing: 0,
+        }}
+        secondary={`Effettuata ${formatDate(booking.createdAt, DateTime.DATETIME_MED)}`}
+      />
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      {isLoading ? <CircularProgress /> : <ListItemIcon sx={{ fontSize: 18 }} onClick={() => handleClick(booking)}>
+        <Delete />
+      </ListItemIcon>
       }
     </ListItemButton>
   );
@@ -240,8 +241,7 @@ interface SlotListProps {
 function SlotList({ height }: SlotListProps) {
   const utils = api.useContext();
   const { data, isLoading: isFetching } = api.bookings.getAvailableSlots.useQuery();
-  const [error, setError] = React.useState<string | undefined>(undefined);
-
+  const { enqueueSnackbar } = useSnackbar();
   const confirm = useConfirm();
   const { mutate, isLoading: isCreating } = api.bookings.create.useMutation({
     onSuccess: () => Promise.all([
@@ -250,11 +250,11 @@ function SlotList({ height }: SlotListProps) {
       utils.bookings.getAvailableSlots.invalidate(),
     ]),
     onError: (err) => {
-      if (err?.data?.code === 'NOT_FOUND') {
-        setError('Impossibile trovare la prenotazione')
+      if (err?.data?.code === 'BAD_REQUEST') {
+        enqueueSnackbar('Lo slot è stato disabilitato dall\'amministratore', { variant: 'error' });
         return;
       }
-      setError('Errore sconosciuto')
+      enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
     }
   });
 
@@ -294,7 +294,6 @@ function SlotList({ height }: SlotListProps) {
       >
         <CircularProgress sx={{ textAlign: 'center' }} />
       </Backdrop>
-      {error && <Alert variant="filled" severity="error">{error}</Alert>}
       {rows &&
         <FixedSizeList
           height={height}
