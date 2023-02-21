@@ -15,6 +15,7 @@ export const AdminDeleteSchema = z.object({
   startsAt: z.date(),
   userId: z.string().optional(),
   isDisabled: z.boolean().default(false),
+  userSubType: z.nativeEnum(SubType).optional(),
 });
 
 export const IntervalSchema = z.object({

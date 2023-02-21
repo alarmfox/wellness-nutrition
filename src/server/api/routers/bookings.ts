@@ -91,7 +91,7 @@ export const bookingRouter = createTRPCRouter({
           userId: ctx.session.user.id,
         },
         include: {
-          user: true
+          user: true,
         }
       })
       const ops = input.isRefundable ? [deleteBooking, resetCounter, refund, logEvent] : [deleteBooking, resetCounter, logEvent]
@@ -142,7 +142,7 @@ export const bookingRouter = createTRPCRouter({
             {
               AND: {
                 peopleCount: {
-                  gte: ctx.session.user.subType === 'SHARED' ? 2 : 0,
+                  gte: ctx.session.user.subType === 'SHARED' ? 2 : 1,
                 },
                 startsAt: {
                   gte: startDate.toJSDate(),
@@ -314,7 +314,7 @@ export const bookingRouter = createTRPCRouter({
       },
       data: {
         peopleCount: {
-          decrement: 1,
+          decrement: input.userSubType === 'SHARED' ? 1 : 2,
         }
       }
     });

@@ -21,6 +21,7 @@ export const userRouter = createTRPCRouter({
     if (user) user.password = null;
     return user;
   }),
+
   getAll: adminProtectedProcedure.query(({ ctx }) => {
     return ctx.prisma.user.findMany({
       where: {
