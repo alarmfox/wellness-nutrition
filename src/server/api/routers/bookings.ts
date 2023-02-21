@@ -118,7 +118,7 @@ export const bookingRouter = createTRPCRouter({
               goals: true,
             },
           },
-        } 
+        }
       });
 
       const isRefundable = DateTime.fromJSDate(input.startsAt).toUTC().diffNow().as('hours') > 3;
@@ -209,10 +209,20 @@ export const bookingRouter = createTRPCRouter({
         message: 'Slot disabled'
       });
     }
+    const { user: { subType, id } } = ctx.session;
+
+    if (slot) {
+      if (subType === 'SHARED' && slot?.peopleCount >= 2 || subType === 'SINGLE' && slot?.peopleCount >= 1) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Slot full',
+        });
+      }
+    }
 
     const updateAccesses = ctx.prisma.user.update({
       where: {
-        id: ctx.session.user.id,
+        id,
       },
       data: {
         remainingAccesses: {
@@ -224,20 +234,20 @@ export const bookingRouter = createTRPCRouter({
     const createSlot = ctx.prisma.slot.upsert({
       create: {
         startsAt: input.startsAt,
-        peopleCount: ctx.session.user.subType === 'SHARED' ? 1 : 2,
+        peopleCount: subType === 'SHARED' ? 1 : 2,
         bookings: {
           create: {
-            userId: ctx.session.user.id,
+            userId: id,
           }
         }
       },
       update: {
         peopleCount: {
-          increment: ctx.session.user.subType === 'SHARED' ? 1 : 2,
+          increment: subType === 'SHARED' ? 1 : 2,
         },
         bookings: {
           create: {
-            userId: ctx.session.user.id,
+            userId: id,
           }
         }
       },
@@ -250,7 +260,7 @@ export const bookingRouter = createTRPCRouter({
       data: {
         type: 'CREATED',
         startsAt: input.startsAt,
-        userId: ctx.session.user.id,
+        userId: id,
       },
       include: {
         user: true,

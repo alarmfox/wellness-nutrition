@@ -116,11 +116,11 @@ function BookingList({ height }: BookingListProps) {
         enqueueSnackbar('Impossibile trovare la prenotazione', {
           variant: 'error'
         });
-        return;
+      } else {
+        enqueueSnackbar('Impossibile cancellare la prenotazione. Contattare l\'amministratore del sistema', {
+          variant: 'error',
+        });
       }
-      enqueueSnackbar('Impossibile cancellare la prenotazione. Contattare l\'amministratore del sistema', {
-        variant: 'error',
-      });
     }
   });
   const isLoading = React.useMemo(() => isFetching || isDeleting, [isFetching, isDeleting]);
@@ -231,10 +231,13 @@ function SlotList({ height }: SlotListProps) {
     onError: (err) => {
       if (err?.data?.code === 'BAD_REQUEST') {
         enqueueSnackbar('Lo slot è stato disabilitato dall\'amministratore', { variant: 'error' });
-        return;
+      } else if (err?.data?.code === 'CONFLICT') {
+        enqueueSnackbar('Lo slot risulta già prenotato.', { variant: 'error' });
+      } else {
+        enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
       }
-      enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
       void utils.bookings.getAvailableSlots.invalidate();
+
     },
   });
 
