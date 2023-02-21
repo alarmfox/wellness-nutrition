@@ -14,7 +14,7 @@ import type { ListChildComponentProps } from 'react-window';
 import { FixedSizeList } from 'react-window';
 import { Delete, Event } from '@mui/icons-material';
 import AdminLayout from '../components/AdminLayout';
-import { formatBooking, formatDate } from '../utils/format.utils';
+import { formatBooking, formatDate, zone } from '../utils/format.utils';
 import { DateTime } from 'luxon';
 import { Scheduler } from '../components/Scheduler';
 
@@ -98,39 +98,6 @@ Home.auth = {
 
 export default Home;
 
-interface BookingActionProps {
-  booking: Booking;
-  cb: (b: Booking) => Promise<void>
-}
-function RenderBooking(props: ListChildComponentProps<BookingActionProps[]>) {
-  const { index, style, data } = props;
-  const prop = data.at(index);
-  if (!prop) return <div>no data</div>
-  const { booking, cb } = prop;
-
-  return (
-    <ListItemButton divider disabled={DateTime.fromJSDate(booking.startsAt) < DateTime.now()} key={index} style={style}>
-      <ListItemIcon sx={{ fontSize: 16 }}>
-        <Event />
-      </ListItemIcon>
-      <ListItemText
-        sx={{ my: '.5rem' }}
-        primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
-        primaryTypographyProps={{
-          fontSize: 16,
-          fontWeight: 'medium',
-          letterSpacing: 0,
-        }}
-        secondary={`Effettuata ${formatDate(booking.createdAt, DateTime.DATETIME_MED)}`}
-      />
-      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <ListItemIcon sx={{ fontSize: 18 }} onClick={() => void cb(booking)}>
-        <Delete />
-      </ListItemIcon>
-    </ListItemButton>
-  );
-}
-
 interface BookingListProps {
   height: number;
 }
@@ -171,7 +138,7 @@ function BookingList({ height }: BookingListProps) {
       })
       mutate({
         id,
-        startsAt,
+        startsAt: DateTime.fromJSDate(startsAt).setZone(zone).toJSDate(),
         isRefundable,
       });
 
@@ -215,37 +182,37 @@ function BookingList({ height }: BookingListProps) {
   );
 }
 
-interface CreateBookingFromSlotProps {
-  slot: string;
-  cb: (s: string) => Promise<void>
+interface BookingActionProps {
+  booking: Booking;
+  cb: (b: Booking) => Promise<void>
 }
-
-
-function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>) {
-
+function RenderBooking(props: ListChildComponentProps<BookingActionProps[]>) {
   const { index, style, data } = props;
-
   const prop = data.at(index);
   if (!prop) return <div>no data</div>
-  const { slot, cb } = prop;
+  const { booking, cb } = prop;
+
   return (
-    <ListItemButton divider onClick={() => void cb(slot)} style={style}>
-      <ListItemIcon>
+    <ListItemButton divider disabled={DateTime.fromJSDate(booking.startsAt) < DateTime.now()} key={index} style={style}>
+      <ListItemIcon sx={{ fontSize: 16 }}>
         <Event />
       </ListItemIcon>
       <ListItemText
         sx={{ my: '.5rem' }}
-        primary={formatDate(slot, DateTime.DATE_MED_WITH_WEEKDAY)}
+        primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
         primaryTypographyProps={{
           fontSize: 16,
           fontWeight: 'medium',
           letterSpacing: 0,
         }}
-        secondary={`Dalle ${DateTime.fromISO(slot).toFormat('HH:mm')}
-        alle ${DateTime.fromISO(slot).plus({ hours: 1 }).toFormat('HH:mm')}`}
+        secondary={`Effettuata ${formatDate(booking.createdAt, DateTime.DATETIME_MED)}`}
       />
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      <ListItemIcon sx={{ fontSize: 18 }} onClick={() => void cb(booking)}>
+        <Delete />
+      </ListItemIcon>
     </ListItemButton>
-  )
+  );
 }
 
 interface SlotListProps {
@@ -283,7 +250,7 @@ function SlotList({ height }: SlotListProps) {
         confirmationText: 'Conferma',
       });
       mutate({
-        startsAt: DateTime.fromISO(startsAt).toJSDate(),
+        startsAt: DateTime.fromISO(startsAt).setZone(zone).toJSDate(),
       });
 
     } catch (error) {
@@ -296,7 +263,7 @@ function SlotList({ height }: SlotListProps) {
     return data?.map((item): CreateBookingFromSlotProps => {
       return {
         slot: item,
-        cb: handleClick
+        cb: handleClick,
       }
     })
   }, [data, handleClick]);
@@ -324,3 +291,35 @@ function SlotList({ height }: SlotListProps) {
   );
 }
 
+interface CreateBookingFromSlotProps {
+  slot: string;
+  cb: (s: string) => Promise<void>
+}
+
+
+function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>) {
+
+  const { index, style, data } = props;
+
+  const prop = data.at(index);
+  if (!prop) return <div>no data</div>
+  const { slot, cb } = prop;
+  return (
+    <ListItemButton divider onClick={() => void cb(slot)} style={style}>
+      <ListItemIcon>
+        <Event />
+      </ListItemIcon>
+      <ListItemText
+        sx={{ my: '.5rem' }}
+        primary={formatDate(slot, DateTime.DATE_MED_WITH_WEEKDAY)}
+        primaryTypographyProps={{
+          fontSize: 16,
+          fontWeight: 'medium',
+          letterSpacing: 0,
+        }}
+        secondary={`Dalle ${DateTime.fromISO(slot).setZone(zone).toFormat('HH:mm')}
+        alle ${DateTime.fromISO(slot).setZone(zone).plus({ hours: 1 }).toFormat('HH:mm')}`}
+      />
+    </ListItemButton>
+  )
+}

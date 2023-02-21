@@ -1,6 +1,6 @@
 import { DateTime, Interval } from "luxon";
 
-const zone = 'Europe/Rome';
+export const zone = 'Europe/Rome';
 
 export const defaultFormatOpts: Intl.DateTimeFormatOptions = {
   weekday: 'long',
