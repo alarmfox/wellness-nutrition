@@ -138,7 +138,6 @@ function BookingList({ height }: BookingListProps) {
       mutate({
         id,
         startsAt: DateTime.fromJSDate(startsAt).setZone(zone).toJSDate(),
-        isRefundable,
       });
 
     } catch (error) {
