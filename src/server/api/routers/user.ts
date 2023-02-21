@@ -10,18 +10,30 @@ import { sendWelcomeEmail, sendResetEmail } from "../../mail";
 import { VerifyAccountSchema } from "../../../utils/verifiy.schema";
 import argon2 from "argon2";
 
+function exclude<User, Key extends keyof User>(
+  user: User,
+  keys: Key[]
+): Omit<User, Key> {
+  for (let key of keys) {
+    delete user[key]
+  }
+  return user
+}
+
 export const userRouter = createTRPCRouter({
-  getCurrent: protectedProcedure.query(({ ctx }) => {
-    return ctx.prisma.user.findUnique({
+  getCurrent: protectedProcedure.query(async ({ ctx }) => {
+    const user = await ctx.prisma.user.findUnique({
       where: {
-        id: ctx.session.user.id
-      }
-    })
+        id: ctx.session.user.id,
+      },
+    });
+    //@ts-ignore
+    return exclude(user, ['password']);
   }),
   getAll: adminProtectedProcedure.query(({ ctx }) => {
     return ctx.prisma.user.findMany({
       where: {
-        role: Role.USER
+        role: Role.USER,
       }
     });
   }),

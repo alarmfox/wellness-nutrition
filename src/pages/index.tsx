@@ -190,7 +190,7 @@ function BookingList({ height }: BookingListProps) {
   }, [data, handleClick]);
   return (
     <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
-    <Backdrop
+      <Backdrop
         sx={{ color: 'darkgrey', zIndex: (theme) => theme.zIndex.drawer + 1 }}
         open={isLoading}
       >
@@ -254,7 +254,7 @@ interface SlotListProps {
 
 function SlotList({ height }: SlotListProps) {
   const utils = api.useContext();
-  const { data, isLoading: isFetching, refetch } = api.bookings.getAvailableSlots.useQuery();
+  const { data, isLoading: isFetching } = api.bookings.getAvailableSlots.useQuery();
   const { enqueueSnackbar } = useSnackbar();
   const confirm = useConfirm();
   const { mutate, isLoading: isCreating } = api.bookings.create.useMutation({

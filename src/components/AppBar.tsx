@@ -98,10 +98,12 @@ export function ResponsiveAppBar() {
       enabledTransports: env.NEXT_PUBLIC_PUSHER_APP_HOST ? ['ws', 'wss'] : undefined,
     });
 
+    console.log('connected');
     const channel = pusher.subscribe('booking');
     channel.bind('refresh', handleNotifications);
 
     return () => {
+      console.log('disconnected');
       pusher.disconnect();
     }
   }, [handleNotifications]);

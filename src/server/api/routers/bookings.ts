@@ -10,7 +10,6 @@ import { pusher } from "../../pusher";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
 
 const businessWeek = [1, 2, 3, 4, 5];
-const zone = 'Europe/Rome';
 
 function isBookeable(d: DateTime): boolean {
   if (d.weekday === 6) return d.hour >= 7 && d.hour <= 11;
@@ -41,7 +40,7 @@ export const bookingRouter = createTRPCRouter({
         AND: {
           userId: ctx.session.user.id,
           startsAt: {
-            gt: DateTime.now().setZone(zone).startOf('month').toJSDate(),
+            gt: DateTime.now().startOf('month').toJSDate(),
           }
         }
       },
@@ -118,7 +117,7 @@ export const bookingRouter = createTRPCRouter({
     }
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
-    const now = DateTime.now().setZone(zone);
+    const now = DateTime.now();
     const isLastWeekOfMonth = now.endOf('month').weekNumber - 1 === now.weekNumber;
     const endDate = isLastWeekOfMonth ? now.plus({ months: 1 }).endOf('month') : now.endOf('month');
     const startDate = now.hour >= 17 ?
@@ -283,7 +282,7 @@ export const bookingRouter = createTRPCRouter({
 
     const t = input.disable ? [...ops] : [...ops, decrementAccesses]
     await ctx.prisma.$transaction(t),
-    await pusher.trigger('booking', 'refresh', {});
+      await pusher.trigger('booking', 'refresh', {});
   }),
 
   adminDelete: adminProtectedProcedure.input(AdminDeleteSchema).mutation(async ({ ctx, input }) => {
