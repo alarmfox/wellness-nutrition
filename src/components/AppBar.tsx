@@ -67,7 +67,6 @@ export function ResponsiveAppBar() {
   const utils = api.useContext();
 
   const handleNotifications = React.useCallback(async () => {
-    console.log('event');
     await Promise.all([
       utils.bookings.getAvailableSlots.invalidate(),
       utils.bookings.getCurrent.invalidate(),
@@ -98,12 +97,10 @@ export function ResponsiveAppBar() {
       enabledTransports: env.NEXT_PUBLIC_PUSHER_APP_HOST ? ['ws', 'wss'] : undefined,
     });
 
-    console.log('connected');
     const channel = pusher.subscribe('booking');
     channel.bind('refresh', handleNotifications);
 
     return () => {
-      console.log('disconnected');
       pusher.disconnect();
     }
   }, [handleNotifications]);

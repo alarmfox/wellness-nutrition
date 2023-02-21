@@ -22,7 +22,7 @@ import { DateTime } from 'luxon';
 import { api } from '../utils/api';
 import Image from 'next/image';
 import { env } from '../env/client.mjs';
-import { formatDate } from '../utils/format.utils';
+import { formatDate } from '../utils/date.utils';
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
@@ -130,13 +130,15 @@ export default function AdminLayout({ children }: React.PropsWithChildren) {
 
   const onLogout = React.useCallback(() => signOut({ callbackUrl: '/' }).catch(console.error), []);
 
-  const handleNotification = React.useCallback((n: NotificationModel) => {
+  const handleNotification = React.useCallback(async (n: NotificationModel) => {
     enqueueSnackbar(formatNotification(n), {
       variant: n.type === 'CREATED' ? 'success' : 'warning'
     });
     setNotifications(notifications.concat(n));
-    void utils.bookings.getByInterval.invalidate();
-    void utils.events.getLatest.invalidate();
+    await Promise.all([
+      utils.events.getLatest.invalidate(),
+      utils.bookings.getByInterval.invalidate(),
+    ]);
   }, [notifications, setNotifications, enqueueSnackbar, utils]);
 
   const onDelete = React.useCallback((i: number) => {

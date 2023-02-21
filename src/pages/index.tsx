@@ -14,7 +14,7 @@ import type { ListChildComponentProps } from 'react-window';
 import { FixedSizeList } from 'react-window';
 import { Delete, Event } from '@mui/icons-material';
 import AdminLayout from '../components/AdminLayout';
-import { formatBooking, formatDate, zone } from '../utils/format.utils';
+import { formatBooking, formatDate, zone } from '../utils/date.utils';
 import { DateTime } from 'luxon';
 import { Scheduler } from '../components/Scheduler';
 
@@ -24,7 +24,7 @@ import { useSnackbar } from 'notistack';
 function Home() {
   const { data: sessionData } = useSession();
 
-  const { data: user, isLoading } = api.user.getCurrent.useQuery();
+  const { data: user } = api.user.getCurrent.useQuery();
   const [creationMode, setCreationMode] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
   const theme = useTheme();
@@ -69,7 +69,6 @@ function Home() {
           }}
         >
           <Subscription setExpanded={setExpanded} />
-          {isLoading && <CircularProgress />}
           <Stack>
             <Typography gutterBottom variant="h6" >{creationMode ? 'Seleziona uno slot' : 'Lista prenotazioni'}</Typography>
           </Stack>

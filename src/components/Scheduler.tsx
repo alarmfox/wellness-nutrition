@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { api } from "../utils/api";
 import type { AdminDeleteModel, IntervalModel } from "../utils/booking.schema";
 import { AdminDeleteSchema } from "../utils/booking.schema";
-import { formatBooking, formatDate } from "../utils/format.utils";
+import { formatBooking, formatDate } from "../utils/date.utils";
 import WorkWeek from "./WorkWeek";
 
 import "react-big-calendar/lib/css/react-big-calendar.css";

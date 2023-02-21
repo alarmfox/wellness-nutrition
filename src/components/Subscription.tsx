@@ -3,7 +3,7 @@ import { Card, CardActions, CardContent, CardMedia, Collapse, Divider, Grid, Ico
 import { DateTime } from "luxon";
 import React from "react";
 import { api } from "../utils/api";
-import { formatDate } from "../utils/format.utils";
+import { formatDate } from "../utils/date.utils";
 
 export interface SubscriptionProps {
   setExpanded: (v: boolean) => void

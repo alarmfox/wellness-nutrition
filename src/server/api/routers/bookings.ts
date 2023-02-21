@@ -5,17 +5,11 @@ import { DateTime, Interval, } from "luxon";
 import { z } from "zod";
 import { AdminCreateSchema, AdminDeleteSchema, IntervalSchema } from "../../../utils/booking.schema";
 import type { NotificationModel } from "../../../utils/event.schema";
-import { zone } from "../../../utils/format.utils";
+import { isBookeable, zone } from "../../../utils/date.utils";
 import { sendOnDeleteBooking, sendOnNewBooking } from "../../mail";
 import { pusher } from "../../pusher";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
 
-const businessWeek = [1, 2, 3, 4, 5];
-
-function isBookeable(d: DateTime): boolean {
-  if (d.weekday === 6) return d.hour >= 7 && d.hour <= 11;
-  return businessWeek.includes(d.weekday) && d.hour >= 7 && d.hour <= 21;
-}
 
 function createNotification(
   { user: { firstName, lastName },
@@ -54,7 +48,6 @@ export const bookingRouter = createTRPCRouter({
   delete: protectedProcedure.input(z.object({
     id: z.bigint(),
     startsAt: z.date(),
-    isRefundable: z.boolean(),
   })).mutation(async ({ ctx, input }) => {
     try {
       const deleteBooking = ctx.prisma.booking.delete({
@@ -62,7 +55,23 @@ export const bookingRouter = createTRPCRouter({
           id: input.id,
         },
         include: {
-          user: true,
+          user: {
+            select: {
+              emailVerified: true,
+              cellphone: true,
+              firstName: true,
+              lastName: true,
+              id: true,
+              subType: true,
+              expiresAt: true,
+              email: true,
+              address: true,
+              remainingAccesses: true,
+              medOk: true,
+              role: true,
+              goals: true,
+            },
+          },
         }
       });
       const refund = ctx.prisma.user.update({
@@ -92,13 +101,31 @@ export const bookingRouter = createTRPCRouter({
           userId: ctx.session.user.id,
         },
         include: {
-          user: true,
-        }
-      })
-      const ops = input.isRefundable ? [deleteBooking, resetCounter, refund, logEvent] : [deleteBooking, resetCounter, logEvent]
+          user: {
+            select: {
+              emailVerified: true,
+              cellphone: true,
+              firstName: true,
+              lastName: true,
+              id: true,
+              subType: true,
+              expiresAt: true,
+              email: true,
+              address: true,
+              remainingAccesses: true,
+              medOk: true,
+              role: true,
+              goals: true,
+            },
+          },
+        } 
+      });
+
+      const isRefundable = DateTime.fromJSDate(input.startsAt).toUTC().diffNow().as('hours') > 3;
+      const ops = isRefundable ? [deleteBooking, resetCounter, refund, logEvent] : [deleteBooking, resetCounter, logEvent]
       const res = await ctx.prisma.$transaction(ops);
 
-      const createdEvent = (input.isRefundable ? res[3] : res[2]) as Event & { user: User };
+      const createdEvent = (isRefundable ? res[3] : res[2]) as Event & { user: User };
 
       await Promise.all([
         pusher.trigger('booking', 'user', createNotification(createdEvent)),
@@ -227,13 +254,13 @@ export const bookingRouter = createTRPCRouter({
       },
       include: {
         user: true,
-      }
+      },
     });
     const res = await ctx.prisma.$transaction([updateAccesses, createSlot, logEvent]);
     await Promise.all([
       pusher.trigger('booking', 'user', createNotification(res[2])),
       sendOnNewBooking(res[2].user, input.startsAt),
-      pusher.trigger('booking', 'refresh', { startsAt: input.startsAt }),
+      pusher.trigger('booking', 'refresh', {}),
     ]);
   }),
 
@@ -282,8 +309,10 @@ export const bookingRouter = createTRPCRouter({
     });
 
     const t = input.disable ? [...ops] : [...ops, decrementAccesses]
-    await ctx.prisma.$transaction(t),
-      await pusher.trigger('booking', 'refresh', {});
+    await Promise.all([
+      ctx.prisma.$transaction(t),
+      pusher.trigger('booking', 'refresh', {}),
+    ])
   }),
 
   adminDelete: adminProtectedProcedure.input(AdminDeleteSchema).mutation(async ({ ctx, input }) => {
@@ -320,8 +349,10 @@ export const bookingRouter = createTRPCRouter({
       }
     });
     const ops = input.refundAccess ? [deleteBooking, updateCount, refund] : [deleteBooking, updateCount]
-    await ctx.prisma.$transaction(ops);
-    await pusher.trigger('booking', 'refresh', { startsAt: input.startsAt });
+    await Promise.all([
+      ctx.prisma.$transaction(ops),
+      pusher.trigger('booking', 'refresh', { startsAt: input.startsAt }),
+    ]);
   }),
 
   //TODO: compress consecutives disabled
@@ -334,7 +365,23 @@ export const bookingRouter = createTRPCRouter({
         },
       },
       include: {
-        user: true,
+        user: {
+          select: {
+            emailVerified: true,
+            cellphone: true,
+            firstName: true,
+            lastName: true,
+            id: true,
+            subType: true,
+            expiresAt: true,
+            email: true,
+            address: true,
+            remainingAccesses: true,
+            medOk: true,
+            role: true,
+            goals: true,
+          }
+        },
         slot: true,
       },
     })

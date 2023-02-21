@@ -13,7 +13,24 @@ export const eventsRouter = createTRPCRouter({
         occurredAt: 'asc'
       },
       include: {
-        user: true,
+        user: {
+          select: {
+            emailVerified: true,
+            cellphone: true,
+            firstName: true,
+            lastName: true,
+            id: true,
+            subType: true,
+            expiresAt: true,
+            email: true,
+            address: true,
+            remainingAccesses: true,
+            medOk: true,
+            role: true,
+            goals: true,
+          },
+
+        },
       }
     })
   })
