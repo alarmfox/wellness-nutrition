@@ -126,7 +126,7 @@ function BookingList({ height }: BookingListProps) {
   const isLoading = React.useMemo(() => isFetching || isDeleting, [isFetching, isDeleting]);
   const handleClick = React.useCallback(async ({ id, startsAt }: Booking) => {
     try {
-      const isRefundable = DateTime.fromJSDate(startsAt).diffNow().as('hours') > 3;
+      const isRefundable = DateTime.fromJSDate(startsAt).setZone(zone).diffNow().as('hours') > 3;
       await confirm({
         description: !isRefundable ?
           'Sicuro di voler eliminare questa prenotazione? L\'accesso NON sarà rimborsato!' :
