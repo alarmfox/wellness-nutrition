@@ -5,6 +5,7 @@ import { DateTime, Interval, } from "luxon";
 import { z } from "zod";
 import { AdminCreateSchema, AdminDeleteSchema, IntervalSchema } from "../../../utils/booking.schema";
 import type { NotificationModel } from "../../../utils/event.schema";
+import { zone } from "../../../utils/format.utils";
 import { sendOnDeleteBooking, sendOnNewBooking } from "../../mail";
 import { pusher } from "../../pusher";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
@@ -117,7 +118,7 @@ export const bookingRouter = createTRPCRouter({
     }
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
-    const now = DateTime.now();
+    const now = DateTime.now().setZone(zone);
     const isLastWeekOfMonth = now.endOf('month').weekNumber - 1 === now.weekNumber;
     const endDate = isLastWeekOfMonth ? now.plus({ months: 1 }).endOf('month') : now.endOf('month');
     const startDate = now.hour >= 17 ?
@@ -154,7 +155,7 @@ export const bookingRouter = createTRPCRouter({
         select: {
           startsAt: true,
         }
-      })).map((item) => DateTime.fromJSDate(item.startsAt).toISO());
+      })).map((item) => DateTime.fromJSDate(item.startsAt).setZone(zone).toISO());
 
       return allRecurrences.filter((item) => !slots.includes(item));
 
