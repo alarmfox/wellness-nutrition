@@ -1,5 +1,7 @@
 import { DateTime, Interval } from "luxon";
 
+const zone = 'Europe/Rome';
+
 export const defaultFormatOpts: Intl.DateTimeFormatOptions = {
   weekday: 'long',
   month: 'long',
@@ -11,7 +13,7 @@ export const defaultFormatOpts: Intl.DateTimeFormatOptions = {
 export function formatDate(s: string | Date, format: Intl.DateTimeFormatOptions = defaultFormatOpts): string {
   const d = typeof s === 'string' ? DateTime.fromISO(s) : DateTime.fromJSDate(s);
 
-  return d.toLocaleString(format, {
+  return d.setZone(zone).toLocaleString(format, {
     locale: 'it'
   });
 }
@@ -20,7 +22,7 @@ export function formatBooking(start: Date | string, end: Date | string | undefin
   const s = typeof start === 'string' ? DateTime.fromISO(start) : DateTime.fromJSDate(start);
   const e = typeof end === 'string' ? DateTime.fromISO(end) : end ? DateTime.fromJSDate(end) : s.plus({ hours: 1 });
 
-  return Interval.fromDateTimes(s, e).toLocaleString(format, {
+  return Interval.fromDateTimes(s.setZone(zone), e.setZone(zone)).toLocaleString(format, {
     locale: 'it',
   });
 }

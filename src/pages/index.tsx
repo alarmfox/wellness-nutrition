@@ -3,7 +3,7 @@ import { useSession } from 'next-auth/react';
 import type { Booking } from '@prisma/client';
 import { api } from '../utils/api';
 import {
-  Container, CssBaseline, Box, Typography, Button, 
+  Container, CssBaseline, Box, Typography, Button,
   ListItemButton,
   ListItemIcon, ListItemText, CircularProgress,
   Stack, Backdrop, useMediaQuery, useTheme,
@@ -98,14 +98,49 @@ Home.auth = {
 
 export default Home;
 
-function RenderBooking(props: ListChildComponentProps<Booking[]>) {
+interface BookingActionProps {
+  booking: Booking;
+  cb: (b: Booking) => Promise<void>
+}
+function RenderBooking(props: ListChildComponentProps<BookingActionProps[]>) {
   const { index, style, data } = props;
-  const booking = data[index];
+  const prop = data.at(index);
+  if (!prop) return <div>no data</div>
+  const { booking, cb } = prop;
+
+  return (
+    <ListItemButton divider disabled={DateTime.fromJSDate(booking.startsAt) < DateTime.now()} key={index} style={style}>
+      <ListItemIcon sx={{ fontSize: 16 }}>
+        <Event />
+      </ListItemIcon>
+      <ListItemText
+        sx={{ my: '.5rem' }}
+        primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
+        primaryTypographyProps={{
+          fontSize: 16,
+          fontWeight: 'medium',
+          letterSpacing: 0,
+        }}
+        secondary={`Effettuata ${formatDate(booking.createdAt, DateTime.DATETIME_MED)}`}
+      />
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      <ListItemIcon sx={{ fontSize: 18 }} onClick={() => void cb(booking)}>
+        <Delete />
+      </ListItemIcon>
+    </ListItemButton>
+  );
+}
+
+interface BookingListProps {
+  height: number;
+}
+
+function BookingList({ height }: BookingListProps) {
   const confirm = useConfirm();
   const utils = api.useContext();
   const { enqueueSnackbar } = useSnackbar();
-
-  const { mutate, isLoading } = api.bookings.delete.useMutation({
+  const { data, isLoading: isFetching } = api.bookings.getCurrent.useQuery();
+  const { mutate, isLoading: isDeleting } = api.bookings.delete.useMutation({
     onSuccess: () => Promise.all([
       utils.bookings.getCurrent.invalidate(),
       utils.user.getCurrent.invalidate(),
@@ -121,8 +156,8 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
         variant: 'error',
       });
     }
-  })
-
+  });
+  const isLoading = React.useMemo(() => isFetching || isDeleting, [isFetching, isDeleting]);
   const handleClick = React.useCallback(async ({ id, startsAt }: Booking) => {
     try {
       const isRefundable = DateTime.fromJSDate(startsAt).diffNow().as('hours') > 3;
@@ -145,47 +180,29 @@ function RenderBooking(props: ListChildComponentProps<Booking[]>) {
     }
   }, [confirm, mutate]);
 
-  if (!data) return <div>no data</div>
-  if (!booking) return <div>no data</div>
-  return (
-    <ListItemButton divider disabled={DateTime.fromJSDate(booking.startsAt) < DateTime.now()} key={index} style={style}>
-      <ListItemIcon sx={{ fontSize: 16 }}>
-        <Event />
-      </ListItemIcon>
-      <ListItemText
-        sx={{ my: '.5rem' }}
-        primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
-        primaryTypographyProps={{
-          fontSize: 16,
-          fontWeight: 'medium',
-          letterSpacing: 0,
-        }}
-        secondary={`Effettuata ${formatDate(booking.createdAt, DateTime.DATETIME_MED)}`}
-      />
-      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      {isLoading ? <CircularProgress /> : <ListItemIcon sx={{ fontSize: 18 }} onClick={() => handleClick(booking)}>
-        <Delete />
-      </ListItemIcon>
+  const rows = React.useMemo(() => {
+    return data?.map((item): BookingActionProps => {
+      return {
+        booking: item,
+        cb: handleClick
       }
-    </ListItemButton>
-  );
-}
-
-interface BookingListProps {
-  height: number;
-}
-
-function BookingList({ height }: BookingListProps) {
-  const { data } = api.bookings.getCurrent.useQuery();
+    })
+  }, [data, handleClick]);
   return (
     <Box sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
+    <Backdrop
+        sx={{ color: 'darkgrey', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={isLoading}
+      >
+        <CircularProgress sx={{ textAlign: 'center' }} />
+      </Backdrop>
       {data && data.length > 0 ?
         <FixedSizeList
           height={height}
           width={360}
           itemSize={70}
           itemCount={data.length}
-          itemData={data}
+          itemData={rows}
         >
           {RenderBooking}
         </FixedSizeList>
@@ -207,13 +224,10 @@ interface CreateBookingFromSlotProps {
 function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>) {
 
   const { index, style, data } = props;
-  if (!data) return <div>no data</div>
 
-  const slot = data[index]?.slot;
-  const cb = data[index]?.cb;
-
-  if (!slot) return <div>no data</div>
-  if (!cb) return <div>no data</div>
+  const prop = data.at(index);
+  if (!prop) return <div>no data</div>
+  const { slot, cb } = prop;
   return (
     <ListItemButton divider onClick={() => void cb(slot)} style={style}>
       <ListItemIcon>
@@ -255,8 +269,8 @@ function SlotList({ height }: SlotListProps) {
         return;
       }
       enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
-      void refetch();
-    }, 
+      void utils.bookings.getAvailableSlots.invalidate();
+    },
   });
 
   const handleClick = React.useCallback(async (startsAt: string) => {

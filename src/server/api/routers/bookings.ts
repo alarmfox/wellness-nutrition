@@ -10,6 +10,7 @@ import { pusher } from "../../pusher";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
 
 const businessWeek = [1, 2, 3, 4, 5];
+const zone = 'Europe/Rome';
 
 function isBookeable(d: DateTime): boolean {
   if (d.weekday === 6) return d.hour >= 7 && d.hour <= 11;
@@ -32,8 +33,6 @@ function createNotification(
     type
   }
 }
-
-const zone = 'Europe/Rome';
 
 export const bookingRouter = createTRPCRouter({
   getCurrent: protectedProcedure.query(({ ctx }) => {
@@ -283,10 +282,8 @@ export const bookingRouter = createTRPCRouter({
     });
 
     const t = input.disable ? [...ops] : [...ops, decrementAccesses]
-    await Promise.all([
-      ctx.prisma.$transaction(t),
-      pusher.trigger('booking', 'refresh', {}),
-    ]);
+    await ctx.prisma.$transaction(t),
+    await pusher.trigger('booking', 'refresh', {});
   }),
 
   adminDelete: adminProtectedProcedure.input(AdminDeleteSchema).mutation(async ({ ctx, input }) => {
@@ -323,10 +320,8 @@ export const bookingRouter = createTRPCRouter({
       }
     });
     const ops = input.refundAccess ? [deleteBooking, updateCount, refund] : [deleteBooking, updateCount]
-    await Promise.all([
-      ctx.prisma.$transaction(ops),
-      pusher.trigger('booking', 'refresh', { startsAt: input.startsAt }),
-    ]);
+    await ctx.prisma.$transaction(ops);
+    await pusher.trigger('booking', 'refresh', { startsAt: input.startsAt });
   }),
 
   //TODO: compress consecutives disabled
