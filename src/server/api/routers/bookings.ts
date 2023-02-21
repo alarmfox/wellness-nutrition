@@ -248,7 +248,7 @@ export const bookingRouter = createTRPCRouter({
       },
       create: {
         startsAt: item.start.toJSDate(),
-        peopleCount: 1,
+        peopleCount: input.subType === 'SHARED' ? 1 : 2,
         bookings: {
           create: {
             userId: input.userId || ctx.session.user.id,
@@ -258,7 +258,7 @@ export const bookingRouter = createTRPCRouter({
       },
       update: {
         peopleCount: {
-          increment: 1,
+          increment: input.subType === 'SHARED' ? 1 : 2,
         },
         bookings: {
           create: {
