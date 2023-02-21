@@ -77,7 +77,7 @@ WorkWeek.range = workWeekRange
 
 WorkWeek.navigate = Week.navigate
 
-WorkWeek.title = (date: Date, { formats, culture, ...props }) => {
+WorkWeek.title = (date: Date) => {
   const start = DateTime.fromJSDate(date).startOf('week');
   const int = Interval.fromDateTimes(start, start.endOf('week').minus({ days: 1 }));
   return int.toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY, {

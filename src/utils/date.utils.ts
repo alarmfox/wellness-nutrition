@@ -46,8 +46,8 @@ export function formatBooking(start: Date | string, end: Date | string | undefin
   });
 }
 
-function getEasterMonthAndDay(year) {
-  var f = Math.floor,
+function getEasterMonthAndDay(year: number) {
+  const f = Math.floor,
     // Golden Number - 1
     G = year % 19,
     C = f(year / 100),

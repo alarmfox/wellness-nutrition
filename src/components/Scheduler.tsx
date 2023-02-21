@@ -19,7 +19,9 @@ import WorkWeek from "./WorkWeek";
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
-function getTooltipInfo({ firstName, lastName, subType }: User, slot: Slot): string {
+type UserView = Omit<User, "password"|"verificationToken"| "verificationTokenExpiresIn">;
+
+function getTooltipInfo({ firstName, lastName, subType }: UserView, slot: Slot): string {
   if (slot.disabled) return 'Slot disabilitato';
   return `${lastName} ${firstName} - ${subType === 'SHARED' ? 'Condiviso' : 'Singolo'}`
 }

@@ -6,7 +6,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import { api } from "../utils/api";
 import React from "react";
 import { CircularProgress } from "@mui/material";
-import { formatDate } from "../utils/format.utils";
+import { formatDate } from "../utils/date.utils";
 import { DateTime } from "luxon";
 
 const columns: GridColDef[] = [
