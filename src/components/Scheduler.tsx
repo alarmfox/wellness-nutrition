@@ -19,7 +19,7 @@ import WorkWeek from "./WorkWeek";
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
-type UserView = Omit<User, "password"|"verificationToken"| "verificationTokenExpiresIn">;
+type UserView = Omit<User, "password" | "verificationToken" | "verificationTokenExpiresIn">;
 
 function getTooltipInfo({ firstName, lastName, subType }: UserView, slot: Slot): string {
   if (slot.disabled) return 'Slot disabilitato';
@@ -111,7 +111,7 @@ export function Scheduler() {
           backgroundColor: theme.palette.info.main,
         }
       }),
-      ...((DateTime.fromJSDate(event.startsAt) < DateTime.now() || event.slot.disabled) && {
+      ...((event.slot.disabled) && {
         style: {
           backgroundColor: theme.palette.grey[600],
           borderColor: theme.palette.grey[900],
@@ -184,22 +184,17 @@ interface BookingActionProps {
 }
 
 function BookingAction({ booking, handleClose, isOpen }: BookingActionProps) {
-  const { register, handleSubmit, setValue } = useForm<AdminDeleteModel>({
+  const { register, handleSubmit } = useForm<AdminDeleteModel>({
     resolver: zodResolver(AdminDeleteSchema),
     defaultValues: {
+      id: booking?.id,
+      startsAt: booking?.startsAt,
+      isDisabled: booking?.slot.disabled,
       refundAccess: true,
       userId: booking?.userId,
+      userSubType: booking?.user.subType,
     }
   });
-
-  React.useEffect(() => {
-    if (!booking) return;
-
-    setValue('id', booking.id);
-    setValue('startsAt', booking.startsAt);
-    setValue('isDisabled', booking.slot.disabled);
-
-  }, [booking, setValue]);
 
   const [error, setError] = React.useState<string | undefined>(undefined);
   const utils = api.useContext();
