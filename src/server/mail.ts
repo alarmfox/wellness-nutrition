@@ -76,7 +76,7 @@ export async function sendOnNewBooking(user: User, startsAt: Date) {
     body: {
       greeting: 'Ciao',
       name: `amministratore`,
-      signature: "",
+      signature: "Saluti,",
       intro: `Una nuova prenotazione è stata inserita da ${user.firstName} ${user.lastName} per 
       ${DateTime.fromJSDate(startsAt).toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY, { locale: 'it' })}`,
       title: 'Nuova prenotazione',
@@ -92,7 +92,7 @@ export async function sendOnDeleteBooking(user: User, startsAt: Date) {
     body: {
       greeting: 'Ciao',
       name: `amministratore`,
-      signature: "",
+      signature: "Saluti,",
       intro: `Una prenotazione è stata cancellata da ${user.firstName} ${user.lastName} per 
       ${DateTime.fromJSDate(startsAt).toLocaleString(DateTime.DATETIME_MED_WITH_WEEKDAY, { locale: 'it' })}`,
       title: 'Prenotazione cancellata',
