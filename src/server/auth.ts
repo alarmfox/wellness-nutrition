@@ -89,11 +89,14 @@ export const authOptions: NextAuthOptions = {
         }
       },
       async authorize(credentials) {
-        const user = await prisma.user.findUnique({
+        const user = await prisma.user.findFirst({
           where: {
-            email: credentials?.email
-          }
-        })
+            email: {
+              equals: credentials?.email,
+              mode: 'insensitive',
+            },
+          },
+        });
 
         if (!user || !user.emailVerified || !user.password)
           return null;
