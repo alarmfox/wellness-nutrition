@@ -16,9 +16,11 @@ export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps
   const { data } = api.user.getCurrent.useQuery();
   const matches = useMediaQuery('(max-height: 600px)');
   const [expanded, setExpanded] = React.useState(!matches);
-  const handleExpandClick = React.useCallback(() => setExpanded(!expanded), [expanded, setExpanded]);
+  const handleExpandClick = React.useCallback(() => {
+    setExpanded(!expanded);
+    setExpandedProp(!expanded);
+  }, [expanded, setExpanded, setExpandedProp]);
 
-  React.useEffect(() => setExpandedProp(matches), [matches, setExpandedProp]);
   return (
     <Card sx={{ maxWidth: 345 }} variant="outlined">
       {data &&
@@ -33,7 +35,6 @@ export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps
               onClick={handleExpandClick}
               aria-expanded={expanded}
               aria-label="Mostra di piu"
-              sx={{ display: !matches ? 'none' : 'inherit' }}
             >
               {!expanded ? <ExpandMore /> : <ExpandLess />}
             </IconButton>

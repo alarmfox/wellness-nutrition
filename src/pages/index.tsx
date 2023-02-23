@@ -56,7 +56,7 @@ function Home() {
 
   const height = React.useMemo(() => {
     if (matches) {
-      return expanded ? 75 : 250;
+      return expanded ? 75 : 300;
     }
     return 450;
   }, [matches, expanded]);
