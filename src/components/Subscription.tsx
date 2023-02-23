@@ -1,5 +1,8 @@
 import { ExpandLess, ExpandMore } from "@mui/icons-material";
-import { Card, CardActions, CardContent, CardMedia, Collapse, Divider, Grid, IconButton, Typography, useMediaQuery, useTheme } from "@mui/material";
+import {
+  Card, CardActions, CardContent, CardMedia, Collapse,
+  Divider, Grid, IconButton, Typography, useMediaQuery
+} from "@mui/material";
 import { DateTime } from "luxon";
 import React from "react";
 import { api } from "../utils/api";
@@ -11,19 +14,17 @@ export interface SubscriptionProps {
 
 export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps) {
   const { data } = api.user.getCurrent.useQuery();
-  const theme = useTheme();
-  const matches = useMediaQuery(theme.breakpoints.up('sm'));
-  const [expanded, setExpanded] = React.useState(matches);
+  const matches = useMediaQuery('(max-height: 600px)');
+  const [expanded, setExpanded] = React.useState(!matches);
   const handleExpandClick = React.useCallback(() => setExpanded(!expanded), [expanded, setExpanded]);
 
-  React.useEffect(() => setExpandedProp(expanded), [expanded, setExpandedProp]);
-
+  React.useEffect(() => setExpandedProp(matches), [matches, setExpandedProp]);
   return (
     <Card sx={{ maxWidth: 345 }} variant="outlined">
       {data &&
         <CardContent>
           <CardMedia
-            sx={{ height: 80, display: 'flex', justifyContent: 'center' }}
+            sx={{ height: 80, display: 'flex', mb: ".75rem", justifyContent: 'center' }}
             image="/logo_big.png"
             title="logo"
           />
@@ -32,6 +33,7 @@ export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps
               onClick={handleExpandClick}
               aria-expanded={expanded}
               aria-label="Mostra di piu"
+              sx={{ display: !matches ? 'none' : 'inherit' }}
             >
               {!expanded ? <ExpandMore /> : <ExpandLess />}
             </IconButton>
@@ -72,7 +74,7 @@ export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps
               </Grid>
               <Grid item xs={6}>
                 <Typography align="right" variant="body1">
-                  {data.goals?.replaceAll('-', ' ')}
+                {data.goals ? data.goals?.replaceAll('-', ' ') : '-'}
                 </Typography>
               </Grid>
               <Grid item xs={6} >

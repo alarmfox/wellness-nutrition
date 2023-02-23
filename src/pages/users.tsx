@@ -243,7 +243,7 @@ function EnhancedTableToolbar(props: EnhancedTableToolbarProps) {
         title: 'Conferma',
         confirmationText: 'Conferma',
         cancellationText: 'Annulla',
-      })
+      });
       mutate(selected);
     } catch (error) {
       console.log(error);

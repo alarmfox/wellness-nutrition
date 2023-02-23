@@ -1,23 +1,21 @@
 import * as React from 'react';
-import { useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import type { Booking } from '@prisma/client';
 import { api } from '../utils/api';
 import {
-  Container, CssBaseline, Box, Typography, Button,
+  Container, CssBaseline, Box, Typography,
   ListItemButton,
   ListItemIcon, ListItemText, CircularProgress,
-  Stack, Backdrop, useMediaQuery, useTheme,
+  Stack, Backdrop, useMediaQuery, BottomNavigation, BottomNavigationAction, Paper,
 } from '@mui/material';
-import { ResponsiveAppBar } from '../components/AppBar';
 import { useConfirm } from 'material-ui-confirm';
 import type { ListChildComponentProps } from 'react-window';
 import { FixedSizeList } from 'react-window';
-import { Delete, Event } from '@mui/icons-material';
+import { Delete, Event, Logout, ListSharp, AddRounded, FiberManualRecord } from '@mui/icons-material';
 import AdminLayout from '../components/AdminLayout';
 import { formatBooking, formatDate, zone } from '../utils/date.utils';
 import { DateTime } from 'luxon';
 import { Scheduler } from '../components/Scheduler';
-
 import { Subscription } from '../components/Subscription';
 import { useSnackbar } from 'notistack';
 
@@ -27,8 +25,25 @@ function Home() {
   const { data: user } = api.user.getCurrent.useQuery();
   const [creationMode, setCreationMode] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
-  const theme = useTheme();
-  const matches = useMediaQuery(theme.breakpoints.up('sm'));
+  const [value, setValue] = React.useState(0);
+  const matches = useMediaQuery('(max-height: 600px)');
+
+  const confirm = useConfirm();
+
+  const onLogout = React.useCallback(async () => {
+    try {
+      await confirm({
+        description: 'Sicuro di voler uscire dall\'applicazione?',
+        title: 'Conferma',
+        confirmationText: 'Conferma',
+        cancellationText: 'Annulla',
+      });
+      await signOut({ redirect: true });
+    } catch (error) {
+      console.log(error);
+      setValue(1);
+    }
+  }, [confirm]);
 
   const cannotCreateBooking = React.useMemo(() =>
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
@@ -40,10 +55,10 @@ function Home() {
   }, [cannotCreateBooking]);
 
   const height = React.useMemo(() => {
-    if (!matches) {
-      return expanded ? 150 : 350;
+    if (matches) {
+      return expanded ? 75 : 250;
     }
-    return 350;
+    return 450;
   }, [matches, expanded]);
 
   if (sessionData?.user.role === 'ADMIN') {
@@ -54,8 +69,7 @@ function Home() {
     )
   }
   return (
-    <>
-      <ResponsiveAppBar />
+    <React.Fragment>
       <Container fixed component="main" maxWidth="xs">
         <CssBaseline />
         <Box
@@ -74,19 +88,33 @@ function Home() {
           </Stack>
           {!creationMode ?
             <BookingList height={height} /> : <SlotList height={height} />}
-          <Button
-            sx={{ bottom: 0, position: 'absolute', mb: '.5rem' }}
-            disabled={cannotCreateBooking}
-            variant="contained"
-            color="primary"
-            aria-label="nuova prenotazione"
-            onClick={() => setCreationMode(!creationMode)}
-          >
-            {creationMode ? 'Le mie prenotazioni' : 'Nuova prenotazione'}
-          </Button>
+          <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }} elevation={3}>
+            <BottomNavigation
+              showLabels
+              value={value}
+              onChange={(_event, newValue) => setValue(typeof newValue === 'number' ? newValue : 0)}
+            >
+              <BottomNavigationAction
+                label="Prenotazioni"
+                icon={<ListSharp />}
+                onClick={() => setCreationMode(false)}
+              />
+              <BottomNavigationAction
+                label="Crea"
+                icon={<AddRounded />}
+                onClick={() => setCreationMode(true)}
+              />
+              <BottomNavigationAction
+                label="Esci"
+                icon={<Logout color="error" />}
+                //eslint-disable-next-line @typescript-eslint/no-misused-promises
+                onClick={onLogout}
+              />
+            </BottomNavigation>
+          </Paper>
         </Box>
       </Container>
-    </>
+    </React.Fragment>
   )
 }
 
@@ -220,15 +248,17 @@ interface SlotListProps {
 function SlotList({ height }: SlotListProps) {
   const utils = api.useContext();
   const { data, isLoading: isFetching } = api.bookings.getAvailableSlots.useQuery();
+  const { data: bookings } = api.bookings.getCurrent.useQuery();
   const { enqueueSnackbar } = useSnackbar();
   const confirm = useConfirm();
+
   const { mutate, isLoading: isCreating } = api.bookings.create.useMutation({
     onSuccess: () => Promise.all([
       utils.bookings.getCurrent.invalidate(),
       utils.user.getCurrent.invalidate(),
       utils.bookings.getAvailableSlots.invalidate(),
     ]),
-    onError: (err) => {
+    onError: async (err) => {
       if (err?.data?.code === 'BAD_REQUEST') {
         enqueueSnackbar('Lo slot è stato disabilitato dall\'amministratore', { variant: 'error' });
       } else if (err?.data?.code === 'CONFLICT') {
@@ -236,8 +266,10 @@ function SlotList({ height }: SlotListProps) {
       } else {
         enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
       }
-      void utils.bookings.getAvailableSlots.invalidate();
-
+      await Promise.all([
+        utils.bookings.getAvailableSlots.invalidate(),
+        utils.bookings.getCurrent.invalidate(),
+      ]);
     },
   });
 
@@ -263,11 +295,12 @@ function SlotList({ height }: SlotListProps) {
   const rows = React.useMemo(() => {
     return data?.map((item): CreateBookingFromSlotProps => {
       return {
-        slot: item,
+        slot: DateTime.fromISO(item),
         cb: handleClick,
+        bookedDays: bookings ? bookings.map((item) => DateTime.fromJSDate(item.startsAt).startOf('day').toSeconds()) : [],
       }
     })
-  }, [data, handleClick]);
+  }, [data, handleClick, bookings]);
 
   return (
     <Box sx={{ width: '100%', bgcolor: 'background.paper', overflowY: 'hidden' }}>
@@ -293,10 +326,10 @@ function SlotList({ height }: SlotListProps) {
 }
 
 interface CreateBookingFromSlotProps {
-  slot: string;
-  cb: (s: string) => Promise<void>
+  slot: DateTime;
+  cb: (s: string) => Promise<void>;
+  bookedDays: number[];
 }
-
 
 function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>) {
 
@@ -304,23 +337,29 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
 
   const prop = data.at(index);
   if (!prop) return <div>no data</div>
-  const { slot, cb } = prop;
+  const { slot, cb, bookedDays } = prop;
+
   return (
-    <ListItemButton divider onClick={() => void cb(slot)} style={style}>
+    <ListItemButton divider onClick={() => void cb(slot.toISO())} style={style}>
       <ListItemIcon>
         <Event />
       </ListItemIcon>
       <ListItemText
         sx={{ my: '.5rem' }}
-        primary={formatDate(slot, DateTime.DATE_MED_WITH_WEEKDAY)}
+        primary={formatDate(slot.toJSDate(), DateTime.DATE_MED_WITH_WEEKDAY)}
         primaryTypographyProps={{
           fontSize: 16,
           fontWeight: 'medium',
           letterSpacing: 0,
         }}
-        secondary={`Dalle ${DateTime.fromISO(slot).setZone(zone).toFormat('HH:mm')}
-        alle ${DateTime.fromISO(slot).setZone(zone).plus({ hours: 1 }).toFormat('HH:mm')}`}
+        secondary={`Dalle ${slot.toFormat('HH:mm')}
+        alle ${slot.plus({ hours: 1 }).toFormat('HH:mm')}`}
       />
+      {bookedDays.includes(slot.startOf('day').toSeconds()) &&
+        <ListItemIcon>
+          <FiberManualRecord color="primary" />
+        </ListItemIcon>
+      }
     </ListItemButton>
   )
 }
