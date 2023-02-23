@@ -174,10 +174,17 @@ export const bookingRouter = createTRPCRouter({
                 },
                 startsAt: {
                   gte: startDate.toJSDate(),
-                }
-              }
-            }
-          ]
+                },
+              },
+            },
+            {
+              bookings: {
+                some: {
+                  userId: ctx.session.user.id,
+                },
+              },
+            },
+          ],
         },
         select: {
           startsAt: true,

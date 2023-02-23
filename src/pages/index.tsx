@@ -11,7 +11,7 @@ import {
 import { useConfirm } from 'material-ui-confirm';
 import type { ListChildComponentProps } from 'react-window';
 import { FixedSizeList } from 'react-window';
-import { Delete, Event, Logout, ListSharp, AddRounded, FiberManualRecord } from '@mui/icons-material';
+import { Delete, Event, Logout, ListSharp, AddRounded } from '@mui/icons-material';
 import AdminLayout from '../components/AdminLayout';
 import { formatBooking, formatDate, zone } from '../utils/date.utils';
 import { DateTime } from 'luxon';
@@ -297,7 +297,10 @@ function SlotList({ height }: SlotListProps) {
       return {
         slot: DateTime.fromISO(item),
         cb: handleClick,
-        bookedDays: bookings ? bookings.map((item) => DateTime.fromJSDate(item.startsAt).startOf('day').toSeconds()) : [],
+        bookedDays: bookings ?
+          new Set(bookings.map((item) => DateTime.fromJSDate(item.startsAt).startOf('day').toSeconds()))
+          :
+          new Set([]),
       }
     })
   }, [data, handleClick, bookings]);
@@ -328,7 +331,7 @@ function SlotList({ height }: SlotListProps) {
 interface CreateBookingFromSlotProps {
   slot: DateTime;
   cb: (s: string) => Promise<void>;
-  bookedDays: number[];
+  bookedDays: Set<number>;
 }
 
 function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>) {
@@ -342,7 +345,7 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
   return (
     <ListItemButton divider onClick={() => void cb(slot.toISO())} style={style}>
       <ListItemIcon>
-        <Event />
+        <Event color={bookedDays.has(slot.startOf('day').toSeconds()) ? 'warning': 'inherit'} />
       </ListItemIcon>
       <ListItemText
         sx={{ my: '.5rem' }}
@@ -355,11 +358,6 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
         secondary={`Dalle ${slot.toFormat('HH:mm')}
         alle ${slot.plus({ hours: 1 }).toFormat('HH:mm')}`}
       />
-      {bookedDays.includes(slot.startOf('day').toSeconds()) &&
-        <ListItemIcon>
-          <FiberManualRecord color="primary" />
-        </ListItemIcon>
-      }
     </ListItemButton>
   )
 }
