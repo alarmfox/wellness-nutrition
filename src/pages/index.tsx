@@ -345,7 +345,7 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
   return (
     <ListItemButton divider onClick={() => void cb(slot.toISO())} style={style}>
       <ListItemIcon>
-        <Event color={bookedDays.has(slot.startOf('day').toSeconds()) ? 'warning': 'inherit'} />
+        <Event color={bookedDays.has(slot.startOf('day').toSeconds()) ? 'warning': 'success'} />
       </ListItemIcon>
       <ListItemText
         sx={{ my: '.5rem' }}
