@@ -91,8 +91,9 @@ function Home() {
               showLabels
               value={value}
               onChange={(_event, newValue) => {
-                if (cannotCreateBooking && newValue === 1) return;
-                setValue(newValue);
+                const v = typeof newValue === 'number' ? newValue : 0;
+                if (cannotCreateBooking && v === 1) return;
+                setValue(v);
               }}
             >
               <BottomNavigationAction
