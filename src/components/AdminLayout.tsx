@@ -23,6 +23,7 @@ import { api } from '../utils/api';
 import Image from 'next/image';
 import { env } from '../env/client.mjs';
 import { formatDate } from '../utils/date.utils';
+import { useConfirm } from 'material-ui-confirm';
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
@@ -116,6 +117,7 @@ export default function AdminLayout({ children }: React.PropsWithChildren) {
   const [notificatioAnchorEl, setNotificatioAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   const notificationPopoverOpen = React.useMemo(() => !(notificatioAnchorEl === null), [notificatioAnchorEl]);
   const id = notificationPopoverOpen ? 'notification-popover' : undefined;
+  const confirm = useConfirm();
 
   const { enqueueSnackbar } = useSnackbar();
   const utils = api.useContext();
@@ -128,7 +130,19 @@ export default function AdminLayout({ children }: React.PropsWithChildren) {
 
   const handleDrawerClose = React.useCallback(() => setOpen(false), []);
 
-  const onLogout = React.useCallback(() => signOut({ callbackUrl: '/' }).catch(console.error), []);
+  const onLogout = React.useCallback(async () => {
+    try {
+      await confirm({
+        description: 'Sicuro di voler uscire dall\'applicazione?',
+        title: 'Conferma',
+        confirmationText: 'Conferma',
+        cancellationText: 'Annulla',
+      });
+      await signOut({ redirect: true });
+    } catch (error) {
+      console.log(error);
+    }
+  }, [confirm]);
 
   const handleNotification = React.useCallback(async (n: NotificationModel) => {
     enqueueSnackbar(formatNotification(n), {
