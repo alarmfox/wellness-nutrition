@@ -45,8 +45,8 @@ function getCurrentWeekParams(d: Date): IntervalModel {
   const dt = DateTime.fromJSDate(d);
   if (dt.weekday === 7) {
     return {
-      from: dt.startOf('day').toJSDate(),
-      to: dt.plus({ days: 6 }).endOf('day').toJSDate(),
+      from: dt.minus({ days: 6 }).startOf('day').toJSDate(),
+      to: dt.endOf('day').toJSDate(),
     }
   }
   return {
@@ -58,7 +58,6 @@ function getCurrentWeekParams(d: Date): IntervalModel {
 export function Scheduler() {
   const theme = useTheme();
   const [input, setInput] = React.useState<IntervalModel>(getCurrentWeekParams(new Date()));
-
 
   const { data, isLoading } = api.bookings.getByInterval.useQuery(input);
 
