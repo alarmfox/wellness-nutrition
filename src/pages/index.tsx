@@ -58,7 +58,7 @@ function Home() {
     if (matches) {
       return expanded ? 75 : 300;
     }
-    return 450;
+    return expanded ?  400 : 600;
   }, [matches, expanded]);
 
   if (sessionData?.user.role === 'ADMIN') {
