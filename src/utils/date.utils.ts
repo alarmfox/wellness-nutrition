@@ -5,8 +5,9 @@ export const zone = 'Europe/Rome';
 const businessWeek = [1, 2, 3, 4, 5];
 
 export function isBookeable(d: DateTime): boolean {
-  const [easterMonth, easterDay] = getEasterMonthAndDay(d.year);
-  if (easterMonth === d.month && easterDay === d.day) return false;
+  const easter = getEasterDate(d.year);
+  const mondayAfterEaster = easter.plus({ days: 1 });;
+  if (mondayAfterEaster.month === d.month && mondayAfterEaster.day === d.day) return false;
   if (d.day === 25 && d.month === 4) return false;
   if (d.day === 2 && d.month === 6) return false;
   if (d.day === 2 && d.month === 6) return false;
@@ -46,7 +47,7 @@ export function formatBooking(start: Date | string, end: Date | string | undefin
   });
 }
 
-function getEasterMonthAndDay(year: number) {
+function getEasterDate(year: number): DateTime {
   const f = Math.floor,
     // Golden Number - 1
     G = year % 19,
@@ -62,5 +63,5 @@ function getEasterMonthAndDay(year: number) {
     month = 3 + f((L + 40) / 44),
     day = L + 28 - 31 * f(month / 4);
 
-  return [month, day];
+  return DateTime.fromJSDate(new Date(year, month - 1, day))
 }
