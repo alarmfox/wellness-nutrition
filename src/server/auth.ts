@@ -24,6 +24,7 @@ declare module "next-auth" {
       // ...other properties
       role: Role;
       subType: SubType;
+      expiresAt: string;
     } & DefaultSession["user"];
   }
 
@@ -31,6 +32,7 @@ declare module "next-auth" {
     // ...other properties
     role: Role;
     subType: SubType;
+    expiresAt: string;
   }
 }
 
@@ -46,6 +48,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role;
         token.subType = user.subType;
+        token.expiresAt = user.expiresAt;
       }
       return token
     },
@@ -54,6 +57,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub || '';
         session.user.role = token.role as Role;
         session.user.subType = token.subType as SubType;
+        session.user.expiresAt = token.expiresAt as string;
       }
       return session;
     },

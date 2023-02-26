@@ -153,12 +153,14 @@ export const bookingRouter = createTRPCRouter({
       now.plus({ days: 1 }).startOf('day').startOf('hour');
 
     const allRecurrences: string[] = [];
+    const expiresAt = DateTime.fromISO(ctx.session.user.expiresAt);
+
     let nextOccurrence = null;
     do {
-      nextOccurrence = nextOccurrence ? nextOccurrence.plus({ hours: 1 }) : startDate.plus({ hours: 1 })
+      nextOccurrence = nextOccurrence ? nextOccurrence.plus({ hours: 1 }) : startDate.plus({ hours: 1 });
       if (isBookeable(nextOccurrence))
         allRecurrences.push(nextOccurrence.toISO());
-    } while (nextOccurrence < endDate);
+    } while (nextOccurrence < endDate && nextOccurrence < expiresAt);
 
     try {
       const slots = (await ctx.prisma.slot.findMany({
