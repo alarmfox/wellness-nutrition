@@ -1,4 +1,4 @@
-import type { Event, User } from "@prisma/client";
+import type { Event, PrismaClient, User } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { DateTime, Interval, } from "luxon";
@@ -9,7 +9,6 @@ import { isBookeable, zone } from "../../../utils/date.utils";
 import { sendOnDeleteBooking, sendOnNewBooking } from "../../mail";
 import { pusher } from "../../pusher";
 import { adminProtectedProcedure, createTRPCRouter, protectedProcedure } from "../trpc";
-
 
 function createNotification(
   { user: { firstName, lastName },
@@ -26,6 +25,27 @@ function createNotification(
     startsAt: startsAt.toISOString(),
     type
   }
+}
+
+async function userValidOrThrow(prisma: PrismaClient, id: string): Promise<User> {
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+  });
+  if (!user) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+    });
+  }
+
+  if (DateTime.now() > DateTime.fromJSDate(user.expiresAt) || user.remainingAccesses <= 0) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+    });
+  }
+
+  return user;
 }
 
 export const bookingRouter = createTRPCRouter({
@@ -145,6 +165,8 @@ export const bookingRouter = createTRPCRouter({
     }
   }),
   getAvailableSlots: protectedProcedure.query(async ({ ctx }) => {
+    const user = await userValidOrThrow(ctx.prisma, ctx.session.user.id);
+
     const now = DateTime.now().setZone(zone);
     const isLastWeekOfMonth = now.endOf('month').weekNumber - 1 === now.weekNumber;
     const endDate = isLastWeekOfMonth ? now.plus({ months: 1 }).endOf('month') : now.endOf('month');
@@ -153,7 +175,7 @@ export const bookingRouter = createTRPCRouter({
       now.plus({ days: 1 }).startOf('day').startOf('hour');
 
     const allRecurrences: string[] = [];
-    const expiresAt = DateTime.fromISO(ctx.session.user.expiresAt);
+    const expiresAt = DateTime.fromJSDate(user.expiresAt);
 
     let nextOccurrence = null;
     do {
@@ -196,6 +218,7 @@ export const bookingRouter = createTRPCRouter({
       return allRecurrences.filter((item) => !slots.includes(item));
 
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       console.log(error);
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
@@ -206,6 +229,7 @@ export const bookingRouter = createTRPCRouter({
   create: protectedProcedure.input(z.object({
     startsAt: z.date(),
   })).mutation(async ({ ctx, input }) => {
+    await userValidOrThrow(ctx.prisma, ctx.session.user.id);
     const slot = await ctx.prisma.slot.findUnique({
       where: {
         startsAt: input.startsAt,

@@ -23,7 +23,6 @@ function Home() {
   const { data: sessionData } = useSession();
 
   const { data: user } = api.user.getCurrent.useQuery();
-  const [creationMode, setCreationMode] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
   const [value, setValue] = React.useState(0);
   const matches = useMediaQuery('(max-height: 600px)');
@@ -41,7 +40,6 @@ function Home() {
       await signOut({ redirect: true });
     } catch (error) {
       console.log(error);
-      setValue(1);
     }
   }, [confirm]);
 
@@ -51,14 +49,14 @@ function Home() {
     [user]);
 
   React.useEffect(() => {
-    if (cannotCreateBooking) setCreationMode(false);
-  }, [cannotCreateBooking]);
+    if (cannotCreateBooking) setValue(0);
+  }, [cannotCreateBooking, value]);
 
   const height = React.useMemo(() => {
     if (matches) {
       return expanded ? 75 : 300;
     }
-    return expanded ?  400 : 600;
+    return expanded ? 400 : 600;
   }, [matches, expanded]);
 
   if (sessionData?.user.role === 'ADMIN') {
@@ -84,25 +82,26 @@ function Home() {
         >
           <Subscription setExpanded={setExpanded} />
           <Stack>
-            <Typography gutterBottom variant="h6" >{creationMode ? 'Seleziona uno slot' : 'Lista prenotazioni'}</Typography>
+            <Typography gutterBottom variant="h6" >{value === 0 ? 'Lista prenotazioni' : 'Seleziona uno slot'}</Typography>
           </Stack>
-          {!creationMode ?
-            <BookingList height={height} /> : <SlotList height={height} />}
+          {value === 1 ?
+            <SlotList height={height} /> : <BookingList height={height} />}
           <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }} elevation={3}>
             <BottomNavigation
               showLabels
               value={value}
-              onChange={(_event, newValue) => setValue(typeof newValue === 'number' ? newValue : 0)}
+              onChange={(_event, newValue) => {
+                if (cannotCreateBooking && newValue === 1) return;
+                setValue(newValue);
+              }}
             >
               <BottomNavigationAction
                 label="Prenotazioni"
                 icon={<ListSharp />}
-                onClick={() => setCreationMode(false)}
               />
               <BottomNavigationAction
                 label="Crea"
                 icon={<AddRounded />}
-                onClick={() => setCreationMode(true)}
               />
               <BottomNavigationAction
                 label="Esci"
@@ -259,12 +258,18 @@ function SlotList({ height }: SlotListProps) {
       utils.bookings.getAvailableSlots.invalidate(),
     ]),
     onError: async (err) => {
-      if (err?.data?.code === 'BAD_REQUEST') {
-        enqueueSnackbar('Lo slot è stato disabilitato dall\'amministratore', { variant: 'error' });
-      } else if (err?.data?.code === 'CONFLICT') {
-        enqueueSnackbar('Lo slot risulta già prenotato.', { variant: 'error' });
-      } else {
-        enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
+      switch (err?.data?.code) {
+        case "BAD_REQUEST":
+          enqueueSnackbar('Lo slot è stato disabilitato dall\'amministratore', { variant: 'error' });
+          break;
+        case "CONFLICT":
+          enqueueSnackbar('Lo slot risulta già prenotato.', { variant: 'error' });
+          break;
+        case "UNAUTHORIZED":
+          enqueueSnackbar('Al momento, lo stato del tuo abbonamento non ti consente di effettuare prenotazioni', { variant: 'error' });
+          break;
+        default:
+          enqueueSnackbar('Impossibile creare la prenotazione. Contattare l\'amministratore', { variant: 'error' });
       }
       await Promise.all([
         utils.bookings.getAvailableSlots.invalidate(),
@@ -345,7 +350,7 @@ function RenderSlot(props: ListChildComponentProps<CreateBookingFromSlotProps[]>
   return (
     <ListItemButton divider onClick={() => void cb(slot.toISO())} style={style}>
       <ListItemIcon>
-        <Event color={bookedDays.has(slot.startOf('day').toSeconds()) ? 'warning': 'success'} />
+        <Event color={bookedDays.has(slot.startOf('day').toSeconds()) ? 'warning' : 'success'} />
       </ListItemIcon>
       <ListItemText
         sx={{ my: '.5rem' }}
