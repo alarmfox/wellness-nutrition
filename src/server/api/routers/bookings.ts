@@ -176,14 +176,14 @@ export const bookingRouter = createTRPCRouter({
       now.plus({ days: 2 }).startOf('day').startOf('hour') :
       now.plus({ days: 1 }).startOf('day').startOf('hour');
 
-    const allRecurrences: string[] = [];
+    const allRecurrences: number[] = [];
     const expiresAt = DateTime.fromJSDate(user.expiresAt);
 
     let nextOccurrence = null;
     do {
       nextOccurrence = nextOccurrence ? nextOccurrence.plus({ hours: 1 }) : startDate.plus({ hours: 1 });
       if (isBookeable(nextOccurrence))
-        allRecurrences.push(nextOccurrence.toISO());
+        allRecurrences.push(nextOccurrence.toSeconds());
     } while (nextOccurrence < endDate && nextOccurrence < expiresAt);
 
     try {
@@ -215,7 +215,7 @@ export const bookingRouter = createTRPCRouter({
         select: {
           startsAt: true,
         }
-      })).map((item) => DateTime.fromJSDate(item.startsAt).setZone(zone).toISO());
+      })).map((item) => DateTime.fromJSDate(item.startsAt).setZone(zone).toSeconds());
 
       return allRecurrences.filter((item) => !slots.includes(item));
 

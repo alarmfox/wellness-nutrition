@@ -301,7 +301,7 @@ function SlotList({ height }: SlotListProps) {
   const rows = React.useMemo(() => {
     return data?.map((item): CreateBookingFromSlotProps => {
       return {
-        slot: DateTime.fromISO(item),
+        slot: DateTime.fromSeconds(item),
         cb: handleClick,
         bookedDays: bookings ?
           new Set(bookings.map((item) => DateTime.fromJSDate(item.startsAt).startOf('day').toSeconds()))
