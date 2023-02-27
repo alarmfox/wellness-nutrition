@@ -1,11 +1,11 @@
-import type { AppProps} from "next/app";
+import type { AppProps } from "next/app";
 import { type AppType } from "next/app";
 import { type Session } from "next-auth";
 import { SessionProvider, useSession } from "next-auth/react";
 
 import { api } from "../utils/api";
 
-import { CircularProgress, createTheme, Stack, ThemeProvider, Typography } from "@mui/material";
+import { CircularProgress, createTheme, Stack, ThemeProvider } from "@mui/material";
 import { ConfirmProvider } from "material-ui-confirm";
 import { useRouter } from "next/router";
 import type { NextComponentType } from "next";
@@ -28,9 +28,9 @@ export type AuthProps = {
 }
 
 export type CustomAppProps = AppProps & {
-  Component: NextComponentType & {auth?: AuthProps} // add auth type
+  Component: NextComponentType & { auth?: AuthProps } // add auth type
 }
-const MyApp: AppType<{ session: Session | null } > = ({
+const MyApp: AppType<{ session: Session | null }> = ({
   Component,
   pageProps: { session, ...pageProps },
 }: CustomAppProps) => {
@@ -45,8 +45,8 @@ const MyApp: AppType<{ session: Session | null } > = ({
                 <Auth auth={Component.auth}>
                   <Component {...pageProps} />
                 </Auth>
-              ):
-              <Component {...pageProps} />
+              ) :
+                <Component {...pageProps} />
             }
           </SnackbarProvider>
         </ConfirmProvider>
@@ -56,20 +56,20 @@ const MyApp: AppType<{ session: Session | null } > = ({
 };
 export default api.withTRPC(MyApp);
 
-function Auth({ children, auth }: { children: JSX.Element, auth: AuthProps}) {
+function Auth({ children, auth }: { children: JSX.Element, auth: AuthProps }) {
   const router = useRouter();
-  const { data, status } = useSession({ 
-    required: true, 
+  const { data, status } = useSession({
+    required: true,
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    onUnauthenticated: () => router.replace('/signin').catch(console.error) 
+    onUnauthenticated: () => router.replace('/signin').catch(console.error)
   })
   if (status === "loading") {
     return (
-     <div style={{ minHeight: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center'}} >
-       <Stack>
-         <CircularProgress />
-       </Stack>
-     </div>
+      <div style={{ minHeight: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} >
+        <Stack>
+          <CircularProgress />
+        </Stack>
+      </div>
     )
   }
 
