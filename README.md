@@ -1,28 +1,46 @@
-# Create T3 App
+# Wellness & Nutrition
+React app to manage booking, time slots and users for a local gym.
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+## Description
+The app is used by an admin to manage users and the calendar. An admin can:
+- book slots for other users;
+- mark slots as unvailable;
+- create/update/delete users;
+- receive notifications when clients make a booking or delete them;
 
-## What's next? How do I make an app with this?
+Users can:
+- view their plan informations;
+- check their bookings;
+- make a new booking according to available slots;
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+Plan can be SINGLE or SHARED. On a shared plan, users can share their slots with another one. Instead, when on single, slots is dedicated.
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+Users are registered with credentials (Email and Password) and the email is verified through an activation link which is sent when the admin registers a new client. 
+This allows users to perform first access, verify their email and set their password on their own.
 
+When a user performs an action (aka DELETE or CREATE a booking), the admin is notified with an in app notification (delivered through a websocket) and an email. Also, the
+event is logged in the database to be viewed in the events page.
+
+### App
+The app is scaffolded with [T3 Stack](https://create.t3.gg/) and uses the following modules. 
 - [Next.js](https://nextjs.org)
 - [NextAuth.js](https://next-auth.js.org)
 - [Prisma](https://prisma.io)
-- [Tailwind CSS](https://tailwindcss.com)
 - [tRPC](https://trpc.io)
 
-## Learn More
+Styling is done using Material UI.
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+### Cleanup
+The project also contains a go module called `cleanup` which contains programs to cleanup database obsolete data periodically
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+### Events
+Events are sent using a [Soketi](https://docs.soketi.app/) instance with the Pusher SDK.
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+## Deploy
+The app is designed to be deploy on a VPS using Docker and Traefik v2 as reverse proxy. A docker-compose.example.yml is provided
+for a basic setup.
 
-## How do I deploy this?
-
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+### Preview
+A preview of the app is hosted on [Vercel](https://wellness-nutrition.vercel.app/) using:
+- a free instance of a cloud Postgres deployment hosted on [ElephantSQL])(https://elephantsql.com);
+- sandbox plan on [Pusher](https://pusher.com);
