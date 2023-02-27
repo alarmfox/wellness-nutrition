@@ -18,7 +18,7 @@ Plan can be SINGLE or SHARED. On a shared plan, users can share their slots with
 Users are registered with credentials (Email and Password) and the email is verified through an activation link which is sent when the admin registers a new client. 
 This allows users to perform first access, verify their email and set their password on their own.
 
-When a user performs an action (aka DELETE or CREATE a booking), the admin is notified with an in app notification (delivered through a websocket) and an email. Also, the
+When a user performs an action (aka DELETE or CREATE a booking), the admin is notified with an in-app notification (delivered through a websocket) and an email. Also, the
 event is logged in the database to be viewed in the events page.
 
 ### App
@@ -31,7 +31,7 @@ The app is scaffolded with [T3 Stack](https://create.t3.gg/) and uses the follow
 Styling is done using Material UI.
 
 ### Cleanup
-The project also contains a go module called `cleanup` which contains programs to cleanup database obsolete data periodically
+The project also contains a go module called `cleanup` which contains programs to cleanup database obsolete data periodically.
 
 ### Events
 Events are sent using a [Soketi](https://docs.soketi.app/) instance with the Pusher SDK.
@@ -42,5 +42,5 @@ for a basic setup.
 
 ### Preview
 A preview of the app is hosted on [Vercel](https://wellness-nutrition.vercel.app/) using:
-- a free instance of a cloud Postgres deployment hosted on [ElephantSQL])(https://elephantsql.com);
+- a free instance of a cloud Postgres deployment hosted on [ElephantSQL](https://elephantsql.com);
 - sandbox plan on [Pusher](https://pusher.com);
