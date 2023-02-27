@@ -168,8 +168,10 @@ export const bookingRouter = createTRPCRouter({
     const user = await userValidOrThrow(ctx.prisma, ctx.session.user.id);
 
     const now = DateTime.now().setZone(zone);
-    const isLastWeekOfMonth = now.endOf('month').weekNumber - 1 === now.weekNumber;
+    const endOfMonth = now.endOf('month').day;
+    const isLastWeekOfMonth = now.day <= endOfMonth && now.day >= endOfMonth - 7;
     const endDate = isLastWeekOfMonth ? now.plus({ months: 1 }).endOf('month') : now.endOf('month');
+
     const startDate = now.hour >= 17 ?
       now.plus({ days: 2 }).startOf('day').startOf('hour') :
       now.plus({ days: 1 }).startOf('day').startOf('hour');

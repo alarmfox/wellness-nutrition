@@ -6,10 +6,9 @@ const businessWeek = [1, 2, 3, 4, 5];
 
 export function isBookeable(d: DateTime): boolean {
   const easter = getEasterDate(d.year);
-  const mondayAfterEaster = easter.plus({ days: 1 });
+  const mondayAfterEaster = easter.plus({ days: 1 });;
   if (mondayAfterEaster.month === d.month && mondayAfterEaster.day === d.day) return false;
   if (d.day === 25 && d.month === 4) return false;
-  if (d.day === 2 && d.month === 6) return false;
   if (d.day === 2 && d.month === 6) return false;
   if (d.day === 15 && d.month === 8) return false;
   if (d.day === 1 && d.month === 11) return false;
@@ -17,6 +16,7 @@ export function isBookeable(d: DateTime): boolean {
   if (d.day === 1 && d.month === 1) return false;
   if (d.day === 25 && d.month === 12) return false;
   if (d.day === 19 && d.month === 9) return false;
+  if (d.day === 1 && d.month === 5) return false;
   if (d.weekday === 6) return d.hour >= 7 && d.hour <= 11;
   return businessWeek.includes(d.weekday) && d.hour >= 7 && d.hour <= 21;
 }
