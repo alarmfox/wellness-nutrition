@@ -215,7 +215,7 @@ function BookingAction({ booking, handleClose, isOpen }: BookingActionProps) {
   const onSubmit = React.useCallback((v: AdminDeleteModel) => mutate(v), [mutate]);
   if (!booking) return <div></div>
   return (
-    <Dialog open={isOpen} onClose={handleClose}>
+    <Dialog open={isOpen} fullWidth onClose={handleClose}>
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogTitle>{booking.slot.disabled ? 'Slot disabilitato' : 'Prenotazione'}</DialogTitle>
@@ -272,7 +272,7 @@ function CreateBooking({ slotInfo, isOpen, handleClose }: CreateBookingProps) {
       setError("Impossibile creare la prenotazione");
     }
   })
-  const { data } = api.user.getActive.useQuery();
+  const { data } = api.user.getAll.useQuery();
 
   const selectData = React.useMemo(() => data ? data.map((item, index): SelectUserOptionType => {
     return {
@@ -303,11 +303,11 @@ function CreateBooking({ slotInfo, isOpen, handleClose }: CreateBookingProps) {
   }, [mutate, disable, slotInfo, selected]);
 
   return (
-    <Dialog open={isOpen} onClose={handleClose}>
+    <Dialog open={isOpen} fullWidth onClose={handleClose} sx={{ overflowY: 'visible' }}>
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <form onSubmit={onSubmit}>
         <DialogTitle>Crea prenotazione</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ overflowY: 'visible' }}>
           {slotInfo &&
             <DialogContentText>
               <Typography>
@@ -324,7 +324,6 @@ function CreateBooking({ slotInfo, isOpen, handleClose }: CreateBookingProps) {
                 <Autocomplete
                   noOptionsText="Nessun utente trovato"
                   getOptionLabel={(option: SelectUserOptionType) => option.label}
-                  disablePortal
                   onChange={(event, value) => value ? setSelected(data.at(value.id) ?? null) : setSelected(null)}
                   options={selectData}
                   id="select-user"
@@ -345,6 +344,6 @@ function CreateBooking({ slotInfo, isOpen, handleClose }: CreateBookingProps) {
           <Button variant="contained" type="submit">Conferma</Button>
         </DialogActions>
       </form>
-    </Dialog>
+    </Dialog >
   )
 }

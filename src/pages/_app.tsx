@@ -68,7 +68,6 @@ function Auth({ children, auth }: { children: JSX.Element, auth: AuthProps}) {
      <div style={{ minHeight: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center'}} >
        <Stack>
          <CircularProgress />
-         <Typography color="gray" variant="caption"> Caricamento in corso...</Typography>
        </Stack>
      </div>
     )

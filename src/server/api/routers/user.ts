@@ -48,7 +48,7 @@ export const userRouter = createTRPCRouter({
     mutation(async ({ ctx, input }) => {
       try {
         const { goals, ...rest } = input;
-        const token = randomBytes(48).toString('base64url')
+        const token = randomBytes(48).toString('base64url');
         const user = await ctx.prisma.user.create({
           data: {
             ...rest,
@@ -78,8 +78,8 @@ export const userRouter = createTRPCRouter({
         id: {
           in: input,
         },
-      }
-    })
+      },
+    });
   }),
 
   update: adminProtectedProcedure.input(UpdateUserSchema).mutation(({ ctx, input }) => {
@@ -158,22 +158,19 @@ export const userRouter = createTRPCRouter({
     }
   }),
 
-  getActive: adminProtectedProcedure.query(({ ctx }) => {
-    return ctx.prisma.user.findMany({
+  sendActivationLink: adminProtectedProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
+    const token = randomBytes(48).toString('base64url');
+    const url = `${env.NEXTAUTH_URL}/verify?token=${token}`;
+    const user = await ctx.prisma.user.update({
       where: {
-        AND: {
-          expiresAt: {
-            gt: new Date(),
-          },
-          remainingAccesses: {
-            gt: 0,
-          },
-          emailVerified: {
-            not: null,
-          },
-          role: Role.USER,
-        }
+        email: input
+      },
+      data: {
+        verificationToken: token,
+        verificationTokenExpiresIn: DateTime.now().plus({ days: 7 }).toJSDate(),
       }
-    })
-  }),
+    });
+    await sendWelcomeEmail(user, url);
+
+  })
 });

@@ -457,7 +457,7 @@ function UsersTable() {
                       {row.lastName}
                     </TableCell>
                     <TableCell>{row.firstName}</TableCell>
-                    <TableCell>{row.email}</TableCell>
+                    <TableCell sx={{ color: row.emailVerified ? undefined : 'red' }} >{row.email}</TableCell>
                     <TableCell>{row.subType === SubType.SHARED ? 'Condiviso' : 'Singolo'}</TableCell>
                     <TableCell>{row.expiresAt.toISOString().split('T')[0]}</TableCell>
                     <TableCell align="right">{row.remainingAccesses}</TableCell>
@@ -702,7 +702,8 @@ function EditUser({ user, handleClose }: EditUserProps) {
   });
   const [error, setError] = React.useState<string | undefined>(undefined);
   const utils = api.useContext();
-  const { mutate: updateUser, isLoading, } = api.user.update.useMutation({
+
+  const { mutate: updateUser, isLoading: isUpdating } = api.user.update.useMutation({
     onSuccess: async () => {
       try {
         await utils.user.getAll.invalidate();
@@ -710,10 +711,21 @@ function EditUser({ user, handleClose }: EditUserProps) {
       } catch (error) {
         setError('Error sconosciuto');
       }
-
     },
     onError: () => setError('Impossibile modificare l\'utente. Contattare l\'amministratore.')
-  })
+  });
+
+  const { mutate: sendActivationLink, isLoading: isSendinglink } = api.user.sendActivationLink.useMutation({
+    onSuccess: async () => {
+      try {
+        await utils.user.getAll.invalidate();
+        handleClose();
+      } catch (error) {
+        setError('Error sconosciuto');
+      }
+    },
+    onError: () => setError('Impossibile modificare l\'utente. Contattare l\'amministratore.')
+  });
 
   React.useEffect(() => {
     setTimeout(() => {
@@ -722,6 +734,8 @@ function EditUser({ user, handleClose }: EditUserProps) {
       setValue('expiresAt', user.expiresAt.toISOString().split('T')[0]);
     }, 100);
   }, [user, setValue]);
+
+  const isLoading = React.useMemo(() => isSendinglink || isUpdating, [isUpdating, isSendinglink]);
 
   const onSubmit = React.useCallback((user: UpdateUserModel) => updateUser(user), [updateUser])
 
@@ -866,6 +880,7 @@ function EditUser({ user, handleClose }: EditUserProps) {
         {error && <Alert sx={{ mt: '1.5rem' }} variant="filled" severity="error">{error}</Alert>}
         <DialogActions>
           {isLoading && <CircularProgress />}
+          {!user.emailVerified && <Button onClick={() => sendActivationLink(user.email)} disabled={isSendinglink}>Invia link di attivazione</Button>}
           <Button onClick={handleClose}>Annulla</Button>
           <Button disabled={!isDirty} variant="contained" type="submit">Conferma</Button>
         </DialogActions>
