@@ -141,7 +141,7 @@ export const bookingRouter = createTRPCRouter({
         }
       });
 
-      const isRefundable = DateTime.fromJSDate(input.startsAt).toUTC().diffNow().as('hours') > 3;
+      const isRefundable = DateTime.fromJSDate(input.startsAt).diffNow().as('hours') > 3;
       const ops = isRefundable ? [deleteBooking, resetCounter, refund, logEvent] : [deleteBooking, resetCounter, logEvent]
       const res = await ctx.prisma.$transaction(ops);
 
@@ -149,8 +149,8 @@ export const bookingRouter = createTRPCRouter({
 
       await Promise.all([
         pusher.trigger('booking', 'user', createNotification(createdEvent)),
-        sendOnDeleteBooking(createdEvent.user, input.startsAt),
-        pusher.trigger('booking', 'refresh', { startsAt: input.startsAt }),
+        sendOnDeleteBooking(createdEvent.user, DateTime.fromJSDate(input.startsAt).setZone(zone).toJSDate()),
+        pusher.trigger('booking', 'refresh', {}),
       ]);
 
     } catch (error) {
@@ -304,7 +304,7 @@ export const bookingRouter = createTRPCRouter({
     const res = await ctx.prisma.$transaction([updateAccesses, createSlot, logEvent]);
     await Promise.all([
       pusher.trigger('booking', 'user', createNotification(res[2])),
-      sendOnNewBooking(res[2].user, input.startsAt),
+      sendOnNewBooking(res[2].user, DateTime.fromJSDate(input.startsAt).setZone(zone).toJSDate()),
       pusher.trigger('booking', 'refresh', {}),
     ]);
   }),
