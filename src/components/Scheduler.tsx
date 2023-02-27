@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Alert, Autocomplete, Button, Checkbox, CircularProgress, Dialog, DialogActions,
+  Alert, Autocomplete, Backdrop, Button, Checkbox, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogContentText, DialogTitle, FormControl, FormControlLabel, FormGroup,
   TextField, Typography, useTheme
 } from "@mui/material";
@@ -133,7 +133,13 @@ export function Scheduler() {
 
   return (
     <>
-      {isLoading && <CircularProgress />}
+      <Backdrop
+        sx={{ color: 'darkgrey', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={isLoading}
+      >
+        <CircularProgress sx={{ textAlign: 'center' }} />
+      </Backdrop>
+
       {selected && <BookingAction isOpen={showEventDialog} booking={selected} handleClose={closeEventDialog} />}
       {slotInfo && <CreateBooking isOpen={showCreateDialog} slotInfo={slotInfo} handleClose={closeCreateDialog} />}
       {/* @ts-ignore */}
