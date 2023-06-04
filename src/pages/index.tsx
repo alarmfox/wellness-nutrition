@@ -225,7 +225,7 @@ function RenderBooking(props: ListChildComponentProps<BookingActionProps[]>) {
       </ListItemIcon>
       <ListItemText
         sx={{ my: '.5rem' }}
-        primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_FULL)}
+        primary={formatBooking(booking.startsAt, undefined, DateTime.DATETIME_MED_WITH_WEEKDAY)}
         primaryTypographyProps={{
           fontSize: 16,
           fontWeight: 'medium',
