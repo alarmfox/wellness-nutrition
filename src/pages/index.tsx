@@ -155,10 +155,16 @@ function BookingList({ height }: BookingListProps) {
   const handleClick = React.useCallback(async ({ id, startsAt }: Booking) => {
     try {
       const isRefundable = DateTime.fromJSDate(startsAt).setZone(zone).diffNow().as('hours') > 3;
+      if (isRefundable) {
+        await confirm({
+          description: "La prenotazione non può essere eliminata direttamente, in quanto oltre il tempo limite. Rivolgersi al numero 3921775396.",
+          title: "Cancellazione prenotazione",
+          cancellationText: '',
+        });
+        return;
+      }
       await confirm({
-        description: !isRefundable ?
-          'Sicuro di voler eliminare questa prenotazione? L\'accesso NON sarà rimborsato!' :
-          'Sicuro di voler eliminare questa prenotazione?',
+        description: 'Sicuro di voler eliminare questa prenotazione?',
         title: 'Conferma',
         cancellationText: 'Annulla',
         confirmationText: 'Conferma',

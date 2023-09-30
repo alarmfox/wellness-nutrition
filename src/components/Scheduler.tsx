@@ -55,6 +55,14 @@ function getCurrentWeekParams(d: Date): IntervalModel {
   }
 }
 
+function getSlotTitle(s : Slot, firstName: string, lastName: string): string {
+  if (s.disabled) {
+    return "disabilitato";
+  }
+
+  return `${lastName} ${firstName.substring(0, 3)}.`
+}
+
 export function Scheduler() {
   const theme = useTheme();
   const [input, setInput] = React.useState<IntervalModel>(getCurrentWeekParams(new Date()));
@@ -123,7 +131,7 @@ export function Scheduler() {
     return {
       startsAt,
       endsAt: DateTime.fromJSDate(startsAt).plus({ hours: 1 }).toJSDate(),
-      title: `${slot.disabled ? 'disabilitato' : user.lastName}`,
+      title: getSlotTitle(slot, user.firstName, user.lastName),
       user,
       slot,
       info: getTooltipInfo(user, slot),
