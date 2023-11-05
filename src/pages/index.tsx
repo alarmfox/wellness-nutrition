@@ -154,7 +154,27 @@ function BookingList({ height }: BookingListProps) {
   const isLoading = React.useMemo(() => isFetching || isDeleting, [isFetching, isDeleting]);
   const handleClick = React.useCallback(async ({ id, startsAt }: Booking) => {
     try {
-      const isRefundable = DateTime.fromJSDate(startsAt).setZone(zone).diffNow().as('hours') > 3;
+
+      
+      //const now = DateTime.fromJSDate(new Date(2023, 10, 5, 23)).setZone(zone);
+      const now: DateTime = DateTime.now().setZone(zone);
+
+      const bookingDate = DateTime.fromJSDate(startsAt).setZone(zone);
+
+      const isNightHour = (now.hour >= 21 && now.hour <= 23) || (now.hour >= 0 && now.hour <= 7);
+
+      const isDeletable = !(bookingDate.diff(now).as('days') <= 1 && isNightHour);
+
+      if (!isDeletable) {
+        await confirm({
+          description: "La prenotazione non può essere con così poco preavviso.",
+          title: "Cancellazione prenotazione",
+          cancellationText: '',
+        });
+        return;
+      }
+
+      const isRefundable = bookingDate.diffNow().as('hours') > 3;
       if (!isRefundable) {
         await confirm({
           description: "La prenotazione non può essere eliminata direttamente, in quanto oltre il tempo limite. Rivolgersi al numero 3921775396.",
@@ -171,7 +191,7 @@ function BookingList({ height }: BookingListProps) {
       })
       mutate({
         id,
-        startsAt: DateTime.fromJSDate(startsAt).setZone(zone).toJSDate(),
+        startsAt: bookingDate.toJSDate(),
       });
 
     } catch (error) {
@@ -287,6 +307,24 @@ function SlotList({ height }: SlotListProps) {
 
   const handleClick = React.useCallback(async (startsAt: string) => {
     try {
+       //const now = DateTime.fromJSDate(new Date(2023, 10, 5, 23)).setZone(zone);
+       const now: DateTime = DateTime.now().setZone(zone);
+
+       const bookingDate = DateTime.fromISO(startsAt).setZone(zone);
+ 
+       const isNightHour = (now.hour >= 21 && now.hour <= 23) || (now.hour >= 0 && now.hour <= 7);
+ 
+       const isCreatable = !(bookingDate.diff(now).as('days') <= 1 && isNightHour);
+ 
+       if (!isCreatable) {
+         await confirm({
+           description: "La prenotazione non può essere creata così poco preavviso",
+           title: "Creazione prenotazione",
+           cancellationText: '',
+         });
+         return;
+       }
+
       await confirm({
         description: `Confermi la prenotazione per il giorno:
           ${formatBooking(startsAt, undefined, DateTime.DATETIME_FULL)}`,
@@ -295,7 +333,7 @@ function SlotList({ height }: SlotListProps) {
         confirmationText: 'Conferma',
       });
       mutate({
-        startsAt: DateTime.fromISO(startsAt).setZone(zone).toJSDate(),
+        startsAt: bookingDate.toJSDate(),
       });
 
     } catch (error) {
