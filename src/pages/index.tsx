@@ -307,14 +307,15 @@ function SlotList({ height }: SlotListProps) {
 
   const handleClick = React.useCallback(async (startsAt: string) => {
     try {
-       //const now = DateTime.fromJSDate(new Date(2023, 10, 5, 23)).setZone(zone);
+
+       //const now = DateTime.fromJSDate(new Date(2023, 11, 12, 23)).setZone(zone);  
        const now: DateTime = DateTime.now().setZone(zone);
 
        const bookingDate = DateTime.fromISO(startsAt).setZone(zone);
  
        const isNightHour = (now.hour >= 21 && now.hour <= 23) || (now.hour >= 0 && now.hour <= 7);
  
-       const isCreatable = !(bookingDate.diff(now).as('days') <= 1 && isNightHour);
+       const isCreatable = !isNightHour || bookingDate.diff(now).as('days') > 1;
  
        if (!isCreatable) {
          await confirm({
