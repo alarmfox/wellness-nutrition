@@ -1,13 +1,14 @@
 import { DateTime, Interval } from "luxon";
 
-export const zone = 'Europe/Rome';
+export const zone = "Europe/Rome";
 
 const businessWeek = [1, 2, 3, 4, 5];
 
 export function isBookeable(d: DateTime): boolean {
   const easter = getEasterDate(d.year);
   const mondayAfterEaster = easter.plus({ days: 1 });
-  if (mondayAfterEaster.month === d.month && mondayAfterEaster.day === d.day) return false;
+  if (mondayAfterEaster.month === d.month && mondayAfterEaster.day === d.day)
+    return false;
   if (d.day === 25 && d.month === 4) return false;
   if (d.day === 2 && d.month === 6) return false;
   if (d.day === 15 && d.month === 8) return false;
@@ -22,28 +23,44 @@ export function isBookeable(d: DateTime): boolean {
 }
 
 export const defaultFormatOpts: Intl.DateTimeFormatOptions = {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  minute: '2-digit',
-  hour: '2-digit',
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  minute: "2-digit",
+  hour: "2-digit",
   hour12: false,
-}
+};
 
-export function formatDate(s: string | Date, format: Intl.DateTimeFormatOptions = defaultFormatOpts): string {
-  const d = typeof s === 'string' ? DateTime.fromISO(s) : DateTime.fromJSDate(s);
+export function formatDate(
+  s: string | Date,
+  format: Intl.DateTimeFormatOptions = defaultFormatOpts,
+): string {
+  const d =
+    typeof s === "string" ? DateTime.fromISO(s) : DateTime.fromJSDate(s);
 
   return d.toLocaleString(format, {
-    locale: 'it',
+    locale: "it",
   });
 }
 
-export function formatBooking(start: Date | string, end: Date | string | undefined = undefined, format: Intl.DateTimeFormatOptions): string {
-  const s = typeof start === 'string' ? DateTime.fromISO(start) : DateTime.fromJSDate(start);
-  const e = typeof end === 'string' ? DateTime.fromISO(end) : end ? DateTime.fromJSDate(end) : s.plus({ hours: 1 });
+export function formatBooking(
+  start: Date | string,
+  end: Date | string | undefined = undefined,
+  format: Intl.DateTimeFormatOptions,
+): string {
+  const s =
+    typeof start === "string"
+      ? DateTime.fromISO(start)
+      : DateTime.fromJSDate(start);
+  const e =
+    typeof end === "string"
+      ? DateTime.fromISO(end)
+      : end
+        ? DateTime.fromJSDate(end)
+        : s.plus({ hours: 1 });
 
   return Interval.fromDateTimes(s, e).toLocaleString(format, {
-    locale: 'it',
+    locale: "it",
   });
 }
 
@@ -63,5 +80,5 @@ function getEasterDate(year: number): DateTime {
     month = 3 + f((L + 40) / 44),
     day = L + 28 - 31 * f(month / 4);
 
-  return DateTime.fromJSDate(new Date(year, month - 1, day))
+  return DateTime.fromJSDate(new Date(year, month - 1, day));
 }

@@ -57,7 +57,6 @@ export const serverEnv = {
   PUSHER_APP_SECRET: process.env.PUSHER_APP_SECRET,
   PUSHER_APP_USE_TLS: process.env.PUSHER_APP_USE_TLS,
   PUSHER_APP_CLUSTER: process.env.PUSHER_APP_CLUSTER,
-
 };
 
 /**
@@ -70,7 +69,7 @@ export const clientSchema = z.object({
   NEXT_PUBLIC_PUSHER_APP_PORT: z.string().optional(),
   NEXT_PUBLIC_PUSHER_APP_KEY: z.string(),
   NEXT_PUBLIC_PUSHER_APP_CLUSTER: z.string(),
-  NEXT_PUBLIC_PUSHER_APP_USE_TLS: z.string().default('false'),
+  NEXT_PUBLIC_PUSHER_APP_USE_TLS: z.string().default("false"),
 });
 
 /**

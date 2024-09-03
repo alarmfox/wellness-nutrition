@@ -6,11 +6,11 @@ export const eventsRouter = createTRPCRouter({
     return ctx.prisma.event.findMany({
       where: {
         occurredAt: {
-          gte: DateTime.now().startOf('week').toJSDate()
-        }
+          gte: DateTime.now().startOf("week").toJSDate(),
+        },
       },
       orderBy: {
-        occurredAt: 'asc'
+        occurredAt: "asc",
       },
       include: {
         user: {
@@ -29,9 +29,8 @@ export const eventsRouter = createTRPCRouter({
             role: true,
             goals: true,
           },
-
         },
-      }
-    })
-  })
-})
+      },
+    });
+  }),
+});

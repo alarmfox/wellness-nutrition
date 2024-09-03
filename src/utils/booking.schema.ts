@@ -6,8 +6,8 @@ export const AdminCreateSchema = z.object({
   disable: z.boolean().default(false),
   subType: z.nativeEnum(SubType).optional(),
   from: z.date(),
-  to: z.date()
-})
+  to: z.date(),
+});
 
 export const AdminDeleteSchema = z.object({
   id: z.bigint(),
@@ -23,7 +23,6 @@ export const IntervalSchema = z.object({
   to: z.date(),
 });
 
-
 export type AdminCreateModel = z.infer<typeof AdminCreateSchema>;
-export type AdminDeleteModel = z.infer<typeof AdminDeleteSchema>
+export type AdminDeleteModel = z.infer<typeof AdminDeleteSchema>;
 export type IntervalModel = z.infer<typeof IntervalSchema>;

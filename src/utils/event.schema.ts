@@ -7,7 +7,7 @@ export const NotificationSchema = z.object({
   lastName: z.string(),
   occurredAt: z.string().datetime(),
   startsAt: z.string().datetime(),
-  type: z.nativeEnum(EventType)
+  type: z.nativeEnum(EventType),
 });
 
 export const PaginationSchema = z.object({
@@ -17,3 +17,4 @@ export const PaginationSchema = z.object({
 
 export type NotificationModel = z.infer<typeof NotificationSchema>;
 export type PaginationModel = z.infer<typeof PaginationSchema>;
+

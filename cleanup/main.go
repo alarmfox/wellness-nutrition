@@ -22,10 +22,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-  db.SetMaxIdleConns(0)
+	db.SetMaxIdleConns(0)
 	db.SetMaxOpenConns(1)
 	defer db.Close()
-	
+
 	switch strings.ToLower(*cmd) {
 	case "slots":
 		if err := clearSlots(db); err != nil {

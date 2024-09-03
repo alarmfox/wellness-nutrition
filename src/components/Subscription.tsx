@@ -75,7 +75,7 @@ export function Subscription({ setExpanded: setExpandedProp }: SubscriptionProps
               </Grid>
               <Grid item xs={6}>
                 <Typography align="right" variant="body1">
-                {data.goals ? data.goals?.replaceAll('-', ' ') : '-'}
+                  {data.goals ? data.goals?.replaceAll('-', ' ') : '-'}
                 </Typography>
               </Grid>
               <Grid item xs={6} >

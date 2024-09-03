@@ -6,7 +6,7 @@ import {
 } from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "./db";
-import CredentialsProvider from 'next-auth/providers/credentials';
+import CredentialsProvider from "next-auth/providers/credentials";
 import type { Role, SubType } from "@prisma/client";
 import argon2 from "argon2";
 
@@ -47,11 +47,11 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.subType = user.subType;
       }
-      return token
+      return token;
     },
     session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub || '';
+        session.user.id = token.sub || "";
         session.user.role = token.role as Role;
         session.user.subType = token.subType as SubType;
       }
@@ -63,7 +63,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
     // Seconds - How long until an idle session expires and is no longer valid.
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
@@ -72,35 +72,36 @@ export const authOptions: NextAuthOptions = {
 
   providers: [
     CredentialsProvider({
-      name: 'Credentials',
+      name: "Credentials",
       credentials: {
         email: {
-          label: "Email", type: "email", placeholder: "Indirizzo email",
+          label: "Email",
+          type: "email",
+          placeholder: "Indirizzo email",
         },
         password: {
-          label: "Password", type: "password",
-        }
+          label: "Password",
+          type: "password",
+        },
       },
       async authorize(credentials) {
         const user = await prisma.user.findFirst({
           where: {
             email: {
               equals: credentials?.email,
-              mode: 'insensitive',
+              mode: "insensitive",
             },
           },
         });
 
-        if (!user || !user.emailVerified || !user.password)
-          return null;
+        if (!user || !user.emailVerified || !user.password) return null;
 
-        if (await argon2.verify(user.password, credentials?.password || '')) {
+        if (await argon2.verify(user.password, credentials?.password || "")) {
           return user;
         }
-        return null
-
+        return null;
       },
-    })
+    }),
     /**
      * ...add more providers here
      *
@@ -112,9 +113,9 @@ export const authOptions: NextAuthOptions = {
      **/
   ],
   pages: {
-    signIn: '/signin',
-    error: '/signin',
-  }
+    signIn: "/signin",
+    error: "/signin",
+  },
 };
 
 /**

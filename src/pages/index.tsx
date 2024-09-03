@@ -155,7 +155,7 @@ function BookingList({ height }: BookingListProps) {
   const handleClick = React.useCallback(async ({ id, startsAt }: Booking) => {
     try {
 
-      
+
       //const now = DateTime.fromJSDate(new Date(2023, 10, 5, 23)).setZone(zone);
       const now: DateTime = DateTime.now().setZone(zone);
 
@@ -308,23 +308,23 @@ function SlotList({ height }: SlotListProps) {
   const handleClick = React.useCallback(async (startsAt: string) => {
     try {
 
-       //const now = DateTime.fromJSDate(new Date(2023, 11, 12, 23)).setZone(zone);  
-       const now: DateTime = DateTime.now().setZone(zone);
+      //const now = DateTime.fromJSDate(new Date(2023, 11, 12, 23)).setZone(zone);  
+      const now: DateTime = DateTime.now().setZone(zone);
 
-       const bookingDate = DateTime.fromISO(startsAt).setZone(zone);
- 
-       const isNightHour = (now.hour >= 21 && now.hour <= 23) || (now.hour >= 0 && now.hour <= 7);
- 
-       const isCreatable = !isNightHour || bookingDate.diff(now).as('days') > 1;
- 
-       if (!isCreatable) {
-         await confirm({
-           description: "La prenotazione non può essere creata così poco preavviso",
-           title: "Creazione prenotazione",
-           cancellationText: '',
-         });
-         return;
-       }
+      const bookingDate = DateTime.fromISO(startsAt).setZone(zone);
+
+      const isNightHour = (now.hour >= 21 && now.hour <= 23) || (now.hour >= 0 && now.hour <= 7);
+
+      const isCreatable = !isNightHour || bookingDate.diff(now).as('days') > 1;
+
+      if (!isCreatable) {
+        await confirm({
+          description: "La prenotazione non può essere creata così poco preavviso",
+          title: "Creazione prenotazione",
+          cancellationText: '',
+        });
+        return;
+      }
 
       await confirm({
         description: `Confermi la prenotazione per il giorno:

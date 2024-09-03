@@ -55,7 +55,7 @@ function getCurrentWeekParams(d: Date): IntervalModel {
   }
 }
 
-function getSlotTitle(s : Slot, firstName: string, lastName: string): string {
+function getSlotTitle(s: Slot, firstName: string, lastName: string): string {
   if (s.disabled) {
     return "disabilitato";
   }
