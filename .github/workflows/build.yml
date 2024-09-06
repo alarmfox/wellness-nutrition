@@ -1,0 +1,21 @@
+---
+name: Build and publish a Docker image to ghcr.io
+on:
+  push:
+    branches:
+      - master
+jobs:
+  docker_publish:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build with --build-arg(s)
+        uses: VaultVulp/gp-docker-action@1.1.12
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          image-name: wellnessnutrition
+          custom-args: --build-arg NEXT_PUBLIC_PUSHER_APP_KEY=${{env.PUSHER_APP_KEY}} \
+            --build-arg NEXT_PUBLIC_PUSHER_APP_CLUSTER=${{env.PUSHER_APP_CLUSTER}} \
+            --build-arg NEXT_PUBLIC_PUSHER_APP_HOST=${{env.PUSHER_APP_HOST}} \
+            --build-arg NEXT_PUBLIC_PUSHER_APP_PORT=${{env.PUSHER_APP_PORT}} \ 
+            --build-arg NEXT_PUBLIC_PUSHER_APP_USE_TLS=${{env.PUSHER_APP_USE_TLS}}
