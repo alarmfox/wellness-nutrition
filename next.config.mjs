@@ -10,7 +10,7 @@
 const config = {
   reactStrictMode: true,
   swcMinify: true,
-  output: process.env.IS_DOCKER ? 'standalone' : undefined,
+  output: process.env.IS_DOCKER ? "standalone" : undefined,
   /**
    * If you have the "experimental: { appDir: true }" setting enabled, then you
    * must comment the below `i18n` config out.
@@ -23,6 +23,11 @@ const config = {
   },
   experimental: {
     appDir: false,
-  }
+  },
+  modularizeImports: {
+    "@mui/icons-material": {
+      transform: "@mui/icons-material/{{member}}",
+    },
+  },
 };
 export default config;
