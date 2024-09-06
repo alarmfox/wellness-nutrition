@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build with --build-arg(s)
-        uses: VaultVulp/gp-docker-action@1.1.12
+        uses: TCPShield/gp-docker-action@1.1.13
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           image-name: wellnessnutrition
