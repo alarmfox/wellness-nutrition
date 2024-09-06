@@ -1,8 +1,6 @@
 ##### DEPENDENCIES
 
-FROM --platform=linux/amd64 node:lts AS deps
-
-RUN apt-get -qy update && apt-get -qy install openssl
+FROM node:lts-alpine AS deps
 
 WORKDIR /app
 
@@ -21,7 +19,7 @@ RUN \
 
 ##### BUILDER
 
-FROM --platform=linux/amd64 node:lts AS builder
+FROM node:lts-alpine AS builder
 
 # client var
 ARG NEXT_PUBLIC_PUSHER_APP_HOST
@@ -64,7 +62,7 @@ RUN \
 
 ##### RUNNER
 
-FROM --platform=linux/amd64 node:lts AS runner
+FROM --platform=linux/amd64 node:lts-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
