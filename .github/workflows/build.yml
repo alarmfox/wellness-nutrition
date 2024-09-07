@@ -1,9 +1,17 @@
 ---
 name: Build and publish a Docker image to ghcr.io
 on:
-  push:
-    branches:
-      - master
+  paths-ignore:
+    - README.md
+    - '**/*.md'
+    - '**/*.txt'
+    - '**/*.json'
+    - '**/*.yml'
+    - '**/*.gitignore'
+    - '**/*.gitattributes'
+    - '**/*.dockerignore'
+    - '**/*.env'
+    - '**/*.sh'
 jobs:
   build_and_publish:
     runs-on: ubuntu-latest
@@ -11,27 +19,21 @@ jobs:
       packages: write
       actions: read
       contents: read
-    steps: 
+    steps:
       - uses: actions/checkout@v3
       - name: Build and push the image
-        run : |
+        run: |-
           echo "Using $(docker -v)"
-
           echo "::group::Logging into the GitHub Container registry (ghcr.io) ..."
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           echo "::endgroup::"
-
           export IMAGE_NAME=$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')
           export IMAGE_TAG="ghcr.io/${{github.repository_owner}}/${IMAGE_NAME}:latest"
-
           echo ${IMAGE_TAG}
-          
           docker build --tag ${IMAGE_TAG} \
           --build-arg NEXT_PUBLIC_PUSHER_APP_KEY=${{ env.PUSHER_APP_KEY }} \
           --build-arg NEXT_PUBLIC_PUSHER_APP_CLUSTER=${{ env.PUSHER_APP_CLUSTER }} \
           --build-arg NEXT_PUBLIC_PUSHER_APP_HOST=${{ env.PUSHER_APP_HOST }} \
           --build-arg NEXT_PUBLIC_PUSHER_APP_PORT=${{ env.PUSHER_APP_PORT }} \
           --build-arg NEXT_PUBLIC_PUSHER_APP_USE_TLS=${{ env.PUSHER_APP_USE_TLS }} .
-  
-
           docker push ${IMAGE_TAG}
