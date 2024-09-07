@@ -11,8 +11,11 @@ Users can:
 - View their plan information
 - Check their bookings
 - Make new bookings according to available slots
+
 Plans can be SINGLE or SHARED. On a shared plan, users can share their slots with another user. On a single plan, slots are dedicated to the individual user.
-Users are registered with credentials (Email and Password). The email is verified through an activation link sent when the admin registers a new client. This allows users to perform their first access, verify their email, and set their password on their own.
+Users are registered with credentials (Email and Password).
+
+The email is verified through an activation link sent when the admin registers a new client. This allows users to perform their first access, verify their email, and set their password on their own.
 
 When a user performs an action (e.g., DELETE or CREATE a booking), the admin is notified with an in-app notification (delivered through a websocket) and an email. The event is also logged in the database to be viewed on the events page.
 
