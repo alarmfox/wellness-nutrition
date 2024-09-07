@@ -9,7 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
-      checks: read
+      actions: read
+      contents: read
     steps: 
       - uses: actions/checkout@v3
       - name: Build and push the image
