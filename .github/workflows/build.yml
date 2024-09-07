@@ -1,4 +1,4 @@
----
+r---
 name: Build and publish a Docker image to ghcr.io
 on:
   push:
@@ -17,8 +17,8 @@ jobs:
           echo "${secrets.GITHUB_TOKEN}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           echo "::endgroup::"
 
-          IMAGE_NAME=$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')
-          IMAAGE_TAG=ghcr.io/${{github.repository_owner}}/${{IMAGE_NAME}}:latest
+          export IMAGE_NAME=$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')
+          export IMAAGE_TAG=ghcr.io/${{github.repository_owner}}/${{IMAGE_NAME}}:latest
           
           docker build . --tag ${{IMAGE_TAG}} \
           --build-arg NEXT_PUBLIC_PUSHER_APP_KEY=${{PUSHER_APP_KEY}}\
