@@ -5,16 +5,26 @@ on:
     branches:
       - master
 jobs:
-  docker_publish:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - name: Build with --build-arg(s)
-        uses: TCPShield/gp-docker-action@1.1.13
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          custom-args: --build-arg NEXT_PUBLIC_PUSHER_APP_KEY=${{env.PUSHER_APP_KEY}} \
-            --build-arg NEXT_PUBLIC_PUSHER_APP_CLUSTER=${{env.PUSHER_APP_CLUSTER}} \
-            --build-arg NEXT_PUBLIC_PUSHER_APP_HOST=${{env.PUSHER_APP_HOST}} \
-            --build-arg NEXT_PUBLIC_PUSHER_APP_PORT=${{env.PUSHER_APP_PORT}} \ 
-            --build-arg NEXT_PUBLIC_PUSHER_APP_USE_TLS=${{env.PUSHER_APP_USE_TLS}}
+  build_and_publish:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v3
+      - name: Build and push the image
+        run : |
+          echo "Using $(docker -v)"
+
+          echo "::group::Logging into the GitHub Container registry (ghcr.io) ..."
+          echo "${secrets.GITHUB_TOKEN}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          echo "::endgroup::"
+
+          IMAGE_NAME=$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')
+          IMAAGE_TAG=ghcr.io/${{github.repository_owner}}/${{IMAGE_NAME}}:latest
+          
+          docker build . --tag ${{IMAGE_TAG}} \
+          --build-arg NEXT_PUBLIC_PUSHER_APP_KEY=${{PUSHER_APP_KEY}}\
+          --build-arg NEXT_PUBLIC_PUSHER_APP_CLUSTER=${{PUSHER_APP_CLUSTER}} \
+          --build-arg NEXT_PUBLIC_PUSHER_APP_HOST=${{PUSHER_APP_HOST}} \
+          --build-arg NEXT_PUBLIC_PUSHER_APP_PORT=${{PUSHER_APP_PORT}} \
+          --build-arg NEXT_PUBLIC_PUSHER_APP_USE_TLS=${{PUSHER_APP_USE_TLS}}
+
+          docker push ${{IMAGE_TAG}}
