@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "build:docker": "docker build -t 91.107.232.131:5000/wellness-nutrition --build-arg NEXT_PUBLIC_PUSHER_APP_KEY=a017f5abd9769da5b770 --build-arg NEXT_PUBLIC_PUSHER_APP_CLUSTER=default --build-arg NEXT_PUBLIC_PUSHER_APP_HOST=soketi.wellnessenutrition.com --build-arg NEXT_PUBLIC_PUSHER_APP_PORT=443 --build-arg NEXT_PUBLIC_PUSHER_APP_USE_TLS=true .",
     "dev": "next dev",
     "postinstall": "prisma generate",
     "lint": "next lint",
