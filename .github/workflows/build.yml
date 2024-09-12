@@ -1,17 +1,20 @@
 ---
 name: Build and publish a Docker image to ghcr.io
 on:
-  paths-ignore:
-    - README.md
-    - '**/*.md'
-    - '**/*.txt'
-    - '**/*.json'
-    - '**/*.yml'
-    - '**/*.gitignore'
-    - '**/*.gitattributes'
-    - '**/*.dockerignore'
-    - '**/*.env'
-    - '**/*.sh'
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - README.md
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.json'
+      - '**/*.yml'
+      - '**/*.gitignore'
+      - '**/*.gitattributes'
+      - '**/*.dockerignore'
+      - '**/*.env'
+      - '**/*.sh'
 jobs:
   build_and_publish:
     runs-on: ubuntu-latest
