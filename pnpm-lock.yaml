@@ -2203,8 +2203,8 @@ packages:
   scheduler@0.23.0:
     resolution: {integrity: sha512-CtuThmgHNg7zIZWAXi3AsyIzA3n4xx7aNyjwC2VJldO2LMVDhFK+63xGqq6CsJH4rTAt6/M+N4GhZiDYPx9eUw==}
 
-  semver@6.3.0:
-    resolution: {integrity: sha512-b39TBaTSfV6yBrapU89p5fKekE2m/NwnDocOVruQFS1/veMgdzuPcnOM34M6CwxW8jH/lxEa5rBoDeUwu5HHTw==}
+  semver@6.3.1:
+    resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
 
   semver@7.3.8:
@@ -2528,7 +2528,7 @@ snapshots:
       debug: 4.3.4
       gensync: 1.0.0-beta.2
       json5: 2.2.3
-      semver: 6.3.0
+      semver: 6.3.1
     transitivePeerDependencies:
       - supports-color
 
@@ -2547,7 +2547,7 @@ snapshots:
       '@babel/helper-validator-option': 7.21.0
       browserslist: 4.21.7
       lru-cache: 5.1.1
-      semver: 6.3.0
+      semver: 6.3.1
 
   '@babel/helper-environment-visitor@7.22.1': {}
 
@@ -3714,7 +3714,7 @@ snapshots:
       minimatch: 3.1.2
       object.values: 1.1.6
       resolve: 1.22.1
-      semver: 6.3.0
+      semver: 6.3.1
       tsconfig-paths: 3.14.1
     optionalDependencies:
       '@typescript-eslint/parser': 5.50.0(eslint@8.33.0)(typescript@4.9.5)
@@ -3741,7 +3741,7 @@ snapshots:
       minimatch: 3.1.2
       object.entries: 1.1.6
       object.fromentries: 2.0.6
-      semver: 6.3.0
+      semver: 6.3.1
 
   eslint-plugin-react-hooks@4.6.0(eslint@8.33.0):
     dependencies:
@@ -3763,7 +3763,7 @@ snapshots:
       object.values: 1.1.6
       prop-types: 15.8.1
       resolve: 2.0.0-next.4
-      semver: 6.3.0
+      semver: 6.3.1
       string.prototype.matchall: 4.0.8
 
   eslint-scope@5.1.1:
@@ -4302,7 +4302,7 @@ snapshots:
 
   make-dir@3.1.0:
     dependencies:
-      semver: 6.3.0
+      semver: 6.3.1
 
   material-ui-confirm@3.0.8(@mui/material@5.11.7(@emotion/react@11.10.5(@babel/core@7.22.1)(@types/react@18.0.27)(react@18.2.0))(@emotion/styled@11.10.5(@babel/core@7.22.1)(@emotion/react@11.10.5(@babel/core@7.22.1)(@types/react@18.0.27)(react@18.2.0))(@types/react@18.0.27)(react@18.2.0))(@types/react@18.0.27)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
@@ -4775,7 +4775,7 @@ snapshots:
     dependencies:
       loose-envify: 1.4.0
 
-  semver@6.3.0: {}
+  semver@6.3.1: {}
 
   semver@7.3.8:
     dependencies:
