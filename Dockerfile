@@ -2,8 +2,10 @@ FROM node:lts-alpine AS deps
 
 WORKDIR /app
 
+ENV TZ=Europe/Rome
+
 # https://github.com/prisma/prisma/discussions/19341
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl tzdata
 
 COPY prisma ./
 
@@ -22,8 +24,9 @@ RUN \
 
 FROM node:lts-alpine AS builder
 
+ENV TZ=Europe/Rome
 # https://github.com/prisma/prisma/discussions/19341
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl tzdata
 
 # client var
 ARG NEXT_PUBLIC_PUSHER_APP_HOST
@@ -52,8 +55,9 @@ RUN \
 FROM node:lts-alpine AS runner
 WORKDIR /app
 
+ENV TZ=Europe/Rome
 # https://github.com/prisma/prisma/discussions/19341
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl tzdata
 
 ENV NODE_ENV production
 
