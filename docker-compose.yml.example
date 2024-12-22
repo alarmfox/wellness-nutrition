@@ -1,18 +1,15 @@
-version: "3.9"
+---
+networks:
+  proxy:
+    external: true
+  web:
+  backend:
+volumes:
+  wellnessdata:
 
 services:
   app:
-    platform: "linux/amd64"
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_PUSHER_APP_KEY: "test"
-        NEXT_PUBLIC_PUSHER_APP_CLUSTER: "test"
-        NEXT_PUBLIC_PUSHER_APP_HOST: "localhost"
-        NEXT_PUBLIC_PUSHER_APP_PORT: "6001"
-    ports:
-      - "3000:3000"
+    image: ghcr.io/alarmfox/wellness-nutrition:v1.0.0
     environment:
       - DATABASE_URL=
       - EMAIL_SERVER_HOST=
@@ -25,19 +22,80 @@ services:
       - NEXTAUTH_URL=
       - PUSHER_APP_ID=
       - PUSHER_APP_KEY=
+      - PUSHER_APP_HOST=
+      - PUSHER_APP_PORT=
       - PUSHER_APP_SECRET=
       - PUSHER_APP_USE_TLS=
-      - PUSHER_APP_HOST=
       - PUSHER_APP_CLUSTER=
-      - PUSHER_APP_PORT=
+    networks:
+      - proxy
+      - web
+    labels:
+      traefik.enable: true
+      traefik.http.routers.wellness-nutrition-app.entryPoints: https
+      traefik.http.routers.wellness-nutrition-app.tls: true
+      traefik.http.routers.wellness-nutrition-app.rule: Host(`wellnessenutrition.com`)
+      traefik.http.services.wellness-nutrition-app.loadbalancer.server.port: 3000
+      traefik.http.routers.wellness-nutrition-app.tls.certresolver: cloudflare
     depends_on:
-      - soketi
-      - db
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:14.7
+    environment:
+      - POSTGRES_PASSWORD=
+    networks:
+      - web
+      - backend 
+    volumes:
+      - wellnessdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  migrate:
+    image: wellness-nutrition-migrate:latest
+    environment:
+      - DATABASE_URL=
+    networks:
+      - backend
+    depends_on:
+      db:
+        condition: service_healthy
+
+  cleanup:
+    image: wellness-nutrition-cleanup:latest
+    environment:
+      - DATABASE_URL=
+    networks:
+      - backend
+    depends_on:
+      db:
+        condition: service_healthy
+
+  survey:
+    image: wellness-nutrition-survey:latest
+    command: -db-uri=
+      -listen-addr=0.0.0.0:3000
+    networks:
+      - proxy
+      - backend
+    labels:
+      traefik.enable: true 
+      traefik.http.routers.wellness-nutrition-survey.entryPoints: https
+      traefik.http.routers.wellness-nutrition-survey.tls: true
+      traefik.http.routers.wellness-nutrition-survey.rule: Host(`survey.wellnessenutrition.com`)
+      traefik.http.services.wellness-nutrition-survey.loadbalancer.server.port: 3000
+      traefik.http.routers.wellness-nutrition-survey.tls.certresolver: cloudflare
+    depends_on:
+      db:
+        condition: service_healthy
 
   soketi:
     image: quay.io/soketi/soketi:1.4-16-debian
-    ports:
-      - "6001:6001"
     environment:
       - SOKETI_DEBUG=0
       - SOKETI_DEFAULT_APP_ID=
@@ -46,18 +104,22 @@ services:
       - SOKETI_DB_REDIS_HOST=redis
     depends_on:
       - redis
-  
+    networks: 
+      - proxy
+      - backend
+    labels:
+      traefik.enable: true
+      traefik.http.services.wellness-nutrition-soketi.loadbalancer.server.port: 6001
+      traefik.http.routers.wellness-nutrition-soketi.entrypoints: http
+      traefik.http.routers.wellness-nutrition-soketi-secure.entrypoints: https
+      traefik.http.routers.wellness-nutrition-soketi-secure.rule: Host(`soketi.wellnessenutrition.com`)
+      traefik.http.routers.wellness-nutrition-soketi.rule: Host(`soketi.wellnessenutrition.com`)
+      traefik.http.routers.wellness-nutrition-soketi.middlewares: wellness-nutrition-soketi-https-redirect
+      traefik.http.middlewares.wellness-nutrition-soketi-https-redirect.redirectscheme.scheme: https
+      traefik.http.routers.wellness-nutrition-soketi-secure.tls.certresolver: cloudflare
+
   redis:
     image: redis:alpine3.17
+    networks:
+        - backend
 
-  db:
-    image: postgres:14.7-alpine3.17
-    environment:
-      - POSTGRES_PASSWORD=
-
-  cleanup:
-    build:
-      context: cleanup
-      dockerfile: Dockerfile.cleanup
-    environment:
-      - DATABASE_URL=
