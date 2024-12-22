@@ -56,16 +56,6 @@ services:
       start_period: 30s
       timeout: 10s
 
-  migrate:
-    image: wellness-nutrition-migrate:latest
-    environment:
-      - DATABASE_URL=
-    networks:
-      - backend
-    depends_on:
-      db:
-        condition: service_healthy
-
   cleanup:
     image: wellness-nutrition-cleanup:latest
     environment:
