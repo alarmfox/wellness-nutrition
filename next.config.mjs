@@ -21,9 +21,6 @@ const config = {
     locales: ["it"],
     defaultLocale: "it",
   },
-  experimental: {
-    appDir: false,
-  },
   modularizeImports: {
     "@mui/icons-material": {
       transform: "@mui/icons-material/{{member}}",
