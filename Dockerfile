@@ -1,8 +1,9 @@
-##### DEPENDENCIES
-
 FROM node:lts-alpine AS deps
 
 WORKDIR /app
+
+# https://github.com/prisma/prisma/discussions/19341
+RUN apk add --no-cache openssl
 
 COPY prisma ./
 
@@ -11,15 +12,18 @@ COPY prisma ./
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml\* ./
 
 RUN \
- if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
- elif [ -f package-lock.json ]; then npm ci; \
- elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i; \
- else echo "Lockfile not found." && exit 1; \
- fi
+  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci; \
+  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
 
 ##### BUILDER
 
 FROM node:lts-alpine AS builder
+
+# https://github.com/prisma/prisma/discussions/19341
+RUN apk add --no-cache openssl
 
 # client var
 ARG NEXT_PUBLIC_PUSHER_APP_HOST
@@ -27,22 +31,6 @@ ARG NEXT_PUBLIC_PUSHER_APP_PORT
 ARG NEXT_PUBLIC_PUSHER_APP_KEY
 ARG NEXT_PUBLIC_PUSHER_APP_CLUSTER
 ARG NEXT_PUBLIC_PUSHER_APP_USE_TLS
-
-# server var
-ARG DATABASE_URL
-ARG EMAIL_SERVER_HOST
-ARG EMAIL_SERVER_PORT
-ARG EMAIL_SERVER_USER
-ARG EMAIL_SERVER_PASSWORD
-ARG EMAIL_FROM
-ARG EMAIL_NOTIFY_ADDRESS
-ARG PUSHER_APP_PORT
-ARG PUSHER_APP_HOST
-ARG PUSHER_APP_ID
-ARG PUSHER_APP_KEY
-ARG PUSHER_APP_SECRET
-ARG PUSHER_APP_USE_TLS
-ARG PUSHER_APP_CLUSTER
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -54,16 +42,18 @@ ENV IS_DOCKER 1
 RUN npx prisma generate
 
 RUN \
- if [ -f yarn.lock ]; then SKIP_ENV_VALIDATION=1 yarn build; \
- elif [ -f package-lock.json ]; then SKIP_ENV_VALIDATION=1 npm run build; \
- elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && SKIP_ENV_VALIDATION=1 pnpm run build; \
- else echo "Lockfile not found." && exit 1; \
- fi
+  if [ -f yarn.lock ]; then SKIP_ENV_VALIDATION=1 yarn build; \
+  elif [ -f package-lock.json ]; then SKIP_ENV_VALIDATION=1 npm run build; \
+  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && SKIP_ENV_VALIDATION=1 pnpm run build; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
 
 ##### RUNNER
-
-FROM --platform=linux/amd64 node:lts-alpine AS runner
+FROM node:lts-alpine AS runner
 WORKDIR /app
+
+# https://github.com/prisma/prisma/discussions/19341
+RUN apk add --no-cache openssl
 
 ENV NODE_ENV production
 
