@@ -74,6 +74,38 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 	return bookings, rows.Err()
 }
 
+func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, error) {
+	query := `
+		SELECT id, "userId", "createdAt", "startsAt"
+		FROM "Booking"
+		WHERE "startsAt" >= $1 AND "startsAt" <= $2
+		ORDER BY "startsAt" ASC
+	`
+	
+	rows, err := r.db.Query(query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var bookings []*Booking
+	for rows.Next() {
+		var booking Booking
+		err := rows.Scan(
+			&booking.ID,
+			&booking.UserID,
+			&booking.CreatedAt,
+			&booking.StartsAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, &booking)
+	}
+	
+	return bookings, rows.Err()
+}
+
 func (r *BookingRepository) Create(booking *Booking) error {
 	query := `
 		INSERT INTO "Booking" ("userId", "createdAt", "startsAt")

@@ -123,12 +123,14 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	
 	// Protected routes - Admin only
 	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
+	mux.Handle("/calendar", authMiddleware(http.HandlerFunc(serveCalendar)))
 	mux.Handle("/users", authMiddleware(http.HandlerFunc(serveUsers(userRepo))))
 	mux.Handle("/events", authMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
 	mux.Handle("/api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.GetAll)))
 	mux.Handle("/api/admin/users/create", adminMiddleware(http.HandlerFunc(userHandler.Create)))
 	mux.Handle("/api/admin/users/update", adminMiddleware(http.HandlerFunc(userHandler.Update)))
 	mux.Handle("/api/admin/users/delete", adminMiddleware(http.HandlerFunc(userHandler.Delete)))
+	mux.Handle("/api/admin/bookings", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings)))
 
 	log.Printf("listening on %s", listenAddr)
 	return startHttpServer(ctx, mux, listenAddr)
@@ -176,6 +178,12 @@ func serveHome(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFu
 			http.Redirect(w, r, "/signin", http.StatusSeeOther)
 			return
 		}
+		
+		// Redirect admins to calendar view
+		if user.Role == models.RoleAdmin {
+			http.Redirect(w, r, "/calendar", http.StatusSeeOther)
+			return
+		}
 
 		// Get user's bookings
 		bookings, err := bookingRepo.GetByUserID(user.ID)
@@ -214,6 +222,25 @@ func serveHome(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFu
 			log.Print(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+	}
+}
+
+func serveCalendar(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+	
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil || user.Role != models.RoleAdmin {
+		http.Redirect(w, r, "/signin", http.StatusSeeOther)
+		return
+	}
+	
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "calendar.html", nil); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 

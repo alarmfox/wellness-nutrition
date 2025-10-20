@@ -239,3 +239,72 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	
 	sendJSON(w, http.StatusOK, timestamps)
 }
+
+// GetAllBookings returns all bookings for admin calendar view
+func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) {
+	// Get date range from query parameters
+	fromStr := r.URL.Query().Get("from")
+	toStr := r.URL.Query().Get("to")
+	
+	var from, to time.Time
+	var err error
+	
+	if fromStr != "" {
+		from, err = time.Parse(time.RFC3339, fromStr)
+		if err != nil {
+			from = time.Now().AddDate(0, 0, -7) // Default: 1 week ago
+		}
+	} else {
+		from = time.Now().AddDate(0, 0, -7)
+	}
+	
+	if toStr != "" {
+		to, err = time.Parse(time.RFC3339, toStr)
+		if err != nil {
+			to = time.Now().AddDate(0, 1, 0) // Default: 1 month ahead
+		}
+	} else {
+		to = time.Now().AddDate(0, 1, 0)
+	}
+	
+	bookings, err := h.bookingRepo.GetByDateRange(from, to)
+	if err != nil {
+		log.Printf("Error getting bookings: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Enrich bookings with user information
+	type BookingWithUser struct {
+		ID        int64     `json:"id"`
+		StartsAt  time.Time `json:"startsAt"`
+		CreatedAt time.Time `json:"createdAt"`
+		User      struct {
+			ID        string `json:"id"`
+			FirstName string `json:"firstName"`
+			LastName  string `json:"lastName"`
+			SubType   string `json:"subType"`
+		} `json:"user"`
+	}
+	
+	result := make([]BookingWithUser, len(bookings))
+	for i, booking := range bookings {
+		user, err := h.userRepo.GetByID(booking.UserID)
+		if err != nil {
+			log.Printf("Error getting user for booking: %v", err)
+			continue
+		}
+		
+		result[i] = BookingWithUser{
+			ID:        booking.ID,
+			StartsAt:  booking.StartsAt,
+			CreatedAt: booking.CreatedAt,
+		}
+		result[i].User.ID = user.ID
+		result[i].User.FirstName = user.FirstName
+		result[i].User.LastName = user.LastName
+		result[i].User.SubType = string(user.SubType)
+	}
+	
+	sendJSON(w, http.StatusOK, result)
+}

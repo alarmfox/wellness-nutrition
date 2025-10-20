@@ -10,6 +10,9 @@ This is the Go-based server-side rendered application for Wellness & Nutrition, 
 - **Email Notifications**: Mail template system for user notifications (welcome emails, booking notifications)
 - **Material UI**: Frontend styling using Material UI CDN
 - **API Endpoints**: RESTful API for user management, bookings, and events
+- **Admin Calendar View**: Interactive calendar showing all bookings (month and week views)
+- **User Dashboard**: Personalized view showing only user's own bookings
+- **Database Seeder**: Tool to populate database with test data
 
 ## Architecture
 
@@ -42,10 +45,32 @@ The application uses PostgreSQL with the existing Prisma schema. All table names
   - `/api/user/current`
   - `/api/bookings/*`
 - **Admin routes**: Require admin role
-  - `/api/admin/users`
-  - `/api/admin/users/create`
+  - `/calendar` (admin calendar view with all bookings)
+  - `/users` (user management page)
+  - `/events` (event log page)
+  - `/api/admin/users` (user CRUD endpoints)
+  - `/api/admin/bookings` (get all bookings for calendar)
 
 Admin API endpoints return a 403 Forbidden error if accessed by non-admin users.
+
+### Views
+
+The application provides two distinct views based on user role:
+
+**Admin View:**
+- Redirected to `/calendar` on login
+- Interactive calendar showing all bookings from all users
+- Week and month views available
+- Color-coded by subscription type (SHARED vs SINGLE)
+- Access to user management and event logs
+- Can view bookings owned by any user
+
+**User View:**
+- Dashboard at `/` showing only their own bookings
+- Can create new bookings from available slots
+- Can delete their own bookings
+- Cannot view or modify other users' bookings
+- Bottom navigation for mobile-friendly experience
 
 ## Environment Variables
 
@@ -68,6 +93,27 @@ NEXTAUTH_URL=http://localhost:3000
 ```
 
 ## Building and Running
+
+### Database Seeding (for Testing)
+
+Before running the application, you can seed the database with test data:
+
+```bash
+cd app/cmd/seed
+go run . -db-uri="$DATABASE_URL"
+
+# Or build and run
+go build -o seed
+./seed -db-uri="$DATABASE_URL"
+```
+
+This creates:
+- 1 admin user: `admin@wellness.local` / `admin123`
+- 5 regular users: `*.@test.local` / `password123`
+- 30 days of time slots (9 AM - 8 PM, Mon-Sat)
+- 12-15 sample bookings
+
+See [`cmd/seed/README.md`](cmd/seed/README.md) for details.
 
 ### Development
 
@@ -111,8 +157,14 @@ docker run -p 3000:3000 --env-file .env wellness-nutrition
 
 ### Admin (Admin Only)
 
+- `GET /calendar` - Admin calendar view page
+- `GET /users` - User management page
+- `GET /events` - Event log page
 - `GET /api/admin/users` - Get all users
 - `POST /api/admin/users/create` - Create a new user
+- `POST /api/admin/users/update` - Update a user
+- `POST /api/admin/users/delete` - Delete users
+- `GET /api/admin/bookings` - Get all bookings (with date range filtering)
 
 ## Email Templates
 
