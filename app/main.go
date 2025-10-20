@@ -363,23 +363,41 @@ func serveUsers(userRepo *models.UserRepository) http.HandlerFunc {
 			FirstName           string
 			LastName            string
 			Email               string
+			Address             string
+			Cellphone           string
 			SubType             string
+			MedOk               bool
 			EmailVerified       bool
+			ExpiresAt           string
 			ExpiresAtFormatted  string
 			RemainingAccesses   int
+			Goals               string
 		}
 		
 		var displayUsers []UserDisplay
 		for _, u := range users {
+			cellphone := ""
+			if u.Cellphone.Valid {
+				cellphone = u.Cellphone.String
+			}
+			goals := ""
+			if u.Goals.Valid {
+				goals = u.Goals.String
+			}
 			displayUsers = append(displayUsers, UserDisplay{
 				ID:                  u.ID,
 				FirstName:           u.FirstName,
 				LastName:            u.LastName,
 				Email:               u.Email,
+				Address:             u.Address,
+				Cellphone:           cellphone,
 				SubType:             string(u.SubType),
+				MedOk:               u.MedOk,
 				EmailVerified:       u.EmailVerified.Valid,
+				ExpiresAt:           u.ExpiresAt.Format("2006-01-02"),
 				ExpiresAtFormatted:  u.ExpiresAt.Format("02 Jan 2006"),
 				RemainingAccesses:   u.RemainingAccesses,
+				Goals:               goals,
 			})
 		}
 		
