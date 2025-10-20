@@ -108,9 +108,40 @@
             padding: 40px 20px;
             color: rgba(0, 0, 0, 0.4);
         }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #d32f2f;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        .toast.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success {
+            background-color: #388e3c;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
+    <div id="toast" class="toast"></div>
     <div class="container">
         <div class="header">
             <h1>Il tuo abbonamento</h1>
@@ -165,6 +196,15 @@
     </div>
     
     <script>
+        function showToast(message, isSuccess = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show' + (isSuccess ? ' success' : '');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+
         function showBookings() {
             document.querySelector('h1').textContent = 'Lista prenotazioni';
             // Load bookings
@@ -190,13 +230,18 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    let errorMessage = 'Errore durante la cancellazione';
+                    if (data.error.includes('Forbidden')) {
+                        errorMessage = 'Non sei autorizzato a cancellare questa prenotazione';
+                    }
+                    showToast(errorMessage);
                 } else {
-                    location.reload();
+                    showToast('Prenotazione cancellata con successo', true);
+                    setTimeout(() => location.reload(), 1000);
                 }
             })
             .catch(error => {
-                alert('Errore durante la cancellazione della prenotazione');
+                showToast('Errore di connessione. Riprova.');
                 console.error(error);
             });
         }

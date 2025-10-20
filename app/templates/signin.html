@@ -100,9 +100,113 @@
         .links a:hover {
             text-decoration: underline;
         }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #d32f2f;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        .toast.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success {
+            background-color: #388e3c;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
+    <script>
+        function showToast(message, isSuccess = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show' + (isSuccess ? ' success' : '');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                if (!email || !password) {
+                    showToast('Per favore inserisci email e password');
+                    return;
+                }
+                
+                const button = form.querySelector('button');
+                button.disabled = true;
+                button.textContent = 'Accesso in corso...';
+                
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email, password }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        showToast('Accesso effettuato con successo!', true);
+                        setTimeout(() => {
+                            // Redirect based on user role
+                            if (data.user.role === 'ADMIN') {
+                                window.location.href = '/admin/calendar';
+                            } else {
+                                window.location.href = '/user';
+                            }
+                        }, 500);
+                    } else {
+                        let errorMessage = 'Accesso fallito. Verifica le tue credenziali.';
+                        if (data.error) {
+                            if (data.error.includes('credentials')) {
+                                errorMessage = 'Email o password non corretti';
+                            } else if (data.error.includes('verified')) {
+                                errorMessage = 'Account non ancora verificato';
+                            } else {
+                                errorMessage = 'Si è verificato un errore. Riprova.';
+                            }
+                        }
+                        showToast(errorMessage);
+                        button.disabled = false;
+                        button.textContent = 'Conferma';
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showToast('Errore di connessione. Riprova.');
+                    button.disabled = false;
+                    button.textContent = 'Conferma';
+                }
+            });
+        });
+    </script>
 </head>
 <body>
+    <div id="toast" class="toast"></div>
+    
     <div class="container">
         <div class="header">
             <div class="avatar">
@@ -111,13 +215,7 @@
             <h1>Accedi</h1>
         </div>
         
-        {{if .Error}}
-        <div class="error">
-            Login fallito. Email e/o password errati
-        </div>
-        {{end}}
-        
-        <form method="post" action="/api/auth/login">
+        <form id="loginForm">
             <div class="form-group">
                 <label for="email">Indirizzo email</label>
                 <input 

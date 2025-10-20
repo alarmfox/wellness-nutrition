@@ -36,8 +36,28 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+	
+	// Check Content-Type to determine if it's JSON or form data
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		// Parse JSON
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+			return
+		}
+	} else {
+		// Parse form data (default for HTML form submissions)
+		if err := r.ParseForm(); err != nil {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+			return
+		}
+		req.Email = r.FormValue("email")
+		req.Password = r.FormValue("password")
+	}
+	
+	// Validate input
+	if req.Email == "" || req.Password == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Email and password are required"})
 		return
 	}
 	
@@ -57,7 +77,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// TODO: Implement proper password verification
+	// Verify password using Argon2
 	if !middleware.VerifyPassword(req.Password, user.Password.String) {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid credentials"})
 		return
@@ -81,6 +101,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 	
 	sendJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
 		"user": map[string]interface{}{
 			"id":        user.ID,
 			"firstName": user.FirstName,
