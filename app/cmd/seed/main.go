@@ -13,9 +13,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-var (
-	dbConnString = flag.String("db-uri", "", "Database connection string")
-)
+var dbConnString = flag.String("db-uri", "", "Database connection string")
 
 func main() {
 	flag.Parse()
@@ -95,21 +93,21 @@ func main() {
 	// Create time slots for the next 30 days
 	now := time.Now()
 	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
-	
+
 	var slotsCreated int
 	for day := 0; day < 30; day++ {
 		currentDate := startDate.AddDate(0, 0, day)
-		
+
 		// Skip Sundays (weekday 0)
 		if currentDate.Weekday() == time.Sunday {
 			continue
 		}
-		
+
 		// Create slots from 9:00 to 20:00 (every hour)
-		for hour := 9; hour <= 20; hour++ {
-			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(), 
+		for hour := 7; hour <= 21; hour++ {
+			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
 				hour, 0, 0, 0, time.Local)
-			
+
 			_, err = db.Exec(`
 				INSERT INTO slots (starts_at, people_count, disabled)
 				VALUES ($1, $2, $3)
@@ -132,21 +130,21 @@ func main() {
 		if i%2 == 0 {
 			numBookings = 3
 		}
-		
+
 		for j := 0; j < numBookings; j++ {
 			// Book slots in the next week at different times
-			bookingDay := 1 + (i*2 + j) // Spread bookings across days
-			bookingHour := 10 + (i * 2) % 10 // Different hours for each user
-			
+			bookingDay := 1 + (i*2 + j)  // Spread bookings across days
+			bookingHour := 10 + (i*2)%10 // Different hours for each user
+
 			bookingTime := startDate.AddDate(0, 0, bookingDay)
-			bookingTime = time.Date(bookingTime.Year(), bookingTime.Month(), bookingTime.Day(), 
+			bookingTime = time.Date(bookingTime.Year(), bookingTime.Month(), bookingTime.Day(),
 				bookingHour, 0, 0, 0, time.Local)
-			
+
 			// Skip if Sunday
 			if bookingTime.Weekday() == time.Sunday {
 				continue
 			}
-			
+
 			_, err = db.Exec(`
 				INSERT INTO bookings (user_id, created_at, starts_at)
 				VALUES ($1, $2, $3)
@@ -155,7 +153,7 @@ func main() {
 				log.Printf("Warning: Could not create booking: %v", err)
 			} else {
 				bookingsCreated++
-				
+
 				// Update slot people count
 				_, _ = db.Exec(`
 					UPDATE slots
@@ -181,13 +179,13 @@ func main() {
 func hashPassword(password string) string {
 	salt := make([]byte, 16)
 	rand.Read(salt)
-	
+
 	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
-	
-	encoded := "$argon2id$v=19$m=65536,t=1,p=4$" + 
-		base64.RawStdEncoding.EncodeToString(salt) + "$" + 
+
+	encoded := "$argon2id$v=19$m=65536,t=1,p=4$" +
+		base64.RawStdEncoding.EncodeToString(salt) + "$" +
 		base64.RawStdEncoding.EncodeToString(hash)
-	
+
 	return encoded
 }
 
