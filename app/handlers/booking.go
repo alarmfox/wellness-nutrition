@@ -175,7 +175,8 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	if booking.UserID != user.ID {
+	// Admin can delete any booking, regular user only their own
+	if user.Role != models.RoleAdmin && booking.UserID != user.ID {
 		sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden"})
 		return
 	}
@@ -360,7 +361,7 @@ func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, result)
 }
 
-// DisableSlot marks a slot as unavailable
+// DisableSlot marks a slot as unavailable (with booking check)
 func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -394,7 +395,25 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// Mark as disabled
+	// Check if slot has bookings
+	bookings, err := h.bookingRepo.GetBySlotTime(startsAt)
+	if err != nil {
+		log.Printf("Error getting bookings for slot: %v", err)
+		// Continue anyway, don't fail on this
+		bookings = []*models.Booking{}
+	}
+	
+	if len(bookings) > 0 {
+		// Return info about bookings that need confirmation
+		sendJSON(w, http.StatusOK, map[string]interface{}{
+			"hasBookings":  true,
+			"bookingCount": len(bookings),
+			"message":      "This slot has bookings",
+		})
+		return
+	}
+	
+	// No bookings, proceed to disable
 	slot.Disabled = true
 	if err := h.slotRepo.Update(slot); err != nil {
 		log.Printf("Error updating slot: %v", err)
@@ -417,6 +436,112 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Slot disabled successfully"})
+}
+
+// DisableSlotConfirm disables a slot and deletes all associated bookings
+func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	
+	var req struct {
+		StartsAt  string `json:"startsAt"`
+		Confirmed bool   `json:"confirmed"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+	
+	if !req.Confirmed {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Confirmation required"})
+		return
+	}
+	
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
+		return
+	}
+	
+	// Get all bookings for this slot
+	bookings, err := h.bookingRepo.GetBySlotTime(startsAt)
+	if err != nil {
+		log.Printf("Error getting bookings for slot: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Delete all bookings and refund accesses
+	user := middleware.GetUserFromContext(r.Context())
+	for _, booking := range bookings {
+		// Delete booking
+		if err := h.bookingRepo.Delete(booking.ID); err != nil {
+			log.Printf("Error deleting booking %d: %v", booking.ID, err)
+			continue
+		}
+		
+		// Refund remaining access
+		if err := h.userRepo.IncrementRemainingAccesses(booking.UserID); err != nil {
+			log.Printf("Error refunding access for user %s: %v", booking.UserID, err)
+		}
+		
+		// Create event log
+		event := &models.Event{
+			UserID:     booking.UserID,
+			StartsAt:   booking.StartsAt,
+			Type:       models.EventTypeDeleted,
+			OccurredAt: time.Now(),
+		}
+		if err := h.eventRepo.Create(event); err != nil {
+			log.Printf("Error creating event: %v", err)
+		}
+		
+		// Send notification email
+		bookingUser, err := h.userRepo.GetByID(booking.UserID)
+		if err == nil {
+			go func(u *models.User, t time.Time) {
+				if err := h.mailer.SendDeleteBookingNotification(u.FirstName, u.LastName, t); err != nil {
+					log.Printf("Error sending notification: %v", err)
+				}
+			}(bookingUser, booking.StartsAt)
+		}
+	}
+	
+	// Now disable the slot
+	slot, err := h.slotRepo.GetByTime(startsAt)
+	if err != nil {
+		log.Printf("Error getting slot: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	slot.Disabled = true
+	if err := h.slotRepo.Update(slot); err != nil {
+		log.Printf("Error updating slot: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Create event log for slot disable
+	event := &models.Event{
+		Type:       models.EventTypeSlotDisabled,
+		StartsAt:   startsAt,
+		OccurredAt: time.Now(),
+	}
+	if user != nil {
+		event.UserID = user.ID
+	}
+	if err := h.eventRepo.Create(event); err != nil {
+		log.Printf("Error creating event: %v", err)
+	}
+	
+	sendJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "Slot disabled and bookings deleted",
+		"deletedCount":  len(bookings),
+	})
 }
 
 // CreateBookingForUser allows admin to create a booking for a specific user

@@ -289,3 +289,9 @@ func (r *UserRepository) Delete(ids []string) error {
 	_, err := r.db.Exec(query, args...)
 	return err
 }
+
+func (r *UserRepository) IncrementRemainingAccesses(userID string) error {
+	query := `UPDATE users SET remaining_accesses = remaining_accesses + 1 WHERE id = $1`
+	_, err := r.db.Exec(query, userID)
+	return err
+}

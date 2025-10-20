@@ -196,8 +196,13 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
-        .time-slot.disabled::after {
-            content: '✕';
+        .disabled-text {
+            color: #999;
+            font-size: 11px;
+            text-align: center;
+            padding: 5px;
+            font-style: italic;
+        }
             position: absolute;
             top: 50%;
             left: 50%;
@@ -621,9 +626,9 @@
                     });
                     const isDisabled = slot && slot.Disabled;
                     
-                    html += `<div class="time-slot ${isDisabled ? 'disabled' : ''}" onclick="handleSlotClick('${date.toISOString()}', ${isDisabled}, ${slotBookings.length > 0})">`;
+                    html += `<div class="time-slot ${isDisabled ? 'disabled' : ''}" onclick="handleSlotClick('${date.toISOString()}', ${isDisabled})">`;
                     if (isDisabled) {
-                        html += '<span style="color: #999">✕</span>';
+                        html += '<div class="disabled-text">Non disponibile</div>';
                     }
                     slotBookings.forEach(booking => {
                         const cssClass = booking.User.SubType === 'SHARED' ? 'booking shared' : 'booking';
@@ -668,14 +673,9 @@
         }
         
         // Slot action functions
-        function handleSlotClick(slotTime, isDisabled, hasBookings) {
+        function handleSlotClick(slotTime, isDisabled) {
             if (isDisabled) {
                 showToast('Questo slot è già segnato come non disponibile', false);
-                return;
-            }
-            
-            if (hasBookings) {
-                // Don't open modal if there are bookings - they have their own click handler
                 return;
             }
             
@@ -802,14 +802,16 @@
                 await loadUsers();
             }
             
-            // Populate user dropdown
+            // Populate user dropdown - only users with remaining accesses > 0
             const select = document.getElementById('bookingUserId');
             select.innerHTML = '<option value="">Seleziona un utente...</option>';
             users.forEach(user => {
-                const option = document.createElement('option');
-                option.value = user.ID;
-                option.textContent = `${user.FirstName} ${user.LastName} (${user.Email})`;
-                select.appendChild(option);
+                if (user.RemainingAccesses > 0) {
+                    const option = document.createElement('option');
+                    option.value = user.ID;
+                    option.textContent = `${user.FirstName} ${user.LastName} (${user.Email})`;
+                    select.appendChild(option);
+                }
             });
         }
         
@@ -837,8 +839,44 @@
                 
                 if (data.error) {
                     showToast(data.error, false);
+                } else if (data.hasBookings) {
+                    // Ask for confirmation
+                    const confirmed = confirm(`Questo slot ha ${data.bookingCount} prenotazioni. Eliminarle tutte?`);
+                    if (confirmed) {
+                        await markSlotUnavailableConfirm();
+                    } else {
+                        closeSlotModal();
+                    }
                 } else {
                     showToast('Slot segnato come non disponibile', true);
+                    closeSlotModal();
+                    loadBookings(); // Reload calendar
+                }
+            } catch (error) {
+                showToast('Errore durante l\'operazione', false);
+                console.error(error);
+            }
+        }
+        
+        async function markSlotUnavailableConfirm() {
+            try {
+                const response = await fetch('/api/admin/slots/disable-confirm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        startsAt: selectedSlot,
+                        confirmed: true
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    showToast(`Slot disabilitato. ${data.deletedCount} prenotazioni eliminate`, true);
                     closeSlotModal();
                     loadBookings(); // Reload calendar
                 }

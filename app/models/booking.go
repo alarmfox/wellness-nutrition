@@ -125,6 +125,38 @@ func (r *BookingRepository) Delete(id int64) error {
 	return err
 }
 
+func (r *BookingRepository) GetBySlotTime(startsAt time.Time) ([]*Booking, error) {
+	query := `
+		SELECT id, user_id, created_at, starts_at
+		FROM bookings
+		WHERE starts_at = $1
+		ORDER BY created_at ASC
+	`
+	
+	rows, err := r.db.Query(query, startsAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var bookings []*Booking
+	for rows.Next() {
+		var booking Booking
+		err := rows.Scan(
+			&booking.ID,
+			&booking.UserID,
+			&booking.CreatedAt,
+			&booking.StartsAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, &booking)
+	}
+	
+	return bookings, rows.Err()
+}
+
 func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 	query := `
 		SELECT id, user_id, created_at, starts_at
