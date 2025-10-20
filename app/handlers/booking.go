@@ -308,3 +308,170 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 	
 	sendJSON(w, http.StatusOK, result)
 }
+
+// DisableSlot marks a slot as unavailable
+func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	
+	var req struct {
+		StartsAt string `json:"startsAt"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+	
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
+		return
+	}
+	
+	// Check if slot exists
+	slot, err := h.slotRepo.GetByTime(startsAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot not found"})
+			return
+		}
+		log.Printf("Error getting slot: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Mark as disabled
+	slot.Disabled = true
+	if err := h.slotRepo.Update(slot); err != nil {
+		log.Printf("Error updating slot: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Create event log
+	user := middleware.GetUserFromContext(r.Context())
+	event := &models.Event{
+		Type:       models.EventTypeSlotDisabled,
+		StartsAt:   startsAt,
+		OccurredAt: time.Now(),
+	}
+	if user != nil {
+		event.UserID = user.ID
+	}
+	if err := h.eventRepo.Create(event); err != nil {
+		log.Printf("Error creating event: %v", err)
+	}
+	
+	sendJSON(w, http.StatusOK, map[string]string{"message": "Slot disabled successfully"})
+}
+
+// CreateBookingForUser allows admin to create a booking for a specific user
+func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	
+	var req struct {
+		UserID   string `json:"userId"`
+		StartsAt string `json:"startsAt"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+	
+	if req.UserID == "" || req.StartsAt == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "userId and startsAt are required"})
+		return
+	}
+	
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
+		return
+	}
+	
+	// Get the user
+	user, err := h.userRepo.GetByID(req.UserID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "User not found"})
+			return
+		}
+		log.Printf("Error getting user: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Check if user can create booking
+	if time.Now().After(user.ExpiresAt) || user.RemainingAccesses <= 0 {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "User subscription expired or no remaining accesses"})
+		return
+	}
+	
+	// Check if slot exists and is not disabled
+	slot, err := h.slotRepo.GetByTime(startsAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot not found"})
+			return
+		}
+		log.Printf("Error getting slot: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	if slot.Disabled {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is disabled"})
+		return
+	}
+	
+	// Check slot capacity - check if slot is at capacity based on people_count
+	// Note: The original code used slot.Capacity but our Slot struct doesn't have it
+	// We'll check against people_count which tracks current bookings
+	
+	// Create booking
+	booking := &models.Booking{
+		UserID:    user.ID,
+		StartsAt:  startsAt,
+		CreatedAt: time.Now(),
+	}
+	
+	if err := h.bookingRepo.Create(booking); err != nil {
+		log.Printf("Error creating booking: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Update user's remaining accesses
+	user.RemainingAccesses--
+	if err := h.userRepo.Update(user); err != nil {
+		log.Printf("Error updating user: %v", err)
+	}
+	
+	// Create event log
+	event := &models.Event{
+		Type:       models.EventTypeBookingCreated,
+		UserID:     user.ID,
+		StartsAt:   startsAt,
+		OccurredAt: time.Now(),
+	}
+	if err := h.eventRepo.Create(event); err != nil {
+		log.Printf("Error creating event: %v", err)
+	}
+	
+	// Send notification email (synchronous)
+	if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName, startsAt); err != nil {
+		log.Printf("Error sending notification: %v", err)
+	}
+	
+	sendJSON(w, http.StatusCreated, map[string]interface{}{
+		"message":   "Booking created successfully",
+		"bookingId": booking.ID,
+	})
+}

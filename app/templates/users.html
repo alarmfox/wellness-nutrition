@@ -135,6 +135,127 @@
             color: #1976d2;
             border-bottom-color: #1976d2;
         }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 50px auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 500;
+        }
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            color: #999;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+        }
+        .close:hover {
+            color: #333;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .btn-outline {
+            background-color: white;
+            color: #1976d2;
+            border: 1px solid #1976d2;
+        }
+        .btn-outline:hover {
+            background-color: #f5f5f5;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #d32f2f;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 2000;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success {
+            background-color: #388e3c;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -156,10 +277,10 @@
                     <span class="material-icons" style="font-size: 18px;">delete</span>
                     Elimina Selezionati
                 </button>
-                <a href="/users/create" class="btn">
+                <button class="btn" onclick="openCreateModal()">
                     <span class="material-icons" style="font-size: 18px;">person_add</span>
                     Nuovo Utente
-                </a>
+                </button>
             </div>
         </div>
         
@@ -200,9 +321,9 @@
                         <td>{{.ExpiresAtFormatted}}</td>
                         <td>{{.RemainingAccesses}}</td>
                         <td>
-                            <a href="/users/edit/{{.ID}}" style="color: #1976d2; text-decoration: none;">
+                            <button onclick='openEditModal({{.ID}}, "{{.FirstName}}", "{{.LastName}}", "{{.Email}}", "{{.Address}}", "{{.Cellphone}}", "{{.SubType}}", {{.MedOk}}, "{{.ExpiresAt}}", {{.RemainingAccesses}}, "{{.Goals}}", {{if .EmailVerified}}true{{else}}false{{end}})' style="background: none; border: none; cursor: pointer; color: #1976d2; padding: 0;">
                                 <span class="material-icons" style="font-size: 20px; vertical-align: middle;">edit</span>
-                            </a>
+                            </button>
                         </td>
                     </tr>
                     {{else}}
@@ -214,6 +335,156 @@
                     {{end}}
                 </tbody>
             </table>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+    
+    <!-- Create User Modal -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuovo Utente</h2>
+                <button class="close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nome *</label>
+                            <input type="text" id="createFirstName" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Cognome *</label>
+                            <input type="text" id="createLastName" required />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="createEmail" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Indirizzo *</label>
+                        <input type="text" id="createAddress" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Telefono</label>
+                        <input type="tel" id="createCellphone" />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo Abbonamento *</label>
+                            <select id="createSubType" required>
+                                <option value="SHARED">Condiviso</option>
+                                <option value="SINGLE">Singolo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Accessi Rimanenti *</label>
+                            <input type="number" id="createRemainingAccesses" value="10" min="0" required />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Data Scadenza *</label>
+                            <input type="date" id="createExpiresAt" required />
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; margin-top: 28px;">
+                                <input type="checkbox" id="createMedOk" />
+                                Certificato Medico OK
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Obiettivi (separati da virgola)</label>
+                        <textarea id="createGoals" rows="3" placeholder="es: Dimagrimento, Tonificazione"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeCreateModal()">Annulla</button>
+                <button type="button" class="btn" onclick="submitCreateUser()">Crea Utente</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit User Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Modifica Utente</h2>
+                <button class="close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="editUserId" />
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nome *</label>
+                            <input type="text" id="editFirstName" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Cognome *</label>
+                            <input type="text" id="editLastName" required />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="editEmail" required />
+                    </div>
+                    <div class="form-group" id="verificationStatus" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #fff3e0; border-radius: 4px;">
+                            <span style="color: #e65100; font-size: 14px;">Account non verificato</span>
+                            <button type="button" class="btn" onclick="resendVerification()" style="padding: 6px 12px; font-size: 12px;">
+                                Reinvia Email
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Indirizzo *</label>
+                        <input type="text" id="editAddress" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Telefono</label>
+                        <input type="tel" id="editCellphone" />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo Abbonamento *</label>
+                            <select id="editSubType" required>
+                                <option value="SHARED">Condiviso</option>
+                                <option value="SINGLE">Singolo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Accessi Rimanenti *</label>
+                            <input type="number" id="editRemainingAccesses" min="0" required />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Data Scadenza *</label>
+                            <input type="date" id="editExpiresAt" required />
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; margin-top: 28px;">
+                                <input type="checkbox" id="editMedOk" />
+                                Certificato Medico OK
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Obiettivi (separati da virgola)</label>
+                        <textarea id="editGoals" rows="3" placeholder="es: Dimagrimento, Tonificazione"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeEditModal()">Annulla</button>
+                <button type="button" class="btn" onclick="submitEditUser()">Salva Modifiche</button>
+            </div>
         </div>
     </div>
     
@@ -250,15 +521,198 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    alert(data.error);
+                    showToast(data.error, false);
                 } else {
-                    location.reload();
+                    showToast('Utenti eliminati con successo', true);
+                    setTimeout(() => location.reload(), 1500);
                 }
             })
             .catch(error => {
-                alert('Errore durante l\'eliminazione degli utenti');
+                showToast('Errore durante l\'eliminazione degli utenti', false);
                 console.error(error);
             });
+        }
+        
+        // Modal functions
+        function openCreateModal() {
+            document.getElementById('createModal').style.display = 'block';
+            // Set default expiry date to 1 year from now
+            const nextYear = new Date();
+            nextYear.setFullYear(nextYear.getFullYear() + 1);
+            document.getElementById('createExpiresAt').value = nextYear.toISOString().split('T')[0];
+        }
+        
+        function closeCreateModal() {
+            document.getElementById('createModal').style.display = 'none';
+            document.getElementById('createForm').reset();
+        }
+        
+        function openEditModal(id, firstName, lastName, email, address, cellphone, subType, medOk, expiresAt, remainingAccesses, goals, emailVerified) {
+            document.getElementById('editModal').style.display = 'block';
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editFirstName').value = firstName;
+            document.getElementById('editLastName').value = lastName;
+            document.getElementById('editEmail').value = email;
+            document.getElementById('editAddress').value = address;
+            document.getElementById('editCellphone').value = cellphone;
+            document.getElementById('editSubType').value = subType;
+            document.getElementById('editMedOk').checked = medOk;
+            document.getElementById('editRemainingAccesses').value = remainingAccesses;
+            document.getElementById('editGoals').value = goals;
+            
+            // Set expiry date (handle null/invalid dates)
+            if (expiresAt && expiresAt !== '0001-01-01T00:00:00Z') {
+                document.getElementById('editExpiresAt').value = expiresAt.split('T')[0];
+            }
+            
+            // Show/hide verification status
+            const verificationStatus = document.getElementById('verificationStatus');
+            if (!emailVerified) {
+                verificationStatus.style.display = 'block';
+            } else {
+                verificationStatus.style.display = 'none';
+            }
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editForm').reset();
+        }
+        
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const createModal = document.getElementById('createModal');
+            const editModal = document.getElementById('editModal');
+            if (event.target === createModal) {
+                closeCreateModal();
+            }
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+        }
+        
+        function submitCreateUser() {
+            const goals = document.getElementById('createGoals').value
+                .split(',')
+                .map(g => g.trim())
+                .filter(g => g.length > 0);
+                
+            const data = {
+                firstName: document.getElementById('createFirstName').value,
+                lastName: document.getElementById('createLastName').value,
+                email: document.getElementById('createEmail').value,
+                address: document.getElementById('createAddress').value,
+                cellphone: document.getElementById('createCellphone').value,
+                subType: document.getElementById('createSubType').value,
+                medOk: document.getElementById('createMedOk').checked,
+                expiresAt: document.getElementById('createExpiresAt').value,
+                remainingAccesses: parseInt(document.getElementById('createRemainingAccesses').value),
+                goals: goals
+            };
+            
+            fetch('/api/admin/users/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    showToast('Utente creato con successo! Email di verifica inviata.', true);
+                    closeCreateModal();
+                    setTimeout(() => location.reload(), 1500);
+                }
+            })
+            .catch(error => {
+                showToast('Errore durante la creazione dell\'utente', false);
+                console.error(error);
+            });
+        }
+        
+        function submitEditUser() {
+            const goals = document.getElementById('editGoals').value
+                .split(',')
+                .map(g => g.trim())
+                .filter(g => g.length > 0);
+                
+            const data = {
+                id: document.getElementById('editUserId').value,
+                firstName: document.getElementById('editFirstName').value,
+                lastName: document.getElementById('editLastName').value,
+                email: document.getElementById('editEmail').value,
+                address: document.getElementById('editAddress').value,
+                cellphone: document.getElementById('editCellphone').value,
+                subType: document.getElementById('editSubType').value,
+                medOk: document.getElementById('editMedOk').checked,
+                expiresAt: document.getElementById('editExpiresAt').value,
+                remainingAccesses: parseInt(document.getElementById('editRemainingAccesses').value),
+                goals: goals
+            };
+            
+            fetch('/api/admin/users/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    if (data.emailChanged) {
+                        showToast('Utente aggiornato! Email di verifica inviata al nuovo indirizzo.', true);
+                    } else {
+                        showToast('Utente aggiornato con successo!', true);
+                    }
+                    closeEditModal();
+                    setTimeout(() => location.reload(), 1500);
+                }
+            })
+            .catch(error => {
+                showToast('Errore durante l\'aggiornamento dell\'utente', false);
+                console.error(error);
+            });
+        }
+        
+        function resendVerification() {
+            const userId = document.getElementById('editUserId').value;
+            
+            fetch('/api/admin/users/resend-verification', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    showToast('Email di verifica inviata con successo!', true);
+                }
+            })
+            .catch(error => {
+                showToast('Errore durante l\'invio dell\'email', false);
+                console.error(error);
+            });
+        }
+        
+        function showToast(message, isSuccess) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (isSuccess ? ' success' : '');
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 4000);
         }
     </script>
 </body>

@@ -21,8 +21,10 @@ type Slot struct {
 type EventType string
 
 const (
-	EventTypeCreated EventType = "CREATED"
-	EventTypeDeleted EventType = "DELETED"
+	EventTypeCreated        EventType = "CREATED"
+	EventTypeDeleted        EventType = "DELETED"
+	EventTypeBookingCreated EventType = "BOOKING_CREATED"
+	EventTypeSlotDisabled   EventType = "SLOT_DISABLED"
 )
 
 type Event struct {
@@ -223,6 +225,16 @@ func (r *SlotRepository) DecrementPeopleCount(startsAt time.Time) error {
 		WHERE starts_at = $1 AND people_count > 0
 	`
 	_, err := r.db.Exec(query, startsAt)
+	return err
+}
+
+func (r *SlotRepository) Update(slot *Slot) error {
+	query := `
+		UPDATE slots
+		SET disabled = $1, people_count = $2
+		WHERE starts_at = $3
+	`
+	_, err := r.db.Exec(query, slot.Disabled, slot.PeopleCount, slot.StartsAt)
 	return err
 }
 

@@ -184,6 +184,157 @@
             text-align: center;
             font-weight: 500;
         }
+        .time-slot {
+            cursor: pointer;
+            position: relative;
+        }
+        .time-slot:hover:not(.disabled) {
+            background-color: #f5f5f5;
+        }
+        .time-slot.disabled {
+            background-color: #e0e0e0;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .time-slot.disabled::after {
+            content: '✕';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: #999;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 100px auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 500;
+        }
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            color: #999;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .close:hover {
+            color: #333;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .action-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .action-card:hover {
+            border-color: #1976d2;
+            background-color: #f5f9ff;
+        }
+        .action-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            font-weight: 500;
+            color: #1976d2;
+        }
+        .action-card p {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .btn-outline {
+            background-color: white;
+            color: #1976d2;
+            border: 1px solid #1976d2;
+        }
+        .btn-outline:hover {
+            background-color: #f5f5f5;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #d32f2f;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 2000;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success {
+            background-color: #388e3c;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -235,10 +386,57 @@
         </div>
     </div>
     
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+    
+    <!-- Slot Action Modal -->
+    <div id="slotModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Gestione Slot</h2>
+                <button class="close" onclick="closeSlotModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="actionSelection">
+                    <div class="action-card" onclick="showMarkUnavailable()">
+                        <h3>🚫 Segna come Non Disponibile</h3>
+                        <p>Gli utenti non potranno prenotare questo slot</p>
+                    </div>
+                    <div class="action-card" onclick="showCreateBooking()">
+                        <h3>➕ Crea Prenotazione</h3>
+                        <p>Crea una prenotazione per un utente specifico</p>
+                    </div>
+                </div>
+                
+                <div id="unavailableForm" style="display: none;">
+                    <p id="slotInfo" style="margin-bottom: 16px; color: #666;"></p>
+                    <p>Sei sicuro di voler segnare questo slot come non disponibile?</p>
+                </div>
+                
+                <div id="bookingForm" style="display: none;">
+                    <p id="slotInfoBooking" style="margin-bottom: 16px; color: #666;"></p>
+                    <div class="form-group">
+                        <label>Seleziona Utente *</label>
+                        <select id="bookingUserId" required>
+                            <option value="">Seleziona un utente...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeSlotModal()">Annulla</button>
+                <button type="button" id="confirmBtn" class="btn" style="display: none;" onclick="confirmAction()">Conferma</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         let currentDate = new Date();
         let viewMode = 'week'; // 'month' or 'week' - default to week view
         let bookings = [];
+        let users = [];
+        let selectedSlot = null;
+        let currentAction = null;
         
         async function loadBookings() {
             const from = new Date(currentDate);
@@ -265,6 +463,16 @@
                 renderCalendar();
             } catch (error) {
                 console.error('Error loading bookings:', error);
+            }
+        }
+        
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                const data = await response.json();
+                users = data || [];
+            } catch (error) {
+                console.error('Error loading users:', error);
             }
         }
         
@@ -381,7 +589,10 @@
                         return bookingDate.getTime() === date.getTime();
                     });
                     
-                    html += '<div class="time-slot">';
+                    // Check if slot is disabled (you would load this from API)
+                    const isDisabled = false; // TODO: load disabled slots from API
+                    
+                    html += `<div class="time-slot ${isDisabled ? 'disabled' : ''}" onclick="handleSlotClick('${date.toISOString()}', ${isDisabled})">`;
                     slotBookings.forEach(booking => {
                         const cssClass = booking.user.subType === 'SHARED' ? 'booking shared' : 'booking';
                         html += `<div class="${cssClass}" title="${booking.user.firstName} ${booking.user.lastName}">
@@ -424,8 +635,178 @@
             loadBookings();
         }
         
+        // Slot action functions
+        function handleSlotClick(slotTime, isDisabled) {
+            if (isDisabled) {
+                showToast('Questo slot è già segnato come non disponibile', false);
+                return;
+            }
+            
+            selectedSlot = slotTime;
+            openSlotModal();
+        }
+        
+        function openSlotModal() {
+            document.getElementById('slotModal').style.display = 'block';
+            document.getElementById('actionSelection').style.display = 'block';
+            document.getElementById('unavailableForm').style.display = 'none';
+            document.getElementById('bookingForm').style.display = 'none';
+            document.getElementById('confirmBtn').style.display = 'none';
+            document.getElementById('modalTitle').textContent = 'Gestione Slot';
+            currentAction = null;
+        }
+        
+        function closeSlotModal() {
+            document.getElementById('slotModal').style.display = 'none';
+            selectedSlot = null;
+            currentAction = null;
+        }
+        
+        function showMarkUnavailable() {
+            currentAction = 'unavailable';
+            document.getElementById('actionSelection').style.display = 'none';
+            document.getElementById('unavailableForm').style.display = 'block';
+            document.getElementById('confirmBtn').style.display = 'block';
+            document.getElementById('modalTitle').textContent = 'Segna Slot Non Disponibile';
+            
+            const slotDate = new Date(selectedSlot);
+            const formatted = slotDate.toLocaleString('it-IT', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('slotInfo').textContent = `Slot: ${formatted}`;
+        }
+        
+        async function showCreateBooking() {
+            currentAction = 'booking';
+            document.getElementById('actionSelection').style.display = 'none';
+            document.getElementById('bookingForm').style.display = 'block';
+            document.getElementById('confirmBtn').style.display = 'block';
+            document.getElementById('modalTitle').textContent = 'Crea Prenotazione';
+            
+            const slotDate = new Date(selectedSlot);
+            const formatted = slotDate.toLocaleString('it-IT', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('slotInfoBooking').textContent = `Slot: ${formatted}`;
+            
+            // Load users if not already loaded
+            if (users.length === 0) {
+                await loadUsers();
+            }
+            
+            // Populate user dropdown
+            const select = document.getElementById('bookingUserId');
+            select.innerHTML = '<option value="">Seleziona un utente...</option>';
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = `${user.firstName} ${user.lastName} (${user.email})`;
+                select.appendChild(option);
+            });
+        }
+        
+        async function confirmAction() {
+            if (currentAction === 'unavailable') {
+                await markSlotUnavailable();
+            } else if (currentAction === 'booking') {
+                await createAdminBooking();
+            }
+        }
+        
+        async function markSlotUnavailable() {
+            try {
+                const response = await fetch('/api/admin/slots/disable', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        startsAt: selectedSlot
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    showToast('Slot segnato come non disponibile', true);
+                    closeSlotModal();
+                    loadBookings(); // Reload calendar
+                }
+            } catch (error) {
+                showToast('Errore durante l\'operazione', false);
+                console.error(error);
+            }
+        }
+        
+        async function createAdminBooking() {
+            const userId = document.getElementById('bookingUserId').value;
+            
+            if (!userId) {
+                showToast('Seleziona un utente', false);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/bookings/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        startsAt: selectedSlot
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    showToast('Prenotazione creata con successo', true);
+                    closeSlotModal();
+                    loadBookings(); // Reload calendar
+                }
+            } catch (error) {
+                showToast('Errore durante la creazione della prenotazione', false);
+                console.error(error);
+            }
+        }
+        
+        function showToast(message, isSuccess) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (isSuccess ? ' success' : '');
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 4000);
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const slotModal = document.getElementById('slotModal');
+            if (event.target === slotModal) {
+                closeSlotModal();
+            }
+        }
+        
         // Initial load
         loadBookings();
+        loadUsers();
     </script>
 </body>
 </html>
