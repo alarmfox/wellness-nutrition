@@ -279,13 +279,6 @@
                         }
                     });
                     
-                    // Sort slots by date (nearest first)
-                    filtered.sort((a, b) => {
-                        const dateA = new Date(a.StartsAt);
-                        const dateB = new Date(b.StartsAt);
-                        return dateA - dateB;
-                    });
-                    
                     if (filtered.length === 0) {
                         contentDiv.innerHTML = `
                             <h1>Seleziona uno slot</h1>
@@ -295,35 +288,57 @@
                     }
                     
                     // Group slots by date
+                    // 1️⃣ Group slots by the date (using ISO YYYY-MM-DD keys)
                     const groupedSlots = {};
                     filtered.forEach(slot => {
                         const date = new Date(slot.StartsAt);
-                        const dateKey = date.toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                        const dateKey = date.toISOString().split('T')[0]; // e.g. "2025-10-21"
                         if (!groupedSlots[dateKey]) {
                             groupedSlots[dateKey] = [];
                         }
                         groupedSlots[dateKey].push(slot);
                     });
-                    
-                    // Build HTML
+
+                    // 2️⃣ Sort the keys chronologically — works naturally with ISO format
+                    const sortedKeys = Object.keys(groupedSlots).sort();
+
+                    // 3️⃣ Build HTML
                     let html = '<h1>Seleziona uno slot</h1>';
-                    Object.keys(groupedSlots).sort().forEach(dateKey => {
-                        html += `<div style="margin-top: 20px; margin-bottom: 10px; font-weight: 500; color: rgba(0,0,0,0.87); font-size: 14px; text-transform: capitalize;">${dateKey}</div>`;
-                        groupedSlots[dateKey].forEach(slot => {
-                            const date = new Date(slot.StartsAt);
-                            const timeStr = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-                            const availText = userSubType === 'SHARED' ? `(${2 - slot.PeopleCount} posti)` : '';
-                            
-                            html += `
-                                <div class="list-item" style="cursor: pointer;" onclick="createBooking('${slot.StartsAt}')">
+                    sortedKeys.forEach(dateKey => {
+                        const date = new Date(dateKey);
+                        const dateLabel = date.toLocaleDateString('it-IT', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                        });
+
+                        html += `
+                            <div style="margin-top: 20px; margin-bottom: 10px; font-weight: 500; color: rgba(0,0,0,0.87); font-size: 14px; text-transform: capitalize;">
+                            ${dateLabel}
+                            </div>
+                            `;
+
+                        // Sort slots within each day by start time
+                        groupedSlots[dateKey]
+                            .sort((a, b) => new Date(a.StartsAt) - new Date(b.StartsAt))
+                            .forEach(slot => {
+                                const timeStr = new Date(slot.StartsAt).toLocaleTimeString('it-IT', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                                const availText = userSubType === 'SHARED' ? `(${2 - slot.PeopleCount} posti)` : '';
+
+                                html += `
+                                    <div class="list-item" style="cursor: pointer;" onclick="createBooking('${slot.StartsAt}')">
                                     <span class="material-icons list-icon" style="color: #4caf50;">event_available</span>
                                     <div class="list-text">
-                                        <div class="list-primary">${timeStr} ${availText}</div>
+                                    <div class="list-primary">${timeStr} ${availText}</div>
                                     </div>
                                     <span class="material-icons list-icon">arrow_forward</span>
-                                </div>
-                            `;
-                        });
+                                    </div>
+                                    `;
+                            });
                     });
                     
                     contentDiv.innerHTML = html;
