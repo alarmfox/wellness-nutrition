@@ -43,9 +43,9 @@ func main() {
 	adminPassword := hashPassword("admin123")
 	adminID := generateID()
 	_, err = db.Exec(`
-		INSERT INTO "User" 
-		(id, "firstName", "lastName", address, password, role, "medOk", 
-		 "subType", email, "emailVerified", "expiresAt", "remainingAccesses")
+		INSERT INTO users 
+		(id, first_name, last_name, address, password, role, med_ok, 
+		 sub_type, email, email_verified, expires_at, remaining_accesses)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (email) DO NOTHING
 	`, adminID, "Admin", "User", "123 Admin St", adminPassword, "ADMIN", true,
@@ -78,9 +78,9 @@ func main() {
 		userID := generateID()
 		userIDs[i] = userID
 		_, err = db.Exec(`
-			INSERT INTO "User" 
-			(id, "firstName", "lastName", address, password, role, "medOk", 
-			 "subType", email, "emailVerified", "expiresAt", "remainingAccesses")
+			INSERT INTO users 
+			(id, first_name, last_name, address, password, role, med_ok, 
+			 sub_type, email, email_verified, expires_at, remaining_accesses)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 			ON CONFLICT (email) DO NOTHING
 		`, userID, u.firstName, u.lastName, "Via Test "+u.lastName, userPassword, "USER", true,
@@ -111,9 +111,9 @@ func main() {
 				hour, 0, 0, 0, time.Local)
 			
 			_, err = db.Exec(`
-				INSERT INTO "Slot" ("startsAt", "peopleCount", disabled)
+				INSERT INTO slots (starts_at, people_count, disabled)
 				VALUES ($1, $2, $3)
-				ON CONFLICT ("startsAt") DO NOTHING
+				ON CONFLICT (starts_at) DO NOTHING
 			`, slotTime, 0, false)
 			if err != nil {
 				log.Printf("Warning: Could not create slot at %v: %v", slotTime, err)
@@ -148,7 +148,7 @@ func main() {
 			}
 			
 			_, err = db.Exec(`
-				INSERT INTO "Booking" ("userId", "createdAt", "startsAt")
+				INSERT INTO bookings (user_id, created_at, starts_at)
 				VALUES ($1, $2, $3)
 			`, userID, time.Now().Add(-time.Duration(j)*24*time.Hour), bookingTime)
 			if err != nil {
@@ -158,9 +158,9 @@ func main() {
 				
 				// Update slot people count
 				_, _ = db.Exec(`
-					UPDATE "Slot"
-					SET "peopleCount" = "peopleCount" + 1
-					WHERE "startsAt" = $1
+					UPDATE slots
+					SET people_count = people_count + 1
+					WHERE starts_at = $1
 				`, bookingTime)
 			}
 		}

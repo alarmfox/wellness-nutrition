@@ -28,7 +28,27 @@ This is the Go-based server-side rendered application for Wellness & Nutrition, 
 
 ### Database
 
-The application uses PostgreSQL with the existing Prisma schema. All table names and column names match the Prisma schema exactly.
+The application uses PostgreSQL with **lowercase snake_case table and column names**. All migrations are idempotent using `CREATE TABLE IF NOT EXISTS` statements.
+
+**Tables:**
+- `users` - User accounts and subscriptions
+- `slots` - Available time slots for bookings
+- `bookings` - User bookings linked to slots
+- `events` - Event log for booking actions
+- `sessions` - Session management for authentication
+
+**Key Differences from Prisma:**
+- Prisma uses PascalCase table names (`User`, `Booking`) and camelCase columns (`firstName`, `startsAt`)
+- Go app uses lowercase snake_case (`users`, `bookings`, `first_name`, `starts_at`)
+- Both schemas are functionally equivalent
+
+**Running Migrations:**
+```bash
+cd app/migrations
+go run . -db-uri="$DATABASE_URL"
+```
+
+See [`migrations/README.md`](migrations/README.md) for complete schema documentation.
 
 ### Authentication
 
@@ -45,9 +65,10 @@ The application uses PostgreSQL with the existing Prisma schema. All table names
   - `/api/user/current`
   - `/api/bookings/*`
 - **Admin routes**: Require admin role
-  - `/calendar` (admin calendar view with all bookings)
-  - `/users` (user management page)
-  - `/events` (event log page)
+  - `/admin` (redirects to calendar)
+  - `/admin/calendar` (admin calendar view with all bookings)
+  - `/admin/users` (user management page)
+  - `/admin/events` (event log page)
   - `/api/admin/users` (user CRUD endpoints)
   - `/api/admin/bookings` (get all bookings for calendar)
 
@@ -57,20 +78,24 @@ Admin API endpoints return a 403 Forbidden error if accessed by non-admin users.
 
 The application provides two distinct views based on user role:
 
-**Admin View:**
-- Redirected to `/calendar` on login
-- Interactive calendar showing all bookings from all users
-- Week and month views available
+**Admin View** (`/admin/*`):
+- Redirected to `/admin/calendar` on login
+- `/admin/calendar` - Interactive calendar showing all bookings from all users
+- `/admin/users` - User management page
+- `/admin/events` - Event log page
+- Week and month calendar views available
 - Color-coded by subscription type (SHARED vs SINGLE)
 - Access to user management and event logs
 - Can view bookings owned by any user
 
-**User View:**
-- Dashboard at `/` showing only their own bookings
+**User View** (`/user`):
+- Dashboard at `/user` showing only their own bookings
 - Can create new bookings from available slots
 - Can delete their own bookings
 - Cannot view or modify other users' bookings
 - Bottom navigation for mobile-friendly experience
+
+The root path `/` automatically redirects users to their appropriate view based on role.
 
 ## Environment Variables
 
@@ -94,9 +119,26 @@ NEXTAUTH_URL=http://localhost:3000
 
 ## Building and Running
 
+### Database Migrations
+
+**First, run the migrations to create the database schema:**
+
+```bash
+cd app/migrations
+go run . -db-uri="$DATABASE_URL"
+
+# Or build and run
+go build -o migrate
+./migrate -db-uri="$DATABASE_URL"
+```
+
+This creates all required tables using **lowercase snake_case naming** with idempotent `CREATE TABLE IF NOT EXISTS` statements. Safe to run multiple times.
+
+See [`migrations/README.md`](migrations/README.md) for details.
+
 ### Database Seeding (for Testing)
 
-Before running the application, you can seed the database with test data:
+After running migrations, seed the database with test data:
 
 ```bash
 cd app/cmd/seed
@@ -146,20 +188,19 @@ docker run -p 3000:3000 --env-file .env wellness-nutrition
 
 ### User (Protected)
 
+- `GET /user` - User dashboard page
 - `GET /api/user/current` - Get current user information
-
-### Bookings (Protected)
-
-- `GET /api/bookings/current` - Get user's bookings
-- `POST /api/bookings/create` - Create a new booking
-- `POST /api/bookings/delete` - Delete a booking
-- `GET /api/bookings/slots` - Get available time slots
+- `GET /api/user/bookings` - Get user's bookings
+- `POST /api/user/bookings/create` - Create a new booking
+- `POST /api/user/bookings/delete` - Delete a booking
+- `GET /api/user/bookings/slots` - Get available time slots
 
 ### Admin (Admin Only)
 
-- `GET /calendar` - Admin calendar view page
-- `GET /users` - User management page
-- `GET /events` - Event log page
+- `GET /admin` - Admin home (redirects to calendar)
+- `GET /admin/calendar` - Admin calendar view page
+- `GET /admin/users` - User management page
+- `GET /admin/events` - Event log page
 - `GET /api/admin/users` - Get all users
 - `POST /api/admin/users/create` - Create a new user
 - `POST /api/admin/users/update` - Update a user

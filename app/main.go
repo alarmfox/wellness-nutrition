@@ -112,25 +112,31 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.HandleFunc("/api/auth/reset", userHandler.ResetPassword)
 	mux.HandleFunc("/api/auth/verify", userHandler.VerifyAccount)
 	
-	// Protected routes - User
+	// User routes - /user prefix
 	authMiddleware := middleware.Auth(sessionStore, userRepo)
-	mux.Handle("/", authMiddleware(http.HandlerFunc(serveHome(db, bookingRepo))))
+	mux.Handle("/user", authMiddleware(http.HandlerFunc(serveUserDashboard(db, bookingRepo))))
+	mux.Handle("/user/", authMiddleware(http.HandlerFunc(serveUserDashboard(db, bookingRepo))))
 	mux.Handle("/api/user/current", authMiddleware(http.HandlerFunc(userHandler.GetCurrent)))
-	mux.Handle("/api/bookings/current", authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent)))
-	mux.Handle("/api/bookings/create", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
-	mux.Handle("/api/bookings/delete", authMiddleware(http.HandlerFunc(bookingHandler.Delete)))
-	mux.Handle("/api/bookings/slots", authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots)))
+	mux.Handle("/api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent)))
+	mux.Handle("/api/user/bookings/create", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
+	mux.Handle("/api/user/bookings/delete", authMiddleware(http.HandlerFunc(bookingHandler.Delete)))
+	mux.Handle("/api/user/bookings/slots", authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots)))
 	
-	// Protected routes - Admin only
+	// Admin routes - /admin prefix
 	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
-	mux.Handle("/calendar", authMiddleware(http.HandlerFunc(serveCalendar)))
-	mux.Handle("/users", authMiddleware(http.HandlerFunc(serveUsers(userRepo))))
-	mux.Handle("/events", authMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
+	mux.Handle("/admin", authMiddleware(http.HandlerFunc(serveAdminHome)))
+	mux.Handle("/admin/", authMiddleware(http.HandlerFunc(serveAdminHome)))
+	mux.Handle("/admin/calendar", adminMiddleware(http.HandlerFunc(serveCalendar)))
+	mux.Handle("/admin/users", adminMiddleware(http.HandlerFunc(serveUsers(userRepo))))
+	mux.Handle("/admin/events", adminMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
 	mux.Handle("/api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.GetAll)))
 	mux.Handle("/api/admin/users/create", adminMiddleware(http.HandlerFunc(userHandler.Create)))
 	mux.Handle("/api/admin/users/update", adminMiddleware(http.HandlerFunc(userHandler.Update)))
 	mux.Handle("/api/admin/users/delete", adminMiddleware(http.HandlerFunc(userHandler.Delete)))
 	mux.Handle("/api/admin/bookings", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings)))
+	
+	// Root redirect based on role
+	mux.Handle("/", authMiddleware(http.HandlerFunc(serveRoot(db, bookingRepo))))
 
 	log.Printf("listening on %s", listenAddr)
 	return startHttpServer(ctx, mux, listenAddr)
@@ -166,7 +172,7 @@ func startHttpServer(ctx context.Context, r *http.ServeMux, addr string) error {
 	return server.Shutdown(shutdownCtx)
 }
 
-func serveHome(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFunc {
+func serveRoot(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -179,9 +185,31 @@ func serveHome(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFu
 			return
 		}
 		
-		// Redirect admins to calendar view
+		// Redirect based on role
 		if user.Role == models.RoleAdmin {
-			http.Redirect(w, r, "/calendar", http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
+		} else {
+			http.Redirect(w, r, "/user", http.StatusSeeOther)
+		}
+	}
+}
+
+func serveUserDashboard(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+		
+		user := middleware.GetUserFromContext(r.Context())
+		if user == nil {
+			http.Redirect(w, r, "/signin", http.StatusSeeOther)
+			return
+		}
+		
+		// Only regular users can access user dashboard
+		if user.Role == models.RoleAdmin {
+			http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
 			return
 		}
 
@@ -223,6 +251,17 @@ func serveHome(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFu
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
+}
+
+func serveAdminHome(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil || user.Role != models.RoleAdmin {
+		http.Redirect(w, r, "/signin", http.StatusSeeOther)
+		return
+	}
+	
+	// Redirect admin to calendar
+	http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
 }
 
 func serveCalendar(w http.ResponseWriter, r *http.Request) {

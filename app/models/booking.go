@@ -43,11 +43,11 @@ func NewBookingRepository(db *sql.DB) *BookingRepository {
 
 func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 	query := `
-		SELECT id, "userId", "createdAt", "startsAt"
-		FROM "Booking"
-		WHERE "userId" = $1 
-			AND "startsAt" > date_trunc('month', CURRENT_TIMESTAMP)
-		ORDER BY "startsAt" DESC
+		SELECT id, user_id, created_at, starts_at
+		FROM bookings
+		WHERE user_id = $1 
+			AND starts_at > date_trunc('month', CURRENT_TIMESTAMP)
+		ORDER BY starts_at DESC
 	`
 	
 	rows, err := r.db.Query(query, userID)
@@ -76,10 +76,10 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 
 func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, error) {
 	query := `
-		SELECT id, "userId", "createdAt", "startsAt"
-		FROM "Booking"
-		WHERE "startsAt" >= $1 AND "startsAt" <= $2
-		ORDER BY "startsAt" ASC
+		SELECT id, user_id, created_at, starts_at
+		FROM bookings
+		WHERE starts_at >= $1 AND starts_at <= $2
+		ORDER BY starts_at ASC
 	`
 	
 	rows, err := r.db.Query(query, from, to)
@@ -108,7 +108,7 @@ func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, erro
 
 func (r *BookingRepository) Create(booking *Booking) error {
 	query := `
-		INSERT INTO "Booking" ("userId", "createdAt", "startsAt")
+		INSERT INTO bookings (user_id, created_at, starts_at)
 		VALUES ($1, $2, $3)
 		RETURNING id
 	`
@@ -118,15 +118,15 @@ func (r *BookingRepository) Create(booking *Booking) error {
 }
 
 func (r *BookingRepository) Delete(id int64) error {
-	query := `DELETE FROM "Booking" WHERE id = $1`
+	query := `DELETE FROM bookings WHERE id = $1`
 	_, err := r.db.Exec(query, id)
 	return err
 }
 
 func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 	query := `
-		SELECT id, "userId", "createdAt", "startsAt"
-		FROM "Booking"
+		SELECT id, user_id, created_at, starts_at
+		FROM bookings
 		WHERE id = $1
 	`
 	
@@ -155,11 +155,11 @@ func NewSlotRepository(db *sql.DB) *SlotRepository {
 
 func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) {
 	query := `
-		SELECT "startsAt", "peopleCount", disabled
-		FROM "Slot"
-		WHERE "startsAt" >= $1 AND "startsAt" < $2
+		SELECT starts_at, people_count, disabled
+		FROM slots
+		WHERE starts_at >= $1 AND starts_at < $2
 			AND disabled = false
-		ORDER BY "startsAt" ASC
+		ORDER BY starts_at ASC
 	`
 	
 	rows, err := r.db.Query(query, from, to)
@@ -187,9 +187,9 @@ func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) 
 
 func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
 	query := `
-		SELECT "startsAt", "peopleCount", disabled
-		FROM "Slot"
-		WHERE "startsAt" = $1
+		SELECT starts_at, people_count, disabled
+		FROM slots
+		WHERE starts_at = $1
 	`
 	
 	var slot Slot
@@ -208,9 +208,9 @@ func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
 
 func (r *SlotRepository) IncrementPeopleCount(startsAt time.Time) error {
 	query := `
-		UPDATE "Slot"
-		SET "peopleCount" = "peopleCount" + 1
-		WHERE "startsAt" = $1
+		UPDATE slots
+		SET people_count = people_count + 1
+		WHERE starts_at = $1
 	`
 	_, err := r.db.Exec(query, startsAt)
 	return err
@@ -218,9 +218,9 @@ func (r *SlotRepository) IncrementPeopleCount(startsAt time.Time) error {
 
 func (r *SlotRepository) DecrementPeopleCount(startsAt time.Time) error {
 	query := `
-		UPDATE "Slot"
-		SET "peopleCount" = "peopleCount" - 1
-		WHERE "startsAt" = $1 AND "peopleCount" > 0
+		UPDATE slots
+		SET people_count = people_count - 1
+		WHERE starts_at = $1 AND people_count > 0
 	`
 	_, err := r.db.Exec(query, startsAt)
 	return err
@@ -236,7 +236,7 @@ func NewEventRepository(db *sql.DB) *EventRepository {
 
 func (r *EventRepository) Create(event *Event) error {
 	query := `
-		INSERT INTO "Event" ("userId", "startsAt", type, "occurredAt")
+		INSERT INTO events (user_id, starts_at, type, occurred_at)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`
@@ -247,9 +247,9 @@ func (r *EventRepository) Create(event *Event) error {
 
 func (r *EventRepository) GetAll() ([]*Event, error) {
 	query := `
-		SELECT id, "userId", "startsAt", type, "occurredAt"
-		FROM "Event"
-		ORDER BY "occurredAt" DESC
+		SELECT id, user_id, starts_at, type, occurred_at
+		FROM events
+		ORDER BY occurred_at DESC
 		LIMIT 100
 	`
 	
