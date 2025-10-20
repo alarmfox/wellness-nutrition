@@ -1,0 +1,247 @@
+package models
+
+import (
+	"database/sql"
+	"time"
+)
+
+type Booking struct {
+	ID        int64
+	UserID    string
+	CreatedAt time.Time
+	StartsAt  time.Time
+}
+
+type Slot struct {
+	StartsAt    time.Time
+	PeopleCount int
+	Disabled    bool
+}
+
+type EventType string
+
+const (
+	EventTypeCreated EventType = "CREATED"
+	EventTypeDeleted EventType = "DELETED"
+)
+
+type Event struct {
+	ID         int
+	UserID     string
+	StartsAt   time.Time
+	Type       EventType
+	OccurredAt time.Time
+}
+
+type BookingRepository struct {
+	db *sql.DB
+}
+
+func NewBookingRepository(db *sql.DB) *BookingRepository {
+	return &BookingRepository{db: db}
+}
+
+func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
+	query := `
+		SELECT id, "userId", "createdAt", "startsAt"
+		FROM "Booking"
+		WHERE "userId" = $1 
+			AND "startsAt" > date_trunc('month', CURRENT_TIMESTAMP)
+		ORDER BY "startsAt" DESC
+	`
+	
+	rows, err := r.db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var bookings []*Booking
+	for rows.Next() {
+		var booking Booking
+		err := rows.Scan(
+			&booking.ID,
+			&booking.UserID,
+			&booking.CreatedAt,
+			&booking.StartsAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, &booking)
+	}
+	
+	return bookings, rows.Err()
+}
+
+func (r *BookingRepository) Create(booking *Booking) error {
+	query := `
+		INSERT INTO "Booking" ("userId", "createdAt", "startsAt")
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`
+	
+	err := r.db.QueryRow(query, booking.UserID, booking.CreatedAt, booking.StartsAt).Scan(&booking.ID)
+	return err
+}
+
+func (r *BookingRepository) Delete(id int64) error {
+	query := `DELETE FROM "Booking" WHERE id = $1`
+	_, err := r.db.Exec(query, id)
+	return err
+}
+
+func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
+	query := `
+		SELECT id, "userId", "createdAt", "startsAt"
+		FROM "Booking"
+		WHERE id = $1
+	`
+	
+	var booking Booking
+	err := r.db.QueryRow(query, id).Scan(
+		&booking.ID,
+		&booking.UserID,
+		&booking.CreatedAt,
+		&booking.StartsAt,
+	)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return &booking, nil
+}
+
+type SlotRepository struct {
+	db *sql.DB
+}
+
+func NewSlotRepository(db *sql.DB) *SlotRepository {
+	return &SlotRepository{db: db}
+}
+
+func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) {
+	query := `
+		SELECT "startsAt", "peopleCount", disabled
+		FROM "Slot"
+		WHERE "startsAt" >= $1 AND "startsAt" < $2
+			AND disabled = false
+		ORDER BY "startsAt" ASC
+	`
+	
+	rows, err := r.db.Query(query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var slots []*Slot
+	for rows.Next() {
+		var slot Slot
+		err := rows.Scan(
+			&slot.StartsAt,
+			&slot.PeopleCount,
+			&slot.Disabled,
+		)
+		if err != nil {
+			return nil, err
+		}
+		slots = append(slots, &slot)
+	}
+	
+	return slots, rows.Err()
+}
+
+func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
+	query := `
+		SELECT "startsAt", "peopleCount", disabled
+		FROM "Slot"
+		WHERE "startsAt" = $1
+	`
+	
+	var slot Slot
+	err := r.db.QueryRow(query, startsAt).Scan(
+		&slot.StartsAt,
+		&slot.PeopleCount,
+		&slot.Disabled,
+	)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return &slot, nil
+}
+
+func (r *SlotRepository) IncrementPeopleCount(startsAt time.Time) error {
+	query := `
+		UPDATE "Slot"
+		SET "peopleCount" = "peopleCount" + 1
+		WHERE "startsAt" = $1
+	`
+	_, err := r.db.Exec(query, startsAt)
+	return err
+}
+
+func (r *SlotRepository) DecrementPeopleCount(startsAt time.Time) error {
+	query := `
+		UPDATE "Slot"
+		SET "peopleCount" = "peopleCount" - 1
+		WHERE "startsAt" = $1 AND "peopleCount" > 0
+	`
+	_, err := r.db.Exec(query, startsAt)
+	return err
+}
+
+type EventRepository struct {
+	db *sql.DB
+}
+
+func NewEventRepository(db *sql.DB) *EventRepository {
+	return &EventRepository{db: db}
+}
+
+func (r *EventRepository) Create(event *Event) error {
+	query := `
+		INSERT INTO "Event" ("userId", "startsAt", type, "occurredAt")
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`
+	
+	err := r.db.QueryRow(query, event.UserID, event.StartsAt, event.Type, event.OccurredAt).Scan(&event.ID)
+	return err
+}
+
+func (r *EventRepository) GetAll() ([]*Event, error) {
+	query := `
+		SELECT id, "userId", "startsAt", type, "occurredAt"
+		FROM "Event"
+		ORDER BY "occurredAt" DESC
+		LIMIT 100
+	`
+	
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var events []*Event
+	for rows.Next() {
+		var event Event
+		err := rows.Scan(
+			&event.ID,
+			&event.UserID,
+			&event.StartsAt,
+			&event.Type,
+			&event.OccurredAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, &event)
+	}
+	
+	return events, rows.Err()
+}

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wellness & Nutrition</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 400px;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0 0 10px 0;
+        }
+        .subscription-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .info-item {
+            flex: 1;
+        }
+        .info-label {
+            font-size: 12px;
+            color: rgba(0, 0, 0, 0.6);
+            margin-bottom: 4px;
+        }
+        .info-value {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: rgba(0, 0, 0, 0.6);
+            text-decoration: none;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .nav-item:hover {
+            color: #1976d2;
+        }
+        .nav-item.active {
+            color: #1976d2;
+        }
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .list-item:hover {
+            background-color: #f5f5f5;
+        }
+        .list-icon {
+            margin-right: 12px;
+            color: rgba(0, 0, 0, 0.54);
+        }
+        .list-text {
+            flex: 1;
+        }
+        .list-primary {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        .list-secondary {
+            font-size: 12px;
+            color: rgba(0, 0, 0, 0.6);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Il tuo abbonamento</h1>
+            <div class="subscription-info">
+                <div class="info-item">
+                    <div class="info-label">Scadenza</div>
+                    <div class="info-value">{{.ExpiresAt}}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Accessi rimanenti</div>
+                    <div class="info-value">{{.RemainingAccesses}}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <h1>Lista prenotazioni</h1>
+            <div id="bookings-list">
+                {{if .Bookings}}
+                    {{range .Bookings}}
+                    <div class="list-item">
+                        <span class="material-icons list-icon">event</span>
+                        <div class="list-text">
+                            <div class="list-primary">{{.StartsAtFormatted}}</div>
+                            <div class="list-secondary">Effettuata {{.CreatedAtFormatted}}</div>
+                        </div>
+                        <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
+                    </div>
+                    {{end}}
+                {{else}}
+                    <div class="empty-state">Nessuna prenotazione</div>
+                {{end}}
+            </div>
+        </div>
+        
+        <div style="height: 80px;"></div>
+    </div>
+    
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active" onclick="showBookings(); return false;">
+            <span class="material-icons">list</span>
+            <span>Prenotazioni</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showSlots(); return false;">
+            <span class="material-icons">add</span>
+            <span>Crea</span>
+        </a>
+        <a href="/api/auth/logout" class="nav-item" onclick="return confirm('Sicuro di voler uscire dall\'applicazione?');">
+            <span class="material-icons" style="color: #d32f2f;">logout</span>
+            <span>Esci</span>
+        </a>
+    </div>
+    
+    <script>
+        function showBookings() {
+            document.querySelector('h1').textContent = 'Lista prenotazioni';
+            // Load bookings
+        }
+        
+        function showSlots() {
+            document.querySelector('h1').textContent = 'Seleziona uno slot';
+            // Load available slots
+        }
+        
+        function deleteBooking(id, startsAt) {
+            if (!confirm('Sicuro di voler eliminare questa prenotazione?')) {
+                return;
+            }
+            
+            fetch('/api/bookings/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id, startsAt }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                alert('Errore durante la cancellazione della prenotazione');
+                console.error(error);
+            });
+        }
+    </script>
+</body>
+</html>

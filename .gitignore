@@ -42,3 +42,14 @@ yarn-error.log*
 *.tsbuildinfo
 
 docker-compose.yml
+
+# Go
+app/wellness-nutrition
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
