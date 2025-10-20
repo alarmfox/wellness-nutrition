@@ -206,7 +206,7 @@
                         <span class="material-icons" style="font-size: 18px;">view_week</span>
                         Settimana
                     </button>
-                    <button class="btn btn-secondary" onclick="changeView('month')">
+                    <button class="btn btn-secondary" onclick="changeView('month')" style="display: none;">
                         <span class="material-icons" style="font-size: 18px;">calendar_month</span>
                         Mese
                     </button>
@@ -237,7 +237,7 @@
     
     <script>
         let currentDate = new Date();
-        let viewMode = 'month'; // 'month' or 'week'
+        let viewMode = 'week'; // 'month' or 'week' - default to week view
         let bookings = [];
         
         async function loadBookings() {
