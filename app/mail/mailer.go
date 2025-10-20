@@ -197,3 +197,16 @@ func (m *Mailer) SendDeleteBookingNotification(firstName, lastName string, start
 	
 	return m.SendEmail(notifyEmail, "Prenotazione cancellata", data)
 }
+
+func (m *Mailer) SendReminderEmail(email, firstName string, startsAt time.Time) error {
+	data := EmailData{
+		Name:         firstName,
+		Intro:        "Questo è un promemoria per la tua prossima prenotazione.",
+		Title:        "Promemoria prenotazione",
+		Instructions: fmt.Sprintf("La tua prenotazione è prevista per %s", startsAt.Format("02 January 2006 alle 15:04")),
+		Outro:        "Ti aspettiamo!",
+		Signature:    "Grazie per averci scelto",
+	}
+	
+	return m.SendEmail(email, "Promemoria prenotazione - Wellness & Nutrition", data)
+}

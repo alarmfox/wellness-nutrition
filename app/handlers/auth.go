@@ -14,6 +14,8 @@ import (
 	"github.com/alarmfox/wellness-nutrition/app/mail"
 	"github.com/alarmfox/wellness-nutrition/app/middleware"
 	"github.com/alarmfox/wellness-nutrition/app/models"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/argon2"
 )
 
 type AuthHandler struct {
@@ -82,7 +84,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Verify password using Argon2
-	if !middleware.VerifyPassword(req.Password, user.Password.String) {
+	if !verifyPassword(req.Password, user.Password.String) {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid credentials"})
 		return
 	}
@@ -228,7 +230,12 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	
 	// Generate user ID and verification token
 	userID := generateID()
-	verificationToken := generateToken()
+	verificationToken, err := generateToken()
+	if err != nil {
+		log.Printf("Error generating token: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
+		return
+	}
 	
 	// Join goals
 	goals := ""
@@ -262,7 +269,10 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	
 	// Send welcome email with verification link
 	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
-	go h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL)
+	if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
+		log.Printf("Error sending welcome email: %v", err)
+		// Don't fail user creation if email fails, but log it
+	}
 	
 	sendJSON(w, http.StatusCreated, map[string]interface{}{
 		"message": "User created successfully",
@@ -329,14 +339,22 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	
 	// If email changed, reset verification and generate new token
 	if emailChanged {
-		verificationToken := generateToken()
+		verificationToken, err := generateToken()
+		if err != nil {
+			log.Printf("Error generating token: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
+			return
+		}
 		user.EmailVerified = sql.NullTime{Valid: false}
 		user.VerificationToken = sql.NullString{String: verificationToken, Valid: true}
 		user.VerificationTokenExpiresIn = sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true}
 		
 		// Send new verification email
 		verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
-		go h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL)
+		if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
+			log.Printf("Error sending verification email: %v", err)
+			// Don't fail update if email fails, but log it
+		}
 	}
 	
 	if err := h.userRepo.Update(user); err != nil {
@@ -391,7 +409,12 @@ func (h *UserHandler) ResendVerification(w http.ResponseWriter, r *http.Request)
 	}
 	
 	// Generate new verification token
-	verificationToken := generateToken()
+	verificationToken, err := generateToken()
+	if err != nil {
+		log.Printf("Error generating token: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
+		return
+	}
 	user.VerificationToken = sql.NullString{String: verificationToken, Valid: true}
 	user.VerificationTokenExpiresIn = sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true}
 	
@@ -403,20 +426,26 @@ func (h *UserHandler) ResendVerification(w http.ResponseWriter, r *http.Request)
 	
 	// Send verification email
 	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
-	go h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL)
+	if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
+		log.Printf("Error sending verification email: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to send verification email"})
+		return
+	}
 	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Verification email sent successfully"})
 }
 
 // Helper functions
 func generateID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	return uuid.New().String()
 }
 
-func generateToken() string {
+func generateToken() (string, error) {
 	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }
 
 func getBaseURL(r *http.Request) string {
@@ -425,6 +454,65 @@ func getBaseURL(r *http.Request) string {
 		scheme = "https"
 	}
 	return fmt.Sprintf("%s://%s", scheme, r.Host)
+}
+
+// verifyPassword verifies a password against an argon2 hash
+func verifyPassword(password, encodedHash string) bool {
+	// Parse the encoded hash
+	// Expected format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
+	parts := []byte(encodedHash)
+	
+	// Find salt and hash parts
+	dollarCount := 0
+	saltStart := 0
+	hashStart := 0
+	
+	for i, b := range parts {
+		if b == '$' {
+			dollarCount++
+			if dollarCount == 4 {
+				saltStart = i + 1
+			} else if dollarCount == 5 {
+				hashStart = i + 1
+				break
+			}
+		}
+	}
+	
+	if hashStart == 0 {
+		// Invalid format, fallback to direct comparison for backward compatibility
+		return password == encodedHash
+	}
+	
+	// Extract salt and hash
+	saltStr := string(parts[saltStart:hashStart-1])
+	hashStr := string(parts[hashStart:])
+	
+	salt, err := base64.RawStdEncoding.DecodeString(saltStr)
+	if err != nil {
+		return false
+	}
+	
+	expectedHash, err := base64.RawStdEncoding.DecodeString(hashStr)
+	if err != nil {
+		return false
+	}
+	
+	// Generate hash from provided password with the same salt
+	computedHash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+	
+	// Compare hashes
+	if len(computedHash) != len(expectedHash) {
+		return false
+	}
+	
+	for i := range computedHash {
+		if computedHash[i] != expectedHash[i] {
+			return false
+		}
+	}
+	
+	return true
 }
 
 type ResetPasswordRequest struct {
