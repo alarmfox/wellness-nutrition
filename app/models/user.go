@@ -118,6 +118,42 @@ func (r *UserRepository) GetByID(id string) (*User, error) {
 	return &user, nil
 }
 
+func (r *UserRepository) GetByVerificationToken(token string) (*User, error) {
+	query := `
+		SELECT id, first_name, last_name, address, password, role, med_ok, 
+			   cellphone, sub_type, email, email_verified, expires_at, 
+			   remaining_accesses, verification_token, verification_token_expires_in, goals
+		FROM users
+		WHERE verification_token = $1
+	`
+	
+	var user User
+	err := r.db.QueryRow(query, token).Scan(
+		&user.ID,
+		&user.FirstName,
+		&user.LastName,
+		&user.Address,
+		&user.Password,
+		&user.Role,
+		&user.MedOk,
+		&user.Cellphone,
+		&user.SubType,
+		&user.Email,
+		&user.EmailVerified,
+		&user.ExpiresAt,
+		&user.RemainingAccesses,
+		&user.VerificationToken,
+		&user.VerificationTokenExpiresIn,
+		&user.Goals,
+	)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return &user, nil
+}
+
 func (r *UserRepository) GetAll() ([]*User, error) {
 	query := `
 		SELECT id, first_name, last_name, address, password, role, med_ok, 

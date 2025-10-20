@@ -456,6 +456,25 @@ func getBaseURL(r *http.Request) string {
 	return fmt.Sprintf("%s://%s", scheme, r.Host)
 }
 
+// hashPassword hashes a password using Argon2id
+func hashPassword(password string) (string, error) {
+	// Generate a random salt
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return "", err
+	}
+	
+	// Hash the password
+	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+	
+	// Encode salt and hash to base64
+	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
+	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
+	
+	// Return in the format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
+	return fmt.Sprintf("$argon2id$v=19$m=65536,t=1,p=4$%s$%s", b64Salt, b64Hash), nil
+}
+
 // verifyPassword verifies a password against an argon2 hash
 func verifyPassword(password, encodedHash string) bool {
 	// Parse the encoded hash
@@ -543,13 +562,29 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// TODO: Generate reset token and send email
-	go func() {
-		resetURL := "http://localhost:3000/verify?token=example"
-		if err := h.mailer.SendResetEmail(user.Email, user.FirstName, resetURL); err != nil {
-			log.Printf("Error sending reset email: %v", err)
-		}
-	}()
+	// Generate reset token
+	resetToken, err := generateToken()
+	if err != nil {
+		log.Printf("Error generating reset token: %v", err)
+		sendJSON(w, http.StatusOK, map[string]string{"message": "If the email exists, a reset link has been sent"})
+		return
+	}
+	
+	// Update user with reset token
+	user.VerificationToken = sql.NullString{String: resetToken, Valid: true}
+	user.VerificationTokenExpiresIn = sql.NullTime{Time: time.Now().Add(1 * time.Hour), Valid: true}
+	
+	if err := h.userRepo.Update(user); err != nil {
+		log.Printf("Error updating user with reset token: %v", err)
+		sendJSON(w, http.StatusOK, map[string]string{"message": "If the email exists, a reset link has been sent"})
+		return
+	}
+	
+	// Send reset email
+	resetURL := fmt.Sprintf("%s/reset?token=%s", getBaseURL(r), resetToken)
+	if err := h.mailer.SendResetEmail(user.Email, user.FirstName, resetURL); err != nil {
+		log.Printf("Error sending reset email: %v", err)
+	}
 	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "If the email exists, a reset link has been sent"})
 }
@@ -565,7 +600,50 @@ func (h *UserHandler) VerifyAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// TODO: Implement account verification
+	var req VerifyAccountRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+	
+	// Validate input
+	if req.Token == "" || req.Password == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Token and password are required"})
+		return
+	}
+	
+	// Find user by verification token
+	user, err := h.userRepo.GetByVerificationToken(req.Token)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid or expired verification token"})
+		return
+	}
+	
+	// Check token expiry
+	if !user.VerificationTokenExpiresIn.Valid || time.Now().After(user.VerificationTokenExpiresIn.Time) {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Verification token has expired"})
+		return
+	}
+	
+	// Hash password
+	hashedPassword, err := hashPassword(req.Password)
+	if err != nil {
+		log.Printf("Error hashing password: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to set password"})
+		return
+	}
+	
+	// Update user
+	user.Password = sql.NullString{String: hashedPassword, Valid: true}
+	user.EmailVerified = sql.NullTime{Time: time.Now(), Valid: true}
+	user.VerificationToken = sql.NullString{Valid: false}
+	user.VerificationTokenExpiresIn = sql.NullTime{Valid: false}
+	
+	if err := h.userRepo.Update(user); err != nil {
+		log.Printf("Error updating user: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to verify account"})
+		return
+	}
 	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Account verified successfully"})
 }
