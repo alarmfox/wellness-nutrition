@@ -147,6 +147,10 @@
             <h1>Il tuo abbonamento</h1>
             <div class="subscription-info">
                 <div class="info-item">
+                    <div class="info-label">Piano</div>
+                    <div class="info-value">{{if eq .User.SubType "SHARED"}}Condiviso{{else}}Singolo{{end}}</div>
+                </div>
+                <div class="info-item">
                     <div class="info-label">Scadenza</div>
                     <div class="info-value">{{.ExpiresAt}}</div>
                 </div>
@@ -155,6 +159,12 @@
                     <div class="info-value">{{.RemainingAccesses}}</div>
                 </div>
             </div>
+            {{if .User.Goals}}
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                <div class="info-label">Obiettivi</div>
+                <div class="info-value" style="font-size: 14px; white-space: pre-wrap;">{{.User.Goals}}</div>
+            </div>
+            {{end}}
         </div>
         
         <div class="content">
@@ -196,6 +206,9 @@
     </div>
     
     <script>
+        const userSubType = '{{.User.SubType}}';
+        let availableSlots = [];
+
         function showToast(message, isSuccess = false) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -206,13 +219,139 @@
         }
 
         function showBookings() {
-            document.querySelector('h1').textContent = 'Lista prenotazioni';
-            // Load bookings
+            const contentDiv = document.querySelector('.content');
+            contentDiv.innerHTML = `
+                <h1>Lista prenotazioni</h1>
+                <div id="bookings-list">
+                    {{if .Bookings}}
+                        {{range .Bookings}}
+                        <div class="list-item">
+                            <span class="material-icons list-icon">event</span>
+                            <div class="list-text">
+                                <div class="list-primary">{{.StartsAtFormatted}}</div>
+                                <div class="list-secondary">Effettuata {{.CreatedAtFormatted}}</div>
+                            </div>
+                            <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
+                        </div>
+                        {{end}}
+                    {{else}}
+                        <div class="empty-state">Nessuna prenotazione</div>
+                    {{end}}
+                </div>
+            `;
+            
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.nav-item')[0].classList.add('active');
         }
         
         function showSlots() {
-            document.querySelector('h1').textContent = 'Seleziona uno slot';
-            // Load available slots
+            const contentDiv = document.querySelector('.content');
+            contentDiv.innerHTML = '<h1>Caricamento slot disponibili...</h1>';
+            
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.nav-item')[1].classList.add('active');
+            
+            // Fetch available slots
+            fetch('/api/user/available-slots')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showToast('Errore nel caricamento degli slot');
+                        return;
+                    }
+                    
+                    availableSlots = data.slots || [];
+                    
+                    // Filter slots based on user subscription type
+                    const filtered = availableSlots.filter(slot => {
+                        if (slot.Disabled) return false;
+                        
+                        if (userSubType === 'SHARED') {
+                            return slot.PeopleCount < 2;
+                        } else {
+                            return slot.PeopleCount === 0;
+                        }
+                    });
+                    
+                    if (filtered.length === 0) {
+                        contentDiv.innerHTML = `
+                            <h1>Seleziona uno slot</h1>
+                            <div class="empty-state">Nessuno slot disponibile nel prossimo mese</div>
+                        `;
+                        return;
+                    }
+                    
+                    // Group slots by date
+                    const groupedSlots = {};
+                    filtered.forEach(slot => {
+                        const date = new Date(slot.StartsAt);
+                        const dateKey = date.toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                        if (!groupedSlots[dateKey]) {
+                            groupedSlots[dateKey] = [];
+                        }
+                        groupedSlots[dateKey].push(slot);
+                    });
+                    
+                    // Build HTML
+                    let html = '<h1>Seleziona uno slot</h1>';
+                    Object.keys(groupedSlots).sort().forEach(dateKey => {
+                        html += `<div style="margin-top: 20px; margin-bottom: 10px; font-weight: 500; color: rgba(0,0,0,0.87); font-size: 14px; text-transform: capitalize;">${dateKey}</div>`;
+                        groupedSlots[dateKey].forEach(slot => {
+                            const date = new Date(slot.StartsAt);
+                            const timeStr = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                            const availText = userSubType === 'SHARED' ? `(${2 - slot.PeopleCount} posti)` : '';
+                            
+                            html += `
+                                <div class="list-item" style="cursor: pointer;" onclick="createBooking('${slot.StartsAt}')">
+                                    <span class="material-icons list-icon" style="color: #4caf50;">event_available</span>
+                                    <div class="list-text">
+                                        <div class="list-primary">${timeStr} ${availText}</div>
+                                    </div>
+                                    <span class="material-icons list-icon">arrow_forward</span>
+                                </div>
+                            `;
+                        });
+                    });
+                    
+                    contentDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error(error);
+                    showToast('Errore di connessione. Riprova.');
+                    contentDiv.innerHTML = `
+                        <h1>Seleziona uno slot</h1>
+                        <div class="empty-state">Errore di connessione</div>
+                    `;
+                });
+        }
+        
+        function createBooking(startsAt) {
+            if (!confirm('Vuoi confermare questa prenotazione?')) {
+                return;
+            }
+            
+            fetch('/api/user/bookings/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ startsAt }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error || 'Errore durante la creazione della prenotazione');
+                } else {
+                    showToast('Prenotazione creata con successo', true);
+                    setTimeout(() => location.reload(), 1000);
+                }
+            })
+            .catch(error => {
+                showToast('Errore di connessione. Riprova.');
+                console.error(error);
+            });
         }
         
         function deleteBooking(id, startsAt) {
