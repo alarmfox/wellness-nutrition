@@ -144,7 +144,7 @@
     <div id="toast" class="toast"></div>
     <div class="container">
         <div class="header">
-            <h1>Il tuo abbonamento</h1>
+            <h1 style="font-size: 24px; margin-bottom: 16px;">{{.User.FirstName}} {{.User.LastName}}</h1>
             <div class="subscription-info">
                 <div class="info-item">
                     <div class="info-label">Scadenza</div>
@@ -161,13 +161,13 @@
                         <div class="info-label">Piano</div>
                         <div class="info-value">{{if eq .User.SubType "SHARED"}}Condiviso{{else}}Singolo{{end}}</div>
                     </div>
-                    {{if .User.Goals.Valid}}
-                    <div class="info-item">
-                        <div class="info-label">Obiettivi</div>
-                        <div class="info-value" style="font-size: 14px;">{{.User.Goals.String}}</div>
-                    </div>
-                    {{end}}
                 </div>
+                {{if .User.Goals.Valid}}
+                <div style="margin-top: 8px;">
+                    <div class="info-label">Obiettivi</div>
+                    <div class="info-value" style="font-size: 14px;">{{.User.Goals.String}}</div>
+                </div>
+                {{end}}
             </div>
         </div>
         
@@ -277,6 +277,13 @@
                         } else {
                             return slot.PeopleCount === 0;
                         }
+                    });
+                    
+                    // Sort slots by date (nearest first)
+                    filtered.sort((a, b) => {
+                        const dateA = new Date(a.StartsAt);
+                        const dateB = new Date(b.StartsAt);
+                        return dateA - dateB;
                     });
                     
                     if (filtered.length === 0) {

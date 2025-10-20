@@ -45,6 +45,7 @@ docker-compose.yml
 
 # Go
 app/wellness-nutrition
+app/app
 *.exe
 *.exe~
 *.dll
