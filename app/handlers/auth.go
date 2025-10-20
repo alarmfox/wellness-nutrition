@@ -120,11 +120,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-	
 	cookie, err := r.Cookie("session")
 	if err == nil {
 		h.sessionStore.DeleteSession(cookie.Value)
@@ -138,7 +133,8 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 	
-	sendJSON(w, http.StatusOK, map[string]string{"message": "Logged out successfully"})
+	// Redirect to signin page
+	http.Redirect(w, r, "/signin", http.StatusSeeOther)
 }
 
 type UserHandler struct {

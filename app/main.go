@@ -136,6 +136,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/api/admin/users/resend-verification", adminMiddleware(http.HandlerFunc(userHandler.ResendVerification)))
 	mux.Handle("/api/admin/bookings", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings)))
 	mux.Handle("/api/admin/bookings/create", adminMiddleware(http.HandlerFunc(bookingHandler.CreateBookingForUser)))
+	mux.Handle("/api/admin/slots", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllSlots)))
 	mux.Handle("/api/admin/slots/disable", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlot)))
 	
 	// Root redirect based on role

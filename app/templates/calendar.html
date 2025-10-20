@@ -452,6 +452,7 @@
         let currentDate = new Date();
         let viewMode = 'week'; // 'month' or 'week' - default to week view
         let bookings = [];
+        let slots = [];
         let users = [];
         let selectedSlot = null;
         let currentAction = null;
@@ -476,11 +477,17 @@
             }
             
             try {
-                const response = await fetch(`/api/admin/bookings?from=${from.toISOString()}&to=${to.toISOString()}`);
-                bookings = await response.json();
+                // Load both bookings and slots
+                const [bookingsResponse, slotsResponse] = await Promise.all([
+                    fetch(`/api/admin/bookings?from=${from.toISOString()}&to=${to.toISOString()}`),
+                    fetch(`/api/admin/slots?from=${from.toISOString()}&to=${to.toISOString()}`)
+                ]);
+                
+                bookings = await bookingsResponse.json();
+                slots = await slotsResponse.json();
                 renderCalendar();
             } catch (error) {
-                console.error('Error loading bookings:', error);
+                console.error('Error loading data:', error);
             }
         }
         
@@ -607,10 +614,17 @@
                         return bookingDate.getTime() === date.getTime();
                     });
                     
-                    // Check if slot is disabled (you would load this from API)
-                    const isDisabled = false; // TODO: load disabled slots from API
+                    // Check if slot is disabled
+                    const slot = slots.find(s => {
+                        const slotDate = new Date(s.StartsAt);
+                        return slotDate.getTime() === date.getTime();
+                    });
+                    const isDisabled = slot && slot.Disabled;
                     
                     html += `<div class="time-slot ${isDisabled ? 'disabled' : ''}" onclick="handleSlotClick('${date.toISOString()}', ${isDisabled}, ${slotBookings.length > 0})">`;
+                    if (isDisabled) {
+                        html += '<span style="color: #999">✕</span>';
+                    }
                     slotBookings.forEach(booking => {
                         const cssClass = booking.User.SubType === 'SHARED' ? 'booking shared' : 'booking';
                         html += `<div class="${cssClass}" title="${booking.User.FirstName} ${booking.User.LastName}" onclick="event.stopPropagation(); handleBookingClick('${booking.ID}', '${booking.User.FirstName}', '${booking.User.LastName}', '${date.toISOString()}')">

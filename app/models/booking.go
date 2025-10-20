@@ -187,6 +187,38 @@ func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) 
 	return slots, rows.Err()
 }
 
+// GetSlotsByDateRange returns all slots (including disabled) in a date range
+func (r *SlotRepository) GetSlotsByDateRange(from, to time.Time) ([]*Slot, error) {
+	query := `
+		SELECT starts_at, people_count, disabled
+		FROM slots
+		WHERE starts_at >= $1 AND starts_at < $2
+		ORDER BY starts_at ASC
+	`
+	
+	rows, err := r.db.Query(query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var slots []*Slot
+	for rows.Next() {
+		var slot Slot
+		err := rows.Scan(
+			&slot.StartsAt,
+			&slot.PeopleCount,
+			&slot.Disabled,
+		)
+		if err != nil {
+			return nil, err
+		}
+		slots = append(slots, &slot)
+	}
+	
+	return slots, rows.Err()
+}
+
 func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
 	query := `
 		SELECT starts_at, people_count, disabled
