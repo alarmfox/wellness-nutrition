@@ -19,6 +19,7 @@ import (
 	"github.com/alarmfox/wellness-nutrition/app/mail"
 	"github.com/alarmfox/wellness-nutrition/app/middleware"
 	"github.com/alarmfox/wellness-nutrition/app/models"
+	"github.com/alarmfox/wellness-nutrition/app/websocket"
 	_ "github.com/lib/pq"
 )
 
@@ -89,10 +90,14 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	// Initialize mailer
 	mailer := mail.NewMailer()
 	
+	// Initialize WebSocket hub
+	hub := websocket.NewHub()
+	go hub.Run()
+	
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userRepo, sessionStore)
 	userHandler := handlers.NewUserHandler(userRepo, mailer)
-	bookingHandler := handlers.NewBookingHandler(bookingRepo, slotRepo, eventRepo, userRepo, mailer)
+	bookingHandler := handlers.NewBookingHandler(bookingRepo, slotRepo, eventRepo, userRepo, mailer, hub)
 	_ = handlers.NewPageHandler(userRepo, bookingRepo, eventRepo) // Page handler logic moved to main.go serve functions
 	
 	mux := http.NewServeMux()
@@ -140,6 +145,11 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/api/admin/slots/disable", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlot)))
 	mux.Handle("/api/admin/slots/disable-confirm", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlotConfirm)))
 	mux.Handle("/api/admin/slots/enable", adminMiddleware(http.HandlerFunc(bookingHandler.EnableSlot)))
+	
+	// WebSocket endpoint
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		websocket.ServeWs(hub, w, r)
+	})
 	
 	// Root redirect based on role
 	mux.Handle("/", authMiddleware(http.HandlerFunc(serveRoot(db, bookingRepo))))
