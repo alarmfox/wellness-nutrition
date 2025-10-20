@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alarmfox/wellness-nutrition/app/mail"
@@ -202,10 +206,68 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// TODO: Generate verification token and send email
-	// For now, create user without verification
+	// Validate required fields
+	if req.FirstName == "" || req.LastName == "" || req.Email == "" || req.Address == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing required fields"})
+		return
+	}
 	
-	sendJSON(w, http.StatusCreated, map[string]string{"message": "User created successfully"})
+	// Check if user already exists
+	existing, _ := h.userRepo.GetByEmail(req.Email)
+	if existing != nil {
+		sendJSON(w, http.StatusConflict, map[string]string{"error": "User with this email already exists"})
+		return
+	}
+	
+	// Parse expiration date
+	expiresAt, err := time.Parse("2006-01-02", req.ExpiresAt)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid expiration date format"})
+		return
+	}
+	
+	// Generate user ID and verification token
+	userID := generateID()
+	verificationToken := generateToken()
+	
+	// Join goals
+	goals := ""
+	if len(req.Goals) > 0 {
+		goals = strings.Join(req.Goals, "-")
+	}
+	
+	// Create user
+	user := &models.User{
+		ID:                         userID,
+		FirstName:                  req.FirstName,
+		LastName:                   req.LastName,
+		Email:                      req.Email,
+		Address:                    req.Address,
+		Cellphone:                  sql.NullString{String: req.Cellphone, Valid: req.Cellphone != ""},
+		SubType:                    models.SubType(req.SubType),
+		MedOk:                      req.MedOk,
+		ExpiresAt:                  expiresAt,
+		RemainingAccesses:          req.RemainingAccesses,
+		Role:                       models.RoleUser,
+		VerificationToken:          sql.NullString{String: verificationToken, Valid: true},
+		VerificationTokenExpiresIn: sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true},
+		Goals:                      sql.NullString{String: goals, Valid: goals != ""},
+	}
+	
+	if err := h.userRepo.Create(user); err != nil {
+		log.Printf("Error creating user: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
+		return
+	}
+	
+	// Send welcome email with verification link
+	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
+	go h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL)
+	
+	sendJSON(w, http.StatusCreated, map[string]interface{}{
+		"message": "User created successfully",
+		"userId":  userID,
+	})
 }
 
 type UpdateUserRequest struct {
@@ -229,9 +291,64 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// TODO: Update user in database
+	// Get existing user
+	user, err := h.userRepo.GetByID(req.ID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		sendJSON(w, http.StatusNotFound, map[string]string{"error": "User not found"})
+		return
+	}
 	
-	sendJSON(w, http.StatusOK, map[string]string{"message": "User updated successfully"})
+	// Parse expiration date
+	expiresAt, err := time.Parse("2006-01-02", req.ExpiresAt)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid expiration date format"})
+		return
+	}
+	
+	// Join goals
+	goals := ""
+	if len(req.Goals) > 0 {
+		goals = strings.Join(req.Goals, "-")
+	}
+	
+	// Check if email changed
+	emailChanged := user.Email != req.Email
+	
+	// Update user fields
+	user.FirstName = req.FirstName
+	user.LastName = req.LastName
+	user.Email = req.Email
+	user.Address = req.Address
+	user.Cellphone = sql.NullString{String: req.Cellphone, Valid: req.Cellphone != ""}
+	user.SubType = models.SubType(req.SubType)
+	user.MedOk = req.MedOk
+	user.ExpiresAt = expiresAt
+	user.RemainingAccesses = req.RemainingAccesses
+	user.Goals = sql.NullString{String: goals, Valid: goals != ""}
+	
+	// If email changed, reset verification and generate new token
+	if emailChanged {
+		verificationToken := generateToken()
+		user.EmailVerified = sql.NullTime{Valid: false}
+		user.VerificationToken = sql.NullString{String: verificationToken, Valid: true}
+		user.VerificationTokenExpiresIn = sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true}
+		
+		// Send new verification email
+		verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
+		go h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL)
+	}
+	
+	if err := h.userRepo.Update(user); err != nil {
+		log.Printf("Error updating user: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
+		return
+	}
+	
+	sendJSON(w, http.StatusOK, map[string]interface{}{
+		"message":      "User updated successfully",
+		"emailChanged": emailChanged,
+	})
 }
 
 type DeleteUsersRequest struct {
@@ -252,6 +369,62 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Users deleted successfully"})
+}
+
+type ResendVerificationRequest struct {
+	UserID string `json:"userId"`
+}
+
+func (h *UserHandler) ResendVerification(w http.ResponseWriter, r *http.Request) {
+	var req ResendVerificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+	
+	// Get user
+	user, err := h.userRepo.GetByID(req.UserID)
+	if err != nil {
+		log.Printf("Error getting user: %v", err)
+		sendJSON(w, http.StatusNotFound, map[string]string{"error": "User not found"})
+		return
+	}
+	
+	// Generate new verification token
+	verificationToken := generateToken()
+	user.VerificationToken = sql.NullString{String: verificationToken, Valid: true}
+	user.VerificationTokenExpiresIn = sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true}
+	
+	if err := h.userRepo.Update(user); err != nil {
+		log.Printf("Error updating user: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
+		return
+	}
+	
+	// Send verification email
+	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
+	go h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL)
+	
+	sendJSON(w, http.StatusOK, map[string]string{"message": "Verification email sent successfully"})
+}
+
+// Helper functions
+func generateID() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+func generateToken() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+func getBaseURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s", scheme, r.Host)
 }
 
 type ResetPasswordRequest struct {
