@@ -265,6 +265,18 @@ func (r *UserRepository) Update(user *User) error {
 	return err
 }
 
+func (r *UserRepository) DecrementAccesses(userID string) error {
+	query := `UPDATE users SET remaining_accesses = remaining_accesses - 1 WHERE id = $1 AND remaining_accesses > 0`
+	_, err := r.db.Exec(query, userID)
+	return err
+}
+
+func (r *UserRepository) IncrementAccesses(userID string) error {
+	query := `UPDATE users SET remaining_accesses = remaining_accesses + 1 WHERE id = $1`
+	_, err := r.db.Exec(query, userID)
+	return err
+}
+
 func (r *UserRepository) Delete(ids []string) error {
 	if len(ids) == 0 {
 		return nil

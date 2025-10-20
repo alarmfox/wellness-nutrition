@@ -134,6 +134,11 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error updating slot: %v", err)
 	}
 	
+	// Decrement user remaining accesses
+	if err := h.userRepo.DecrementAccesses(user.ID); err != nil {
+		log.Printf("Error decrementing accesses: %v", err)
+	}
+	
 	// Create event
 	event := &models.Event{
 		UserID:     user.ID,
@@ -217,6 +222,17 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	// Update slot people count
 	if err := h.slotRepo.DecrementPeopleCount(booking.StartsAt); err != nil {
 		log.Printf("Error updating slot: %v", err)
+	}
+	
+	// Refund policy: only refund if deleted 3+ hours before event
+	timeUntilBooking := booking.StartsAt.Sub(time.Now())
+	shouldRefund := timeUntilBooking >= 3*time.Hour
+	
+	// Only increment accesses if cancelling 3+ hours before
+	if shouldRefund {
+		if err := h.userRepo.IncrementAccesses(booking.UserID); err != nil {
+			log.Printf("Error incrementing accesses: %v", err)
+		}
 	}
 	
 	// Create event
