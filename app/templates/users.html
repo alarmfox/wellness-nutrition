@@ -272,7 +272,10 @@
     <div class="container">
         <div class="toolbar">
             <h2 style="margin: 0; font-size: 18px; font-weight: 500;">Gestione Utenti</h2>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="userSearch" placeholder="Cerca per nome..." 
+                       onkeyup="filterUsers()" 
+                       style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-width: 200px;">
                 <button class="btn btn-danger" onclick="deleteSelected()" id="deleteBtn" disabled>
                     <span class="material-icons" style="font-size: 18px;">delete</span>
                     Elimina Selezionati
@@ -701,6 +704,23 @@
             .catch(error => {
                 showToast('Errore durante l\'invio dell\'email', false);
                 console.error(error);
+            });
+        }
+        
+        function filterUsers() {
+            const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const firstName = row.cells[1].textContent.toLowerCase();  // Second column (after checkbox)
+                const lastName = row.cells[2].textContent.toLowerCase();   // Third column
+                const fullName = firstName + ' ' + lastName;
+                
+                if (fullName.includes(searchTerm) || firstName.includes(searchTerm) || lastName.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
             });
         }
         

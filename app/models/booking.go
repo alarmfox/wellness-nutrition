@@ -303,6 +303,15 @@ func (r *SlotRepository) Update(slot *Slot) error {
 	return err
 }
 
+func (r *SlotRepository) Create(slot *Slot) error {
+	query := `
+		INSERT INTO slots (starts_at, people_count, disabled)
+		VALUES ($1, $2, $3)
+	`
+	_, err := r.db.Exec(query, slot.StartsAt, slot.PeopleCount, slot.Disabled)
+	return err
+}
+
 type EventRepository struct {
 	db *sql.DB
 }

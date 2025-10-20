@@ -154,12 +154,12 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	
 	// Send WebSocket notification
 	if h.hub != nil {
-		notification := map[string]string{
-			"type":    "booking_created",
-			"message": fmt.Sprintf("Nuova prenotazione: %s %s - %s", user.FirstName, user.LastName, startsAt.Format("02/01/2006 15:04")),
-		}
-		notificationBytes, _ := json.Marshal(notification)
-		h.hub.Broadcast <- notificationBytes
+		h.hub.BroadcastJSON(
+			websocket.NotificationBookingCreated,
+			fmt.Sprintf("Nuova prenotazione: %s %s - %s", user.FirstName, user.LastName, startsAt.Format("02/01/2006 15:04")),
+			fmt.Sprintf("%s %s", user.FirstName, user.LastName),
+			startsAt.Format("02/01/2006 15:04"),
+		)
 	}
 	
 	sendJSON(w, http.StatusCreated, booking)
@@ -245,12 +245,12 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		if bookingUser != nil {
 			userName = fmt.Sprintf("%s %s", bookingUser.FirstName, bookingUser.LastName)
 		}
-		notification := map[string]string{
-			"type":    "booking_deleted",
-			"message": fmt.Sprintf("Prenotazione cancellata: %s - %s", userName, booking.StartsAt.Format("02/01/2006 15:04")),
-		}
-		notificationBytes, _ := json.Marshal(notification)
-		h.hub.Broadcast <- notificationBytes
+		h.hub.BroadcastJSON(
+			websocket.NotificationBookingDeleted,
+			fmt.Sprintf("Prenotazione cancellata: %s - %s", userName, booking.StartsAt.Format("02/01/2006 15:04")),
+			userName,
+			booking.StartsAt.Format("02/01/2006 15:04"),
+		)
 	}
 	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Booking deleted successfully"})
