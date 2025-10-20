@@ -607,8 +607,8 @@
             let html = '<div class="week-view">';
             html += '<div class="day-header"></div>';
             
-            // Day headers
-            for (let i = 0; i < 7; i++) {
+            // Day headers (Monday to Saturday, skip Sunday)
+            for (let i = 1; i <= 6; i++) {
                 const date = new Date(weekStart);
                 date.setDate(weekStart.getDate() + i);
                 const dayName = date.toLocaleDateString('it-IT', { weekday: 'short' });
@@ -616,11 +616,11 @@
                 html += `<div class="day-header">${dayName} ${dayNum}</div>`;
             }
             
-            // Time slots from 9:00 to 20:00
-            for (let hour = 9; hour <= 20; hour++) {
+            // Time slots from 7:00 to 21:00 (9 PM)
+            for (let hour = 7; hour <= 21; hour++) {
                 html += `<div class="time-label">${hour}:00</div>`;
                 
-                for (let i = 0; i < 7; i++) {
+                for (let i = 1; i <= 6; i++) {
                     const date = new Date(weekStart);
                     date.setDate(weekStart.getDate() + i);
                     date.setHours(hour, 0, 0, 0);
