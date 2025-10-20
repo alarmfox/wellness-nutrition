@@ -25,6 +25,7 @@ const (
 	EventTypeDeleted        EventType = "DELETED"
 	EventTypeBookingCreated EventType = "BOOKING_CREATED"
 	EventTypeSlotDisabled   EventType = "SLOT_DISABLED"
+	EventTypeSlotEnabled    EventType = "SLOT_ENABLED"
 )
 
 type Event struct {

@@ -213,7 +213,7 @@
         .modal {
             display: none;
             position: fixed;
-            z-index: 1000;
+            z-index: 9999;
             left: 0;
             top: 0;
             width: 100%;
@@ -408,6 +408,24 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeDeleteBookingModal()">Annulla</button>
                 <button type="button" class="btn" style="background-color: #d32f2f;" onclick="confirmDeleteBooking()">Elimina</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Enable Slot Modal -->
+    <div id="enableSlotModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Riabilita Slot</h2>
+                <button class="close" onclick="closeEnableSlotModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Vuoi riabilitare questo slot?</p>
+                <p id="enableSlotInfo" style="color: #666; margin-top: 10px;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeEnableSlotModal()">Annulla</button>
+                <button type="button" class="btn" style="background-color: #4caf50;" onclick="confirmEnableSlot()">Riabilita slot</button>
             </div>
         </div>
     </div>
@@ -675,7 +693,9 @@
         // Slot action functions
         function handleSlotClick(slotTime, isDisabled) {
             if (isDisabled) {
-                showToast('Questo slot è già segnato come non disponibile', false);
+                // Open enable slot modal
+                selectedSlot = slotTime;
+                openEnableSlotModal();
                 return;
             }
             
@@ -756,6 +776,57 @@
                 }
             } catch (error) {
                 showToast('Errore durante l\'eliminazione', false);
+                console.error(error);
+            }
+        }
+        
+        function openEnableSlotModal() {
+            const date = new Date(selectedSlot);
+            document.getElementById('enableSlotInfo').textContent = 
+                date.toLocaleString('it-IT', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            document.getElementById('enableSlotModal').style.display = 'block';
+        }
+        
+        function closeEnableSlotModal() {
+            document.getElementById('enableSlotModal').style.display = 'none';
+            selectedSlot = null;
+        }
+        
+        async function confirmEnableSlot() {
+            if (!selectedSlot) {
+                showToast('Errore: slot non selezionato', false);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/slots/enable', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        startsAt: selectedSlot
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    showToast('Slot riabilitato con successo', true);
+                    closeEnableSlotModal();
+                    loadBookings(); // Reload calendar
+                }
+            } catch (error) {
+                showToast('Errore durante la riabilitazione', false);
                 console.error(error);
             }
         }

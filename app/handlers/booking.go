@@ -544,6 +544,63 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// EnableSlot allows admin to re-enable a disabled slot
+func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	
+	var req struct {
+		StartsAt string `json:"startsAt"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+	
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
+		return
+	}
+	
+	// Get the slot
+	slot, err := h.slotRepo.GetByTime(startsAt)
+	if err != nil {
+		log.Printf("Error getting slot: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Re-enable the slot
+	slot.Disabled = false
+	if err := h.slotRepo.Update(slot); err != nil {
+		log.Printf("Error updating slot: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+	
+	// Create event log
+	user := middleware.GetUserFromContext(r.Context())
+	event := &models.Event{
+		Type:       models.EventTypeSlotEnabled,
+		StartsAt:   startsAt,
+		OccurredAt: time.Now(),
+	}
+	if user != nil {
+		event.UserID = user.ID
+	}
+	if err := h.eventRepo.Create(event); err != nil {
+		log.Printf("Error creating event: %v", err)
+	}
+	
+	sendJSON(w, http.StatusOK, map[string]string{
+		"message": "Slot riabilitato con successo",
+	})
+}
+
 // CreateBookingForUser allows admin to create a booking for a specific user
 func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
