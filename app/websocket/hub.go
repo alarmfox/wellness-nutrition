@@ -5,8 +5,6 @@ import (
 	"log"
 	"sync"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 // NotificationType represents the type of notification
@@ -29,7 +27,7 @@ type Notification struct {
 // Hub maintains active WebSocket connections and broadcasts messages
 type Hub struct {
 	// Registered clients
-	clients map[*websocket.Conn]bool
+	clients map[*Client]bool
 	
 	// Mutex for thread-safe operations
 	mu sync.RWMutex
@@ -38,19 +36,19 @@ type Hub struct {
 	broadcast chan *Notification
 	
 	// Channel to register new clients
-	register chan *websocket.Conn
+	register chan *Client
 	
 	// Channel to unregister clients
-	unregister chan *websocket.Conn
+	unregister chan *Client
 }
 
 // NewHub creates a new WebSocket hub
 func NewHub() *Hub {
 	return &Hub{
-		clients:    make(map[*websocket.Conn]bool),
+		clients:    make(map[*Client]bool),
 		broadcast:  make(chan *Notification, 256),
-		register:   make(chan *websocket.Conn),
-		unregister: make(chan *websocket.Conn),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
 	}
 }
 
@@ -58,30 +56,37 @@ func NewHub() *Hub {
 func (h *Hub) Run() {
 	for {
 		select {
-		case conn := <-h.register:
+		case client := <-h.register:
 			h.mu.Lock()
-			h.clients[conn] = true
+			h.clients[client] = true
 			h.mu.Unlock()
 			log.Printf("WebSocket client connected. Total clients: %d", len(h.clients))
 			
-		case conn := <-h.unregister:
+		case client := <-h.unregister:
 			h.mu.Lock()
-			if _, ok := h.clients[conn]; ok {
-				delete(h.clients, conn)
-				conn.Close()
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
 			}
 			h.mu.Unlock()
 			log.Printf("WebSocket client disconnected. Total clients: %d", len(h.clients))
 			
 		case notification := <-h.broadcast:
+			data, err := json.Marshal(notification)
+			if err != nil {
+				log.Printf("Error marshaling notification: %v", err)
+				continue
+			}
+			
 			h.mu.RLock()
-			for conn := range h.clients {
-				err := conn.WriteJSON(notification)
-				if err != nil {
-					log.Printf("Error writing to WebSocket: %v", err)
-					// Unregister client on write error
+			for client := range h.clients {
+				select {
+				case client.send <- data:
+				default:
+					// Client send buffer is full, close it
 					h.mu.RUnlock()
-					h.Unregister(conn)
+					close(client.send)
+					delete(h.clients, client)
 					h.mu.RLock()
 				}
 			}
@@ -91,13 +96,13 @@ func (h *Hub) Run() {
 }
 
 // Register adds a new client connection
-func (h *Hub) Register(conn *websocket.Conn) {
-	h.register <- conn
+func (h *Hub) Register(client *Client) {
+	h.register <- client
 }
 
 // Unregister removes a client connection
-func (h *Hub) Unregister(conn *websocket.Conn) {
-	h.unregister <- conn
+func (h *Hub) Unregister(client *Client) {
+	h.unregister <- client
 }
 
 // Broadcast sends a notification to all connected clients

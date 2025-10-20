@@ -11,6 +11,7 @@ import (
 	"github.com/alarmfox/wellness-nutrition/app/mail"
 	"github.com/alarmfox/wellness-nutrition/app/middleware"
 	"github.com/alarmfox/wellness-nutrition/app/models"
+	"github.com/alarmfox/wellness-nutrition/app/websocket"
 )
 
 type BookingHandler struct {
@@ -19,6 +20,7 @@ type BookingHandler struct {
 	eventRepo   *models.EventRepository
 	userRepo    *models.UserRepository
 	mailer      *mail.Mailer
+	hub         *websocket.Hub
 }
 
 func NewBookingHandler(
@@ -27,6 +29,7 @@ func NewBookingHandler(
 	eventRepo *models.EventRepository,
 	userRepo *models.UserRepository,
 	mailer *mail.Mailer,
+	hub *websocket.Hub,
 ) *BookingHandler {
 	return &BookingHandler{
 		bookingRepo: bookingRepo,
@@ -34,6 +37,7 @@ func NewBookingHandler(
 		eventRepo:   eventRepo,
 		userRepo:    userRepo,
 		mailer:      mailer,
+		hub:         hub,
 	}
 }
 
