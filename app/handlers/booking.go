@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -88,15 +89,26 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Check if slot exists and is not disabled
+	// If slot doesn't exist, create it (lazy creation)
 	slot, err := h.slotRepo.GetByTime(startsAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot not found"})
+			// Lazy create slot
+			slot = &models.Slot{
+				StartsAt:    startsAt,
+				PeopleCount: 0,
+				Disabled:    false,
+			}
+			if err := h.slotRepo.Create(slot); err != nil {
+				log.Printf("Error creating slot: %v", err)
+				sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+				return
+			}
+		} else {
+			log.Printf("Error getting slot: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 			return
 		}
-		log.Printf("Error getting slot: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
 	}
 	
 	if slot.Disabled {
@@ -139,6 +151,16 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error sending notification: %v", err)
 		}
 	}()
+	
+	// Send WebSocket notification
+	if h.hub != nil {
+		notification := map[string]string{
+			"type":    "booking_created",
+			"message": fmt.Sprintf("Nuova prenotazione: %s %s - %s", user.FirstName, user.LastName, startsAt.Format("02/01/2006 15:04")),
+		}
+		notificationBytes, _ := json.Marshal(notification)
+		h.hub.Broadcast <- notificationBytes
+	}
 	
 	sendJSON(w, http.StatusCreated, booking)
 }
@@ -214,6 +236,22 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error sending notification: %v", err)
 		}
 	}()
+	
+	// Send WebSocket notification
+	if h.hub != nil {
+		// Get user info for the notification
+		bookingUser, _ := h.userRepo.GetByID(booking.UserID)
+		userName := "Unknown"
+		if bookingUser != nil {
+			userName = fmt.Sprintf("%s %s", bookingUser.FirstName, bookingUser.LastName)
+		}
+		notification := map[string]string{
+			"type":    "booking_deleted",
+			"message": fmt.Sprintf("Prenotazione cancellata: %s - %s", userName, booking.StartsAt.Format("02/01/2006 15:04")),
+		}
+		notificationBytes, _ := json.Marshal(notification)
+		h.hub.Broadcast <- notificationBytes
+	}
 	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Booking deleted successfully"})
 }

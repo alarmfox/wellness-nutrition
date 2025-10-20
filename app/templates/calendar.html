@@ -333,6 +333,28 @@
                 opacity: 1;
             }
         }
+        
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOutLeft {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(-400px);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1002,6 +1024,67 @@
             if (event.target === slotModal) {
                 closeSlotModal();
             }
+        }
+        
+        // WebSocket connection for real-time notifications
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+        
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+            showNotificationToast('Connesso al server', 'success');
+        };
+        
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                showNotificationToast(data.message, data.type === 'booking_created' ? 'success' : 'error');
+                // Refresh calendar to show new booking
+                loadBookings();
+            } catch (e) {
+                console.error('Error parsing WebSocket message:', e);
+            }
+        };
+        
+        ws.onclose = () => {
+            console.log('WebSocket disconnected');
+            showNotificationToast('Disconnesso dal server', 'error');
+        };
+        
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+        
+        function showNotificationToast(message, type) {
+            const panel = document.getElementById('notificationPanel');
+            if (!panel) {
+                // Create notification panel if it doesn't exist
+                const newPanel = document.createElement('div');
+                newPanel.id = 'notificationPanel';
+                newPanel.style.cssText = 'position: fixed; bottom: 20px; left: 20px; z-index: 10000; max-width: 350px;';
+                document.body.appendChild(newPanel);
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.style.cssText = `
+                background: white;
+                border-left: 4px solid ${type === 'success' ? '#4caf50' : '#f44336'};
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                padding: 12px;
+                margin-bottom: 10px;
+                border-radius: 4px;
+                animation: slideInLeft 0.3s;
+            `;
+            notification.textContent = message;
+            
+            const panel2 = document.getElementById('notificationPanel');
+            panel2.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOutLeft 0.3s';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
         }
         
         // Initial load
