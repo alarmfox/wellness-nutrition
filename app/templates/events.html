@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventi - Wellness & Nutrition</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: white;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0;
+            font-weight: 500;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .nav {
+            display: flex;
+            gap: 20px;
+        }
+        .nav a {
+            color: rgba(0, 0, 0, 0.7);
+            text-decoration: none;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+        }
+        .nav a:hover {
+            color: #1976d2;
+        }
+        .nav a.active {
+            color: #1976d2;
+            border-bottom-color: #1976d2;
+        }
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background-color: #f5f5f5;
+            padding: 16px;
+            text-align: left;
+            font-weight: 500;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-created {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .badge-deleted {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Wellness & Nutrition - Admin</h1>
+        <div class="nav">
+            <a href="/">Dashboard</a>
+            <a href="/users">Utenti</a>
+            <a href="/events" class="active">Eventi</a>
+            <a href="/api/auth/logout">Esci</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div style="background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 500;">Log Eventi</h2>
+            <p style="margin: 8px 0 0 0; color: rgba(0, 0, 0, 0.6); font-size: 14px;">
+                Storico delle prenotazioni create ed eliminate dagli utenti
+            </p>
+        </div>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data Evento</th>
+                        <th>Utente</th>
+                        <th>Tipo</th>
+                        <th>Data Prenotazione</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Events}}
+                    <tr>
+                        <td>{{.OccurredAtFormatted}}</td>
+                        <td>{{.UserName}}</td>
+                        <td>
+                            <span class="badge {{if eq .Type "CREATED"}}badge-created{{else}}badge-deleted{{end}}">
+                                {{if eq .Type "CREATED"}}Creata{{else}}Eliminata{{end}}
+                            </span>
+                        </td>
+                        <td>{{.StartsAtFormatted}}</td>
+                    </tr>
+                    {{else}}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: rgba(0, 0, 0, 0.4); padding: 40px;">
+                            Nessun evento trovato
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

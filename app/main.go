@@ -93,6 +93,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	authHandler := handlers.NewAuthHandler(userRepo, sessionStore)
 	userHandler := handlers.NewUserHandler(userRepo, mailer)
 	bookingHandler := handlers.NewBookingHandler(bookingRepo, slotRepo, eventRepo, userRepo, mailer)
+	_ = handlers.NewPageHandler(userRepo, bookingRepo, eventRepo) // Page handler logic moved to main.go serve functions
 	
 	mux := http.NewServeMux()
 
@@ -102,10 +103,14 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// Public routes
 	mux.HandleFunc("/signin", serveSignIn)
+	mux.HandleFunc("/reset", serveReset)
+	mux.HandleFunc("/verify", serveVerify)
 	
 	// Auth API routes
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
+	mux.HandleFunc("/api/auth/reset", userHandler.ResetPassword)
+	mux.HandleFunc("/api/auth/verify", userHandler.VerifyAccount)
 	
 	// Protected routes - User
 	authMiddleware := middleware.Auth(sessionStore, userRepo)
@@ -118,8 +123,12 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	
 	// Protected routes - Admin only
 	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
+	mux.Handle("/users", authMiddleware(http.HandlerFunc(serveUsers(userRepo))))
+	mux.Handle("/events", authMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
 	mux.Handle("/api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.GetAll)))
 	mux.Handle("/api/admin/users/create", adminMiddleware(http.HandlerFunc(userHandler.Create)))
+	mux.Handle("/api/admin/users/update", adminMiddleware(http.HandlerFunc(userHandler.Update)))
+	mux.Handle("/api/admin/users/delete", adminMiddleware(http.HandlerFunc(userHandler.Delete)))
 
 	log.Printf("listening on %s", listenAddr)
 	return startHttpServer(ctx, mux, listenAddr)
@@ -222,4 +231,156 @@ func serveSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+}
+
+func serveReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		data := map[string]interface{}{
+			"Success": r.URL.Query().Get("success"),
+			"Error":   r.URL.Query().Get("error"),
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tpl.ExecuteTemplate(w, "reset.html", data); err != nil {
+			log.Print(err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+}
+
+func serveVerify(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		token := r.URL.Query().Get("token")
+		data := map[string]interface{}{
+			"Token": token,
+			"Error": r.URL.Query().Get("error"),
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tpl.ExecuteTemplate(w, "verify.html", data); err != nil {
+			log.Print(err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+}
+
+func serveUsers(userRepo *models.UserRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+		
+		user := middleware.GetUserFromContext(r.Context())
+		if user == nil || user.Role != models.RoleAdmin {
+			http.Redirect(w, r, "/signin", http.StatusSeeOther)
+			return
+		}
+		
+		users, err := userRepo.GetAll()
+		if err != nil {
+			log.Printf("Error getting users: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		
+		// Format user data for display
+		type UserDisplay struct {
+			ID                  string
+			FirstName           string
+			LastName            string
+			Email               string
+			SubType             string
+			EmailVerified       bool
+			ExpiresAtFormatted  string
+			RemainingAccesses   int
+		}
+		
+		var displayUsers []UserDisplay
+		for _, u := range users {
+			displayUsers = append(displayUsers, UserDisplay{
+				ID:                  u.ID,
+				FirstName:           u.FirstName,
+				LastName:            u.LastName,
+				Email:               u.Email,
+				SubType:             string(u.SubType),
+				EmailVerified:       u.EmailVerified.Valid,
+				ExpiresAtFormatted:  u.ExpiresAt.Format("02 Jan 2006"),
+				RemainingAccesses:   u.RemainingAccesses,
+			})
+		}
+		
+		data := map[string]interface{}{
+			"Users": displayUsers,
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tpl.ExecuteTemplate(w, "users.html", data); err != nil {
+			log.Print(err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+}
+
+func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+		
+		user := middleware.GetUserFromContext(r.Context())
+		if user == nil || user.Role != models.RoleAdmin {
+			http.Redirect(w, r, "/signin", http.StatusSeeOther)
+			return
+		}
+		
+		events, err := eventRepo.GetAll()
+		if err != nil {
+			log.Printf("Error getting events: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		
+		// Format event data for display
+		type EventDisplay struct {
+			ID                  int
+			UserName            string
+			Type                string
+			OccurredAtFormatted string
+			StartsAtFormatted   string
+		}
+		
+		var displayEvents []EventDisplay
+		for _, e := range events {
+			// Get user for event
+			u, err := userRepo.GetByID(e.UserID)
+			userName := "Unknown"
+			if err == nil {
+				userName = u.FirstName + " " + u.LastName
+			}
+			
+			displayEvents = append(displayEvents, EventDisplay{
+				ID:                  e.ID,
+				UserName:            userName,
+				Type:                string(e.Type),
+				OccurredAtFormatted: e.OccurredAt.Format("02 Jan 2006 15:04"),
+				StartsAtFormatted:   e.StartsAt.Format("02 Jan 2006 15:04"),
+			})
+		}
+		
+		data := map[string]interface{}{
+			"Events": displayEvents,
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tpl.ExecuteTemplate(w, "events.html", data); err != nil {
+			log.Print(err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
 }
