@@ -162,7 +162,7 @@
         }
         .week-view {
             display: grid;
-            grid-template-columns: 80px repeat(7, 1fr);
+            grid-template-columns: 80px repeat(6, 1fr);
             gap: 1px;
             background-color: #e0e0e0;
         }
@@ -608,7 +608,7 @@
             html += '<div class="day-header"></div>';
             
             // Day headers (Monday to Saturday, skip Sunday)
-            for (let i = 1; i <= 6; i++) {
+            for (let i = 0; i < 6; i++) {
                 const date = new Date(weekStart);
                 date.setDate(weekStart.getDate() + i);
                 const dayName = date.toLocaleDateString('it-IT', { weekday: 'short' });
@@ -620,7 +620,7 @@
             for (let hour = 7; hour <= 21; hour++) {
                 html += `<div class="time-label">${hour}:00</div>`;
                 
-                for (let i = 1; i <= 6; i++) {
+                for (let i = 0; i < 6; i++) {
                     const date = new Date(weekStart);
                     date.setDate(weekStart.getDate() + i);
                     date.setHours(hour, 0, 0, 0);
