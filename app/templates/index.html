@@ -147,10 +147,6 @@
             <h1>Il tuo abbonamento</h1>
             <div class="subscription-info">
                 <div class="info-item">
-                    <div class="info-label">Piano</div>
-                    <div class="info-value">{{if eq .User.SubType "SHARED"}}Condiviso{{else}}Singolo{{end}}</div>
-                </div>
-                <div class="info-item">
                     <div class="info-label">Scadenza</div>
                     <div class="info-value">{{.ExpiresAt}}</div>
                 </div>
@@ -159,12 +155,20 @@
                     <div class="info-value">{{.RemainingAccesses}}</div>
                 </div>
             </div>
-            {{if .User.Goals}}
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
-                <div class="info-label">Obiettivi</div>
-                <div class="info-value" style="font-size: 14px; white-space: pre-wrap;">{{.User.Goals}}</div>
+                <div class="subscription-info">
+                    <div class="info-item">
+                        <div class="info-label">Piano</div>
+                        <div class="info-value">{{if eq .User.SubType "SHARED"}}Condiviso{{else}}Singolo{{end}}</div>
+                    </div>
+                    {{if .User.Goals.Valid}}
+                    <div class="info-item">
+                        <div class="info-label">Obiettivi</div>
+                        <div class="info-value" style="font-size: 14px;">{{.User.Goals.String}}</div>
+                    </div>
+                    {{end}}
+                </div>
             </div>
-            {{end}}
         </div>
         
         <div class="content">
@@ -254,7 +258,7 @@
             document.querySelectorAll('.nav-item')[1].classList.add('active');
             
             // Fetch available slots
-            fetch('/api/user/available-slots')
+            fetch('/api/user/bookings/slots')
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {

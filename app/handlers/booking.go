@@ -263,9 +263,9 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	
-	// Get slots for the next 3 months
+	// Get slots for the next 30 days
 	from := time.Now()
-	to := from.AddDate(0, 3, 0)
+	to := from.AddDate(0, 1, 0)
 	
 	slots, err := h.slotRepo.GetAvailableSlots(from, to)
 	if err != nil {
@@ -274,13 +274,25 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	
-	// Convert to Unix timestamps
-	timestamps := make([]int64, len(slots))
-	for i, slot := range slots {
-		timestamps[i] = slot.StartsAt.Unix()
+	// Convert to response format with slot details
+	type SlotResponse struct {
+		StartsAt    string `json:"StartsAt"`
+		PeopleCount int    `json:"PeopleCount"`
+		Disabled    bool   `json:"Disabled"`
 	}
 	
-	sendJSON(w, http.StatusOK, timestamps)
+	response := make([]SlotResponse, 0, len(slots))
+	for _, slot := range slots {
+		response = append(response, SlotResponse{
+			StartsAt:    slot.StartsAt.Format(time.RFC3339),
+			PeopleCount: slot.PeopleCount,
+			Disabled:    slot.Disabled,
+		})
+	}
+	
+	sendJSON(w, http.StatusOK, map[string]interface{}{
+		"slots": response,
+	})
 }
 
 // GetAllBookings returns all bookings for admin calendar view
