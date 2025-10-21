@@ -102,8 +102,8 @@ func seedTest(db *sql.DB) {
 	}
 
 	// Create time slots for the next 30 days
-	now := time.Now()
-	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	now := time.Now().UTC()
+	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 	var slotsCreated int
 	for day := 0; day < 30; day++ {
@@ -115,9 +115,9 @@ func seedTest(db *sql.DB) {
 		}
 
 		// Create slots from 07:00 to 21:00 (every hour)
-		for hour := 7; hour <= 21; hour++ {
+		for hour := 5; hour <= 19; hour++ {
 			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
-				hour, 0, 0, 0, time.Local)
+				hour, 0, 0, 0, time.UTC)
 
 			_, err = db.Exec(`
 				INSERT INTO slots (starts_at, people_count, disabled)
@@ -149,7 +149,7 @@ func seedTest(db *sql.DB) {
 
 			bookingTime := startDate.AddDate(0, 0, bookingDay)
 			bookingTime = time.Date(bookingTime.Year(), bookingTime.Month(), bookingTime.Day(),
-				bookingHour, 0, 0, 0, time.Local)
+				bookingHour, 0, 0, 0, time.UTC)
 
 			// Skip if Sunday
 			if bookingTime.Weekday() == time.Sunday {
@@ -194,8 +194,8 @@ func seedSlot(db *sql.DB) {
 		slotsCreated = 0
 	)
 
-	now := time.Now()
-	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	now := time.Now().UTC()
+	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	totDays := 30 * 12
 	for day := 0; day < totDays; day++ {
 		currentDate := startDate.AddDate(0, 0, day)
@@ -204,9 +204,9 @@ func seedSlot(db *sql.DB) {
 		if currentDate.Weekday() == time.Sunday {
 			continue
 		}
-		for hour := 7; hour <= 21; hour++ {
+		for hour := 5; hour <= 19; hour++ {
 			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
-				hour, 0, 0, 0, time.Local)
+				hour, 0, 0, 0, time.UTC)
 
 			_, err = db.Exec(`
 				INSERT INTO slots (starts_at, people_count, disabled)
