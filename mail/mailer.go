@@ -51,6 +51,7 @@ func NewMailer(host, port, username, password, from string) (*Mailer, error) {
 // Run starts the mail sending loop. Should be called in a goroutine.
 func (m *Mailer) Run(ctx context.Context) {
 	ticker := time.Tick(time.Minute * 10)
+	defer close(m.mailCh)
 	for {
 		select {
 		case <-ctx.Done():
@@ -177,12 +178,6 @@ func (m *Mailer) sendEmail(client *smtp.Client, to, subject string, data EmailDa
 		return fmt.Errorf("failed to write message: %w", err)
 	}
 
-	return nil
-}
-
-// Close closes the mailer's channel
-func (m *Mailer) Close() error {
-	close(m.mailCh)
 	return nil
 }
 

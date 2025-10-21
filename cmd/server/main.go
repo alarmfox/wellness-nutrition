@@ -96,8 +96,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	if err != nil {
 		return fmt.Errorf("failed to initialize mailer: %w", err)
 	}
-	defer mailer.Close()
-	
+
 	// Start mailer goroutine
 	go mailer.Run(ctx)
 
