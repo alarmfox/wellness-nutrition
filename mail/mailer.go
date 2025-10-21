@@ -21,14 +21,28 @@ type Mailer struct {
 	mu       sync.Mutex
 }
 
-func NewMailer(host, port, username, password, from string) *Mailer {
-	return &Mailer{
+func NewMailer(host, port, username, password, from string) (*Mailer, error) {
+	m := &Mailer{
 		host:     host,
 		port:     port,
 		username: username,
 		password: password,
 		from:     from,
 	}
+	
+	// Establish connection early to catch configuration errors
+	client, err := m.getClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize mailer: %w", err)
+	}
+	
+	// Send a hello to verify the connection works
+	if err := client.Noop(); err != nil {
+		m.Close()
+		return nil, fmt.Errorf("failed to verify SMTP connection: %w", err)
+	}
+	
+	return m, nil
 }
 
 // getClient returns a connected SMTP client, creating a new connection if needed
@@ -223,6 +237,11 @@ func (m *Mailer) SendEmail(to, subject string, data EmailData) error {
 
 	if err := w.Close(); err != nil {
 		return fmt.Errorf("failed to close data writer: %w", err)
+	}
+	
+	// Reset the connection state for the next email
+	if err := client.Reset(); err != nil {
+		return fmt.Errorf("failed to reset SMTP connection: %w", err)
 	}
 
 	return nil
