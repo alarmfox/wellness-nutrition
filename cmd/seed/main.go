@@ -4,19 +4,24 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
+	"flag"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/argon2"
 )
 
+var cmd = flag.String("seed", "", "What to seed")
+
 func main() {
+	flag.Parse()
 	dbConnString := os.Getenv("DATABASE_URL")
 
 	if dbConnString == "" {
-		log.Fatal("database connection string is required (use -db-uri flag or DATABASE_URL env var)")
+		log.Fatal("database connection string is required (use DATABASE_URL env var)")
 	}
 
 	db, err := sql.Open("postgres", dbConnString)
@@ -29,9 +34,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("Seeding database...")
+	switch strings.ToLower(*cmd) {
+	// Seeds test data
+	case "test":
+		seedTest(db)
+	// Pre-create slots
+	case "slot":
+		seedSlot(db)
+	default:
+		log.Fatalf("unknown command %q", *cmd)
+	}
+}
 
-	// Create admin user
+func seedTest(db *sql.DB) {
+	var err error
+
 	adminPassword := hashPassword("admin123")
 	adminID := generateID()
 	_, err = db.Exec(`
@@ -97,7 +114,7 @@ func main() {
 			continue
 		}
 
-		// Create slots from 9:00 to 20:00 (every hour)
+		// Create slots from 07:00 to 21:00 (every hour)
 		for hour := 7; hour <= 21; hour++ {
 			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
 				hour, 0, 0, 0, time.Local)
@@ -125,7 +142,7 @@ func main() {
 			numBookings = 3
 		}
 
-		for j := 0; j < numBookings; j++ {
+		for j := range numBookings {
 			// Book slots in the next week at different times
 			bookingDay := 1 + (i*2 + j)  // Spread bookings across days
 			bookingHour := 10 + (i*2)%10 // Different hours for each user
@@ -168,6 +185,42 @@ func main() {
 	log.Println("    - giuseppe.verdi@test.local")
 	log.Println("    - anna.romano@test.local")
 	log.Println("    - francesco.ferrari@test.local")
+}
+
+func seedSlot(db *sql.DB) {
+	log.Print("Seeding slots for the next year... this may take some time")
+	var (
+		err          error
+		slotsCreated = 0
+	)
+
+	now := time.Now()
+	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	totDays := 30 * 12
+	for day := 0; day < totDays; day++ {
+		currentDate := startDate.AddDate(0, 0, day)
+
+		// Skip Sundays (weekday 0)
+		if currentDate.Weekday() == time.Sunday {
+			continue
+		}
+		for hour := 7; hour <= 21; hour++ {
+			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
+				hour, 0, 0, 0, time.Local)
+
+			_, err = db.Exec(`
+				INSERT INTO slots (starts_at, people_count, disabled)
+				VALUES ($1, $2, $3)
+				ON CONFLICT (starts_at) DO NOTHING
+			`, slotTime, 0, false)
+			if err != nil {
+				log.Printf("Warning: Could not create slot at %v: %v", slotTime, err)
+			} else {
+				slotsCreated++
+			}
+		}
+	}
+	log.Printf("created %d slots", slotsCreated)
 }
 
 func hashPassword(password string) string {
