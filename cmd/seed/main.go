@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
-	"flag"
 	"log"
 	"os"
 	"time"
@@ -13,19 +12,14 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-var dbConnString = flag.String("db-uri", "", "Database connection string")
-
 func main() {
-	flag.Parse()
+	dbConnString := os.Getenv("DATABASE_URL")
 
-	if *dbConnString == "" {
-		*dbConnString = os.Getenv("DATABASE_URL")
-	}
-	if *dbConnString == "" {
+	if dbConnString == "" {
 		log.Fatal("database connection string is required (use -db-uri flag or DATABASE_URL env var)")
 	}
 
-	db, err := sql.Open("postgres", *dbConnString)
+	db, err := sql.Open("postgres", dbConnString)
 	if err != nil {
 		log.Fatal(err)
 	}

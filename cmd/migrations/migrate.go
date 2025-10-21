@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"embed"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -12,23 +11,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var (
-	//go:embed *.sql
-	migrations  embed.FS
-	dbConnString = flag.String("db-uri", "", "Database connection string")
-)
+//go:embed *.sql
+var migrations embed.FS
 
 func main() {
-	flag.Parse()
-
-	if *dbConnString == "" {
-		*dbConnString = os.Getenv("DATABASE_URL")
-	}
-	if *dbConnString == "" {
-		log.Fatal("database connection string is required (use -db-uri flag or DATABASE_URL env var)")
+	dbConnString := os.Getenv("DATABASE_URL")
+	if dbConnString == "" {
+		log.Fatal("database connection string is required (use DATABASE_URL env var)")
 	}
 
-	db, err := sql.Open("postgres", *dbConnString)
+	db, err := sql.Open("postgres", dbConnString)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,7 +50,7 @@ func main() {
 	// Execute each migration
 	for _, filename := range migrationFiles {
 		log.Printf("Applying migration: %s", filename)
-		
+
 		content, err := migrations.ReadFile(filename)
 		if err != nil {
 			log.Fatalf("Error reading %s: %v", filename, err)
@@ -73,7 +65,7 @@ func main() {
 	}
 
 	log.Println("\n=== All migrations completed successfully ===")
-	
+
 	// Display table information
 	log.Println("\nDatabase tables created:")
 	rows, err := db.Query(`
