@@ -17,28 +17,28 @@ type Mailer struct {
 	from     string
 }
 
-func NewMailer() *Mailer {
+func NewMailer(host, port, username, password, from string) *Mailer {
 	return &Mailer{
-		host:     os.Getenv("EMAIL_SERVER_HOST"),
-		port:     os.Getenv("EMAIL_SERVER_PORT"),
-		username: os.Getenv("EMAIL_SERVER_USER"),
-		password: os.Getenv("EMAIL_SERVER_PASSWORD"),
-		from:     os.Getenv("EMAIL_FROM"),
+		host:     host,
+		port:     port,
+		username: username,
+		password: password,
+		from:     from,
 	}
 }
 
 type EmailData struct {
-	Name          string
-	Intro         string
-	ButtonText    string
-	ButtonLink    string
-	Instructions  string
-	Signature     string
-	Outro         string
-	Title         string
-	AppName       string
-	AppLink       string
-	Copyright     string
+	Name         string
+	Intro        string
+	ButtonText   string
+	ButtonLink   string
+	Instructions string
+	Signature    string
+	Outro        string
+	Title        string
+	AppName      string
+	AppLink      string
+	Copyright    string
 }
 
 const emailTemplate = `
@@ -112,22 +112,22 @@ func (m *Mailer) SendEmail(to, subject string, data EmailData) error {
 		data.AppName = "Wellness & Nutrition"
 	}
 	if data.AppLink == "" {
-		data.AppLink = os.Getenv("NEXTAUTH_URL")
+		data.AppLink = os.Getenv("AUTH_URL")
 	}
 	if data.Copyright == "" {
 		data.Copyright = "Tutti i diritti riservati"
 	}
-	
+
 	tmpl, err := template.New("email").Parse(emailTemplate)
 	if err != nil {
 		return err
 	}
-	
+
 	var body bytes.Buffer
 	if err := tmpl.Execute(&body, data); err != nil {
 		return err
 	}
-	
+
 	msg := fmt.Sprintf("From: %s\r\n"+
 		"To: %s\r\n"+
 		"Subject: %s\r\n"+
@@ -135,10 +135,10 @@ func (m *Mailer) SendEmail(to, subject string, data EmailData) error {
 		"Content-Type: text/html; charset=UTF-8\r\n"+
 		"\r\n"+
 		"%s", m.from, to, subject, body.String())
-	
+
 	auth := smtp.PlainAuth("", m.username, m.password, m.host)
 	addr := fmt.Sprintf("%s:%s", m.host, m.port)
-	
+
 	return smtp.SendMail(addr, auth, m.from, []string{to}, []byte(msg))
 }
 
@@ -152,7 +152,7 @@ func (m *Mailer) SendWelcomeEmail(email, firstName, verificationURL string) erro
 		Signature:    "Grazie per averci scelto",
 		Outro:        fmt.Sprintf("Hai bisogno di aiuto? Invia un messaggio a %s e saremo felici di aiutarti", os.Getenv("EMAIL_NOTIFY_ADDRESS")),
 	}
-	
+
 	return m.SendEmail(email, "Benvenuto in Wellness & Nutrition", data)
 }
 
@@ -166,35 +166,35 @@ func (m *Mailer) SendResetEmail(email, firstName, verificationURL string) error 
 		Signature:    "Grazie per averci scelto",
 		Outro:        fmt.Sprintf("Hai bisogno di aiuto? Invia un messaggio a %s e saremo felici di aiutarti", os.Getenv("EMAIL_NOTIFY_ADDRESS")),
 	}
-	
+
 	return m.SendEmail(email, "Ripristino password", data)
 }
 
 func (m *Mailer) SendNewBookingNotification(firstName, lastName string, startsAt time.Time) error {
 	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
-	
+
 	data := EmailData{
-		Name:  "amministratore",
-		Intro: fmt.Sprintf("Una nuova prenotazione è stata inserita da %s %s per %s", 
+		Name: "amministratore",
+		Intro: fmt.Sprintf("Una nuova prenotazione è stata inserita da %s %s per %s",
 			firstName, lastName, startsAt.Format("02 Jan 2006 15:04")),
 		Title:     "Nuova prenotazione",
 		Signature: "Saluti,",
 	}
-	
+
 	return m.SendEmail(notifyEmail, "Nuova prenotazione", data)
 }
 
 func (m *Mailer) SendDeleteBookingNotification(firstName, lastName string, startsAt time.Time) error {
 	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
-	
+
 	data := EmailData{
-		Name:  "amministratore",
-		Intro: fmt.Sprintf("Una prenotazione è stata cancellata da %s %s per %s", 
+		Name: "amministratore",
+		Intro: fmt.Sprintf("Una prenotazione è stata cancellata da %s %s per %s",
 			firstName, lastName, startsAt.Format("02 Jan 2006 15:04")),
 		Title:     "Prenotazione cancellata",
 		Signature: "Saluti,",
 	}
-	
+
 	return m.SendEmail(notifyEmail, "Prenotazione cancellata", data)
 }
 
@@ -207,6 +207,6 @@ func (m *Mailer) SendReminderEmail(email, firstName string, startsAt time.Time) 
 		Outro:        "Ti aspettiamo!",
 		Signature:    "Grazie per averci scelto",
 	}
-	
+
 	return m.SendEmail(email, "Promemoria prenotazione - Wellness & Nutrition", data)
 }

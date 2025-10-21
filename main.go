@@ -81,17 +81,21 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	eventRepo := models.NewEventRepository(db)
 
 	// Initialize session store
-	sessionStore := middleware.NewSessionStore(db)
-	if err := sessionStore.InitTable(); err != nil {
-		log.Printf("Warning: Could not initialize session table: %v", err)
-	}
+	sessionStore := models.NewSessionStore(db)
 
 	// Initialize mailer
-	mailer := mail.NewMailer()
+
+	emailHost := os.Getenv("EMAIL_SERVER_HOST")
+	emailPort := os.Getenv("EMAIL_SERVER_PORT")
+	emailUser := os.Getenv("EMAIL_SERVER_USER")
+	emailPassword := os.Getenv("EMAIL_SERVER_PASSWORD")
+	emailFrom := os.Getenv("EMAIL_SERVER_FROM")
+	// emailNotify := os.Getenv("EMAIL_NOTIFY_ADDRESS")
+	mailer := mail.NewMailer(emailHost, emailPort, emailUser, emailPassword, emailFrom)
 
 	// Initialize WebSocket hub
 	hub := websocket.NewHub()
-	go hub.Run()
+	go hub.Run(ctx)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userRepo, sessionStore)
@@ -118,8 +122,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// User routes - /user prefix
 	authMiddleware := middleware.Auth(sessionStore, userRepo)
-	mux.Handle("/user", authMiddleware(http.HandlerFunc(serveUserDashboard(db, bookingRepo))))
-	mux.Handle("/user/", authMiddleware(http.HandlerFunc(serveUserDashboard(db, bookingRepo))))
+	mux.Handle("/user", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo))))
+	mux.Handle("/user/", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo))))
 	mux.Handle("/api/user/current", authMiddleware(http.HandlerFunc(userHandler.GetCurrent)))
 	mux.Handle("/api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent)))
 	mux.Handle("/api/user/bookings/create", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
@@ -151,7 +155,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	})
 
 	// Root redirect based on role
-	mux.Handle("/", authMiddleware(http.HandlerFunc(serveRoot(db, bookingRepo))))
+	mux.Handle("/", authMiddleware(http.HandlerFunc(serveRoot())))
 
 	log.Printf("listening on %s", listenAddr)
 	return startHttpServer(ctx, mux, listenAddr)
@@ -187,7 +191,7 @@ func startHttpServer(ctx context.Context, r *http.ServeMux, addr string) error {
 	return server.Shutdown(shutdownCtx)
 }
 
-func serveRoot(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFunc {
+func serveRoot() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -209,7 +213,7 @@ func serveRoot(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFu
 	}
 }
 
-func serveUserDashboard(db *sql.DB, bookingRepo *models.BookingRepository) http.HandlerFunc {
+func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)

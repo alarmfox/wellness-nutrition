@@ -76,3 +76,10 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 
 -- Index on expires_at for cleanup queries
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
+-- Sessions table
+CREATE TABLE IF NOT EXISTS sessions (
+    token VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL
+);

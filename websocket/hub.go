@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"sync"
@@ -28,16 +29,16 @@ type Notification struct {
 type Hub struct {
 	// Registered clients
 	clients map[*Client]bool
-	
+
 	// Mutex for thread-safe operations
 	mu sync.RWMutex
-	
+
 	// Channel for broadcasting notifications
 	broadcast chan *Notification
-	
+
 	// Channel to register new clients
 	register chan *Client
-	
+
 	// Channel to unregister clients
 	unregister chan *Client
 }
@@ -53,15 +54,14 @@ func NewHub() *Hub {
 }
 
 // Run starts the hub's main loop
-func (h *Hub) Run() {
+func (h *Hub) Run(ctx context.Context) {
 	for {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
 			h.clients[client] = true
 			h.mu.Unlock()
-			log.Printf("WebSocket client connected. Total clients: %d", len(h.clients))
-			
+
 		case client := <-h.unregister:
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
@@ -69,15 +69,14 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 			h.mu.Unlock()
-			log.Printf("WebSocket client disconnected. Total clients: %d", len(h.clients))
-			
+
 		case notification := <-h.broadcast:
 			data, err := json.Marshal(notification)
 			if err != nil {
 				log.Printf("Error marshaling notification: %v", err)
 				continue
 			}
-			
+
 			h.mu.RLock()
 			for client := range h.clients {
 				select {
@@ -91,6 +90,8 @@ func (h *Hub) Run() {
 				}
 			}
 			h.mu.RUnlock()
+		case <-ctx.Done():
+			return
 		}
 	}
 }
