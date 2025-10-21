@@ -2,8 +2,11 @@ package mail
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
 	"fmt"
 	"html/template"
+	"log"
 	"net/smtp"
 	"os"
 	"time"
@@ -15,16 +18,172 @@ type Mailer struct {
 	username string
 	password string
 	from     string
+	mailCh   chan *mailMessage
+	client   *smtp.Client
 }
 
-func NewMailer(host, port, username, password, from string) *Mailer {
-	return &Mailer{
+type mailMessage struct {
+	to      string
+	subject string
+	data    EmailData
+	respCh  chan error
+}
+
+func NewMailer(host, port, username, password, from string) (*Mailer, error) {
+	client, err := connect(host, port, username, password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize mailer: %w", err)
+	}
+
+	m := &Mailer{
 		host:     host,
 		port:     port,
 		username: username,
 		password: password,
 		from:     from,
+		mailCh:   make(chan *mailMessage, 100), // Buffered channel for better performance
+		client:   client,
 	}
+
+	return m, nil
+}
+
+// Run starts the mail sending loop. Should be called in a goroutine.
+func (m *Mailer) Run(ctx context.Context) {
+	ticker := time.Tick(time.Minute * 10)
+	for {
+		select {
+		case <-ctx.Done():
+			// Clean shutdown
+			if m.client != nil {
+				m.client.Quit()
+			}
+			return
+
+		case <-ticker:
+			if m.client != nil {
+				if err := m.client.Noop(); err == nil {
+					continue
+				}
+
+				m.client.Close()
+				m.client = nil
+			}
+
+			client, err := connect(m.host, m.port, m.username, m.password)
+			if err != nil {
+				log.Printf("cannot connect to SMTP server: %v", err)
+			}
+
+			m.client = client
+
+		case msg := <-m.mailCh:
+			// Send the email
+			err := m.sendEmail(m.client, msg.to, msg.subject, msg.data)
+			msg.respCh <- err
+
+			// If there was an error, close connection so it reconnects next time
+			if err != nil {
+				log.Printf("smtp client error: %v", err)
+				m.client.Close()
+				m.client = nil
+			}
+		}
+	}
+}
+
+// connect creates a new SMTP connection
+func connect(host, port, username, password string) (*smtp.Client, error) {
+	addr := fmt.Sprintf("%s:%s", host, port)
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Start TLS if available
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		config := &tls.Config{ServerName: host}
+		if err = client.StartTLS(config); err != nil {
+			client.Close()
+			return nil, err
+		}
+	}
+
+	// Authenticate
+	auth := smtp.PlainAuth("", username, password, host)
+	if err = client.Auth(auth); err != nil {
+		client.Close()
+		return nil, err
+	}
+
+	// Send a hello to verify the connection works
+	if err := client.Noop(); err != nil {
+		return nil, fmt.Errorf("failed to verify SMTP connection: %w", err)
+	}
+
+	return client, nil
+}
+
+// sendEmail sends an email using the provided SMTP client
+func (m *Mailer) sendEmail(client *smtp.Client, to, subject string, data EmailData) error {
+	if data.AppName == "" {
+		data.AppName = "Wellness & Nutrition"
+	}
+	if data.AppLink == "" {
+		data.AppLink = os.Getenv("AUTH_URL")
+	}
+	if data.Copyright == "" {
+		data.Copyright = "Tutti i diritti riservati"
+	}
+
+	tmpl, err := template.New("email").Parse(emailTemplate)
+	if err != nil {
+		return err
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return err
+	}
+
+	msg := fmt.Sprintf("From: %s\r\n"+
+		"To: %s\r\n"+
+		"Subject: %s\r\n"+
+		"MIME-Version: 1.0\r\n"+
+		"Content-Type: text/html; charset=UTF-8\r\n"+
+		"\r\n"+
+		"%s", m.from, to, subject, body.String())
+
+	// Send the email using the SMTP client
+	if err := client.Mail(m.from); err != nil {
+		return fmt.Errorf("failed to set sender: %w", err)
+	}
+
+	if err := client.Rcpt(to); err != nil {
+		client.Reset()
+		return fmt.Errorf("failed to set recipient: %w", err)
+	}
+
+	w, err := client.Data()
+	if err != nil {
+		client.Reset()
+		return fmt.Errorf("failed to open data writer: %w", err)
+	}
+	defer w.Close()
+
+	if _, err := w.Write([]byte(msg)); err != nil {
+		w.Close()
+		client.Reset()
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+
+	return nil
+}
+
+// Close closes the mailer's channel
+func (m *Mailer) Close() error {
+	close(m.mailCh)
+	return nil
 }
 
 type EmailData struct {
@@ -108,38 +267,16 @@ const emailTemplate = `
 `
 
 func (m *Mailer) SendEmail(to, subject string, data EmailData) error {
-	if data.AppName == "" {
-		data.AppName = "Wellness & Nutrition"
-	}
-	if data.AppLink == "" {
-		data.AppLink = os.Getenv("AUTH_URL")
-	}
-	if data.Copyright == "" {
-		data.Copyright = "Tutti i diritti riservati"
+	respCh := make(chan error, 1)
+	msg := &mailMessage{
+		to:      to,
+		subject: subject,
+		data:    data,
+		respCh:  respCh,
 	}
 
-	tmpl, err := template.New("email").Parse(emailTemplate)
-	if err != nil {
-		return err
-	}
-
-	var body bytes.Buffer
-	if err := tmpl.Execute(&body, data); err != nil {
-		return err
-	}
-
-	msg := fmt.Sprintf("From: %s\r\n"+
-		"To: %s\r\n"+
-		"Subject: %s\r\n"+
-		"MIME-Version: 1.0\r\n"+
-		"Content-Type: text/html; charset=UTF-8\r\n"+
-		"\r\n"+
-		"%s", m.from, to, subject, body.String())
-
-	auth := smtp.PlainAuth("", m.username, m.password, m.host)
-	addr := fmt.Sprintf("%s:%s", m.host, m.port)
-
-	return smtp.SendMail(addr, auth, m.from, []string{to}, []byte(msg))
+	m.mailCh <- msg
+	return <-respCh
 }
 
 func (m *Mailer) SendWelcomeEmail(email, firstName, verificationURL string) error {

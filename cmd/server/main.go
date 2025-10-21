@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
@@ -91,7 +92,14 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	emailPassword := os.Getenv("EMAIL_SERVER_PASSWORD")
 	emailFrom := os.Getenv("EMAIL_SERVER_FROM")
 	// emailNotify := os.Getenv("EMAIL_NOTIFY_ADDRESS")
-	mailer := mail.NewMailer(emailHost, emailPort, emailUser, emailPassword, emailFrom)
+	mailer, err := mail.NewMailer(emailHost, emailPort, emailUser, emailPassword, emailFrom)
+	if err != nil {
+		return fmt.Errorf("failed to initialize mailer: %w", err)
+	}
+	defer mailer.Close()
+	
+	// Start mailer goroutine
+	go mailer.Run(ctx)
 
 	// Initialize WebSocket hub
 	hub := websocket.NewHub()

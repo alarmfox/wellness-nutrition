@@ -256,9 +256,47 @@
                 opacity: 1;
             }
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-overlay.show {
+            display: flex;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: white;
+            margin-top: 16px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
+    <div id="loading-overlay" class="loading-overlay">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-text">Caricamento...</div>
+        </div>
+    </div>
+    
     <div class="header">
         <h1>Wellness & Nutrition - Admin</h1>
         <div class="nav">
@@ -492,6 +530,18 @@
     </div>
     
     <script>
+        function showLoading(text = 'Caricamento...') {
+            const overlay = document.getElementById('loading-overlay');
+            const loadingText = document.getElementById('loading-text');
+            loadingText.textContent = text;
+            overlay.classList.add('show');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.remove('show');
+        }
+        
         function toggleAll(checkbox) {
             const checkboxes = document.querySelectorAll('.user-checkbox');
             checkboxes.forEach(cb => cb.checked = checkbox.checked);
@@ -514,6 +564,7 @@
                 return;
             }
             
+            showLoading('Eliminazione utenti...');
             fetch('/api/admin/users/delete', {
                 method: 'POST',
                 headers: {
@@ -523,6 +574,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 if (data.error) {
                     showToast(data.error, false);
                 } else {
@@ -531,6 +583,7 @@
                 }
             })
             .catch(error => {
+                hideLoading();
                 showToast('Errore durante l\'eliminazione degli utenti', false);
                 console.error(error);
             });
@@ -613,6 +666,7 @@
                 goals: goals
             };
             
+            showLoading('Creazione utente...');
             fetch('/api/admin/users/create', {
                 method: 'POST',
                 headers: {
@@ -622,6 +676,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 if (data.error) {
                     showToast(data.error, false);
                 } else {
@@ -631,6 +686,7 @@
                 }
             })
             .catch(error => {
+                hideLoading();
                 showToast('Errore durante la creazione dell\'utente', false);
                 console.error(error);
             });
@@ -656,6 +712,7 @@
                 goals: goals
             };
             
+            showLoading('Aggiornamento utente...');
             fetch('/api/admin/users/update', {
                 method: 'POST',
                 headers: {
@@ -665,6 +722,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 if (data.error) {
                     showToast(data.error, false);
                 } else {
@@ -678,6 +736,7 @@
                 }
             })
             .catch(error => {
+                hideLoading();
                 showToast('Errore durante l\'aggiornamento dell\'utente', false);
                 console.error(error);
             });
@@ -686,6 +745,7 @@
         function resendVerification() {
             const userId = document.getElementById('editUserId').value;
             
+            showLoading('Invio email di verifica...');
             fetch('/api/admin/users/resend-verification', {
                 method: 'POST',
                 headers: {
@@ -695,6 +755,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 if (data.error) {
                     showToast(data.error, false);
                 } else {
@@ -702,6 +763,7 @@
                 }
             })
             .catch(error => {
+                hideLoading();
                 showToast('Errore durante l\'invio dell\'email', false);
                 console.error(error);
             });
