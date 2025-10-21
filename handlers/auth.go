@@ -597,9 +597,23 @@ func (h *UserHandler) VerifyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req VerifyAccountRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
-		return
+
+	// Check Content-Type to determine if it's JSON or form data
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		// Parse JSON
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+			return
+		}
+	} else {
+		// Parse form data (default for HTML form submissions)
+		if err := r.ParseForm(); err != nil {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+			return
+		}
+		req.Token = r.FormValue("token")
+		req.Password = r.FormValue("password")
 	}
 
 	// Validate input

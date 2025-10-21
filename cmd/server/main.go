@@ -328,6 +328,7 @@ func serveSignIn(w http.ResponseWriter, r *http.Request) {
 func serveReset(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		data := map[string]interface{}{
+			"Token":   r.URL.Query().Get("token"),
 			"Success": r.URL.Query().Get("success"),
 			"Error":   r.URL.Query().Get("error"),
 		}
