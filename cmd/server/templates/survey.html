@@ -209,8 +209,8 @@
         
         <div class="progress-container">
             <div class="progress-bar" id="progressBar">
-                {{range .Questions}}
-                <div class="progress-step" data-step="{{.Index}}"></div>
+                {{range $index, $q := .Questions}}
+                <div class="progress-step" data-step="{{$index}}"></div>
                 {{end}}
             </div>
             <div class="progress-text">
@@ -221,8 +221,8 @@
         <div class="survey-content">
             <form id="survey" action="/survey/submit" method="POST">
                 {{range $index, $q := .Questions}}
-                <div class="form-step {{if eq $index 0}}active{{end}}" data-step="{{$q.Index}}">
-                    <div class="question-number">Domanda {{$q.Index}} di {{len $.Questions}}</div>
+                <div class="form-step {{if eq $index 0}}active{{end}}" data-step="{{$index}}">
+                    <div class="question-number" data-question-num="{{$index}}">Domanda {{$index}} di {{len $.Questions}}</div>
                     <div class="question-text">{{$q.Question}}</div>
                     
                     <div class="star-labels">
@@ -260,35 +260,35 @@
     </div>
 
     <script>
-        let currentStep = 1;
+        let currentStep = 0; // 0-based index
         const totalSteps = {{len .Questions}};
 
         function updateUI() {
             // Update form steps
             document.querySelectorAll('.form-step').forEach((step, index) => {
-                step.classList.toggle('active', index + 1 === currentStep);
+                step.classList.toggle('active', index === currentStep);
             });
 
             // Update progress bar
             document.querySelectorAll('.progress-step').forEach((step, index) => {
                 step.classList.remove('active', 'completed');
-                if (index + 1 < currentStep) {
+                if (index < currentStep) {
                     step.classList.add('completed');
-                } else if (index + 1 === currentStep) {
+                } else if (index === currentStep) {
                     step.classList.add('active');
                 }
             });
 
             // Update progress text
-            document.getElementById('currentStep').textContent = currentStep;
+            document.getElementById('currentStep').textContent = currentStep + 1;
 
             // Update buttons
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             
-            prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+            prevBtn.style.visibility = currentStep === 0 ? 'hidden' : 'visible';
             
-            if (currentStep === totalSteps) {
+            if (currentStep === totalSteps - 1) {
                 nextBtn.innerHTML = '<span class="material-icons" style="font-size: 18px;">check</span> Conferma';
             } else {
                 nextBtn.innerHTML = 'Avanti <span class="material-icons" style="font-size: 18px;">arrow_forward</span>';
@@ -297,19 +297,21 @@
 
         function changeStep(direction) {
             // Check if current question is answered before moving forward
-            if (direction > 0 && currentStep <= totalSteps) {
+            if (direction > 0 && currentStep < totalSteps) {
                 const currentQuestion = document.querySelector(`.form-step[data-step="${currentStep}"]`);
-                const radios = currentQuestion.querySelectorAll('input[type="radio"]');
-                const answered = Array.from(radios).some(radio => radio.checked);
-                
-                if (!answered && currentStep < totalSteps) {
-                    alert('Per favore, seleziona una valutazione prima di continuare.');
-                    return;
+                if (currentQuestion) {
+                    const radios = currentQuestion.querySelectorAll('input[type="radio"]');
+                    const answered = Array.from(radios).some(radio => radio.checked);
+                    
+                    if (!answered && currentStep < totalSteps - 1) {
+                        alert('Per favore, seleziona una valutazione prima di continuare.');
+                        return;
+                    }
                 }
             }
 
             // Submit form if on last step and moving forward
-            if (currentStep === totalSteps && direction > 0) {
+            if (currentStep === totalSteps - 1 && direction > 0) {
                 const form = document.getElementById('survey');
                 // Check if all questions are answered
                 const allAnswered = checkAllAnswered();
@@ -323,8 +325,8 @@
 
             // Change step
             currentStep += direction;
-            if (currentStep < 1) currentStep = 1;
-            if (currentStep > totalSteps) currentStep = totalSteps;
+            if (currentStep < 0) currentStep = 0;
+            if (currentStep >= totalSteps) currentStep = totalSteps - 1;
 
             updateUI();
         }
@@ -338,6 +340,14 @@
             });
             return allAnswered;
         }
+
+        // Fix question numbers on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.question-number').forEach((elem, index) => {
+                elem.textContent = `Domanda ${index + 1} di ${totalSteps}`;
+            });
+            updateUI();
+        });
 
         // Initialize
         updateUI();
