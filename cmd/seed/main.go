@@ -115,7 +115,7 @@ func seedTest(db *sql.DB) {
 		}
 
 		// Create slots from 07:00 to 21:00 (every hour)
-		for hour := 7; hour <= 21; hour++ {
+		for hour := 5; hour <= 19; hour++ {
 			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
 				hour, 0, 0, 0, time.UTC)
 
@@ -204,7 +204,7 @@ func seedSlot(db *sql.DB) {
 		if currentDate.Weekday() == time.Sunday {
 			continue
 		}
-		for hour := 7; hour <= 21; hour++ {
+		for hour := 5; hour <= 19; hour++ {
 			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
 				hour, 0, 0, 0, time.UTC)
 
