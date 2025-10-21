@@ -73,20 +73,25 @@
         }
         .toggle-password {
             position: absolute;
-            right: 10px;
+            right: 5px;
             top: 50%;
             transform: translateY(-50%);
             background: none;
             border: none;
             cursor: pointer;
             color: rgba(0, 0, 0, 0.54);
-            padding: 4px;
+            padding: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
+            min-width: 40px;
+            height: 40px;
         }
         .toggle-password:hover {
             color: rgba(0, 0, 0, 0.87);
+        }
+        .toggle-password .material-icons {
+            font-size: 20px;
         }
         .password-requirements {
             font-size: 12px;
@@ -271,17 +276,28 @@
             const password = passwordInput.value;
             const confirmPassword = confirmPasswordInput.value;
             
-            if (confirmPassword.length > 0 && password !== confirmPassword) {
+            // Show mismatch if:
+            // 1. Both fields have content and don't match
+            // 2. Password has content but confirm is empty (default state)
+            if (password.length > 0 && confirmPassword.length === 0) {
                 mismatchWarning.classList.add('show');
                 return false;
-            } else {
+            } else if (confirmPassword.length > 0 && password !== confirmPassword) {
+                mismatchWarning.classList.add('show');
+                return false;
+            } else if (password.length > 0 && confirmPassword.length > 0 && password === confirmPassword) {
                 mismatchWarning.classList.remove('show');
                 return true;
+            } else {
+                // Both empty
+                mismatchWarning.classList.remove('show');
+                return false;
             }
         }
 
         function validateForm() {
             const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
             let allMet = true;
             
             for (const [key, req] of Object.entries(requirements)) {
@@ -297,11 +313,18 @@
             }
             
             const passwordsMatch = checkPasswordsMatch();
-            document.getElementById('submitBtn').disabled = !allMet || !passwordsMatch;
+            // Button should only be enabled if:
+            // 1. All requirements are met
+            // 2. Both passwords are filled
+            // 3. Passwords match
+            document.getElementById('submitBtn').disabled = !allMet || confirmPassword.length === 0 || !passwordsMatch;
         }
 
         passwordInput.addEventListener('input', validateForm);
         confirmPasswordInput.addEventListener('input', validateForm);
+        
+        // Set initial state - button should be disabled and mismatch shown
+        document.getElementById('submitBtn').disabled = true;
 
         // Form submission
         document.getElementById('verifyForm').addEventListener('submit', async function(e) {
