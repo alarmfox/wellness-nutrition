@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risultati Sondaggio - Wellness & Nutrition</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: white;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0;
+            font-weight: 500;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .results-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .result-item {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 20px 0;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .question-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .question-number {
+            background-color: #1976d2;
+            color: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-weight: 500;
+        }
+        .question-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 12px;
+        }
+        .stat-card {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .star-rating {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .star {
+            color: #ffc107;
+            font-size: 20px;
+        }
+        .star.empty {
+            color: #e0e0e0;
+        }
+        .stat-count {
+            font-size: 24px;
+            font-weight: 500;
+            color: #1976d2;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #757575;
+        }
+        .total-responses {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            text-align: center;
+        }
+        .total-responses strong {
+            color: #1976d2;
+            font-size: 18px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+        .nav-links a {
+            color: #1976d2;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        .chart-container {
+            margin-top: 16px;
+            padding: 12px;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .bar-label {
+            min-width: 60px;
+            font-size: 14px;
+            color: #757575;
+        }
+        .bar-wrapper {
+            flex: 1;
+            background: #e0e0e0;
+            height: 24px;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1976d2, #42a5f5);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .bar-count {
+            min-width: 40px;
+            text-align: right;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Risultati Sondaggio</h1>
+        <div class="nav-links">
+            <a href="/admin/survey/questions">Gestisci Domande</a>
+            <a href="/admin/calendar">Calendario</a>
+            <a href="/admin/users">Utenti</a>
+            <a href="/api/auth/logout">Esci</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="results-container" id="resultsContainer">
+            <!-- Results will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadResults);
+        
+        async function loadResults() {
+            try {
+                const response = await fetch('/api/admin/survey/results');
+                if (!response.ok) throw new Error('Failed to load results');
+                const questions = await response.json();
+                renderResults(questions);
+            } catch (error) {
+                console.error('Error loading results:', error);
+                document.getElementById('resultsContainer').innerHTML = 
+                    '<p style="text-align: center; color: #d32f2f; padding: 40px;">Errore nel caricamento dei risultati</p>';
+            }
+        }
+        
+        function renderResults(questions) {
+            const container = document.getElementById('resultsContainer');
+            
+            if (!questions || questions.length === 0) {
+                container.innerHTML = 
+                    '<p style="text-align: center; color: #757575; padding: 40px;">Nessun risultato disponibile</p>';
+                return;
+            }
+            
+            // Sort by index
+            questions.sort((a, b) => a.Index - b.Index);
+            
+            container.innerHTML = questions.map(q => {
+                const total = q.Star1 + q.Star2 + q.Star3 + q.Star4 + q.Star5;
+                const maxValue = Math.max(q.Star1, q.Star2, q.Star3, q.Star4, q.Star5);
+                
+                return `
+                    <div class="result-item">
+                        <div class="question-header">
+                            <div class="question-number">${q.Index}</div>
+                            <div class="question-text">${q.Question}</div>
+                        </div>
+                        
+                        <div class="total-responses">
+                            <strong>${total}</strong> risposte totali
+                        </div>
+                        
+                        <div class="chart-container">
+                            <div class="bar-chart">
+                                ${renderBar(5, q.Star5, maxValue)}
+                                ${renderBar(4, q.Star4, maxValue)}
+                                ${renderBar(3, q.Star3, maxValue)}
+                                ${renderBar(2, q.Star2, maxValue)}
+                                ${renderBar(1, q.Star1, maxValue)}
+                            </div>
+                        </div>
+                        
+                        <div class="stats-grid">
+                            ${renderStatCard(5, q.Star5)}
+                            ${renderStatCard(4, q.Star4)}
+                            ${renderStatCard(3, q.Star3)}
+                            ${renderStatCard(2, q.Star2)}
+                            ${renderStatCard(1, q.Star1)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function renderBar(stars, count, maxValue) {
+            const percentage = maxValue > 0 ? (count / maxValue * 100) : 0;
+            return `
+                <div class="bar-row">
+                    <div class="bar-label">${renderStars(stars)}</div>
+                    <div class="bar-wrapper">
+                        <div class="bar-fill" style="width: ${percentage}%">
+                            ${count > 0 ? count : ''}
+                        </div>
+                    </div>
+                    <div class="bar-count">${count}</div>
+                </div>
+            `;
+        }
+        
+        function renderStatCard(stars, count) {
+            return `
+                <div class="stat-card">
+                    <div class="star-rating">
+                        ${renderStars(stars)}
+                    </div>
+                    <div class="stat-count">${count}</div>
+                    <div class="stat-label">${count === 1 ? 'risposta' : 'risposte'}</div>
+                </div>
+            `;
+        }
+        
+        function renderStars(count) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                stars += `<span class="material-icons star${i > count ? ' empty' : ''}">star</span>`;
+            }
+            return stars;
+        }
+    </script>
+</body>
+</html>

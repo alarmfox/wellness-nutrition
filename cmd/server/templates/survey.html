@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Sondaggio Wellness & Nutrition</title>
+    <meta name="description" content="survey-wellnessenutrition">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/static/images/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <div id="multi-step-form-container container">
+        <div class="container-fluid d-flex justify-content-center">
+            <img src="/static/images/logo.png" alt="">
+        </div>
+        <div class="mt-2">
+            <h1>La tua opinione conta!</h1>
+        </div>
+        <!-- Form Steps / Progress Bar -->
+        <ul class="form-stepper form-stepper-horizontal text-center mx-auto pl-0">
+            {{range $a := .Questions}}
+            <!-- Step 1 -->
+            {{if (eq $a.Previous 0) }}
+            <li class="form-stepper-active text-center form-stepper-list" step="{{$a.Index}}">
+                {{ else }}
+            <li class="form-stepper-unfinished text-center form-stepper-list" step="{{$a.Index}}">
+                {{end}}
+                <a class="mx-2">
+                    <span class="form-stepper-circle">
+                        <span>{{$a.Index}}</span>
+                    </span>
+                </a>
+            </li>
+            {{end}}
+        </ul>
+        <!-- Step Wise Form Content -->
+        <form id="survey" action="/survey/submit" method="POST">
+            <!-- Step 1 Content -->
+            {{range $a := .Questions}}
+
+            {{if (eq $a.Previous 0) }}
+            <section id="{{$a.Sku}}" class="form-step">
+                {{else}}
+                <section id="{{$a.Sku}}" class="form-step d-none">
+                    {{end}}
+                    <h2 class="font-normal">{{$a.Question}}</h2>
+                    <div class="mt-1 d-flex justify-content-center">
+                        <fieldset id="{{$a.ID}}" class="rating">
+                            <input type="radio" name="rating-{{$a.ID}}" id="{{$a.ID}}-5" value="5" />
+                            <label for="{{$a.ID}}-5" class="full" title="Awesome - 5 stars"></label>
+                            <input type="radio" name="rating-{{$a.ID}}" id="{{$a.ID}}-4" value="4" />
+                            <label for="{{$a.ID}}-4" class="full" title="Pretty good - 4 stars"></label>
+                            <input type="radio" name="rating-{{$a.ID}}" id="{{$a.ID}}-3" value="3" />
+                            <label for="{{$a.ID}}-3" class="full" title="Meh - 3 stars"></label>
+                            <input type="radio" name="rating-{{$a.ID}}" id="{{$a.ID}}-2" value="2" />
+                            <label for="{{$a.ID}}-2" class="full" title="Kinda bad - 2 stars"></label>
+                            <input type="radio" name="rating-{{$a.ID}}" id="{{$a.ID}}-1" value="1" />
+                            <label for="{{$a.ID}}-1" class="full" title="Sucks big time - 1 star"></label>
+                        </fieldset>
+                    </div>
+                    <div class="mt-10 row">
+                        <div class="col justify-content-start">
+                            {{if (gt $a.Previous 0) }}
+                            <button class="button btn-navigate-form-step" type="button"
+                                step_number="{{$a.Previous}}">Indietro</button>
+                            {{end}}
+                        </div>
+                        <div class="d-flex col justify-content-end">
+                            {{if (gt $a.Next 0) }}
+                            <button class="button btn-navigate-form-step" type="button"
+                                step_number="{{$a.Next}}">Avanti</button>
+                            {{ else }}
+                            <button class="button submit-btn" type="submit">Conferma</button>
+                            {{end}}
+                        </div>
+                    </div>
+                </section>
+                {{end}}
+        </form>
+    </div>
+</body>
+<script type="text/javascript" src="/static/js/index.js"></script>
+
+</html>
