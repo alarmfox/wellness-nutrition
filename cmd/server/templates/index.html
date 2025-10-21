@@ -138,10 +138,47 @@
                 opacity: 1;
             }
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-overlay.show {
+            display: flex;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: white;
+            margin-top: 16px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
     <div id="toast" class="toast"></div>
+    <div id="loading-overlay" class="loading-overlay">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-text">Caricamento...</div>
+        </div>
+    </div>
     <div class="container">
         <div class="header">
             <h1 style="font-size: 24px; margin-bottom: 16px;">{{.User.FirstName}} {{.User.LastName}}</h1>
@@ -213,6 +250,18 @@
         const userSubType = '{{.User.SubType}}';
         let availableSlots = [];
 
+        function showLoading(text = 'Caricamento...') {
+            const overlay = document.getElementById('loading-overlay');
+            const loadingText = document.getElementById('loading-text');
+            loadingText.textContent = text;
+            overlay.classList.add('show');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.remove('show');
+        }
+
         function showToast(message, isSuccess = false) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -257,10 +306,14 @@
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.nav-item')[1].classList.add('active');
             
+            // Show loading indicator
+            showLoading('Caricamento slot disponibili...');
+            
             // Fetch available slots
             fetch('/api/user/bookings/slots')
                 .then(response => response.json())
                 .then(data => {
+                    hideLoading();
                     if (data.error) {
                         showToast('Errore nel caricamento degli slot');
                         return;
@@ -344,6 +397,7 @@
                     contentDiv.innerHTML = html;
                 })
                 .catch(error => {
+                    hideLoading();
                     console.error(error);
                     showToast('Errore di connessione. Riprova.');
                     contentDiv.innerHTML = `
@@ -358,6 +412,8 @@
                 return;
             }
             
+            showLoading('Creazione prenotazione...');
+            
             fetch('/api/user/bookings/create', {
                 method: 'POST',
                 headers: {
@@ -367,6 +423,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 if (data.error) {
                     showToast(data.error || 'Errore durante la creazione della prenotazione');
                 } else {
@@ -375,6 +432,7 @@
                 }
             })
             .catch(error => {
+                hideLoading();
                 showToast('Errore di connessione. Riprova.');
                 console.error(error);
             });
@@ -385,6 +443,8 @@
                 return;
             }
             
+            showLoading('Cancellazione prenotazione...');
+            
             fetch('/api/user/bookings/delete', {
                 method: 'POST',
                 headers: {
@@ -394,6 +454,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 if (data.error) {
                     let errorMessage = 'Errore durante la cancellazione';
                     if (data.error.includes('Forbidden')) {
@@ -406,6 +467,7 @@
                 }
             })
             .catch(error => {
+                hideLoading();
                 showToast('Errore di connessione. Riprova.');
                 console.error(error);
             });

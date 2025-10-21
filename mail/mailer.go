@@ -2,10 +2,12 @@ package mail
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"html/template"
 	"net/smtp"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -15,6 +17,8 @@ type Mailer struct {
 	username string
 	password string
 	from     string
+	client   *smtp.Client
+	mu       sync.Mutex
 }
 
 func NewMailer(host, port, username, password, from string) *Mailer {
@@ -25,6 +29,62 @@ func NewMailer(host, port, username, password, from string) *Mailer {
 		password: password,
 		from:     from,
 	}
+}
+
+// getClient returns a connected SMTP client, creating a new connection if needed
+func (m *Mailer) getClient() (*smtp.Client, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Check if we have a valid connection
+	if m.client != nil {
+		// Try to verify the connection is still alive
+		if err := m.client.Noop(); err == nil {
+			return m.client, nil
+		}
+		// Connection is dead, close it and create a new one
+		m.client.Close()
+		m.client = nil
+	}
+
+	// Create new connection
+	addr := fmt.Sprintf("%s:%s", m.host, m.port)
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SMTP server: %w", err)
+	}
+
+	// Start TLS if available
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		config := &tls.Config{ServerName: m.host}
+		if err = client.StartTLS(config); err != nil {
+			client.Close()
+			return nil, fmt.Errorf("failed to start TLS: %w", err)
+		}
+	}
+
+	// Authenticate
+	auth := smtp.PlainAuth("", m.username, m.password, m.host)
+	if err = client.Auth(auth); err != nil {
+		client.Close()
+		return nil, fmt.Errorf("SMTP authentication failed: %w", err)
+	}
+
+	m.client = client
+	return m.client, nil
+}
+
+// Close closes the SMTP connection
+func (m *Mailer) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.client != nil {
+		err := m.client.Quit()
+		m.client = nil
+		return err
+	}
+	return nil
 }
 
 type EmailData struct {
@@ -136,10 +196,36 @@ func (m *Mailer) SendEmail(to, subject string, data EmailData) error {
 		"\r\n"+
 		"%s", m.from, to, subject, body.String())
 
-	auth := smtp.PlainAuth("", m.username, m.password, m.host)
-	addr := fmt.Sprintf("%s:%s", m.host, m.port)
+	// Get or create SMTP client connection
+	client, err := m.getClient()
+	if err != nil {
+		return fmt.Errorf("failed to get SMTP client: %w", err)
+	}
 
-	return smtp.SendMail(addr, auth, m.from, []string{to}, []byte(msg))
+	// Send the email using the persistent connection
+	if err := client.Mail(m.from); err != nil {
+		return fmt.Errorf("failed to set sender: %w", err)
+	}
+
+	if err := client.Rcpt(to); err != nil {
+		return fmt.Errorf("failed to set recipient: %w", err)
+	}
+
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("failed to open data writer: %w", err)
+	}
+
+	if _, err := w.Write([]byte(msg)); err != nil {
+		w.Close()
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("failed to close data writer: %w", err)
+	}
+
+	return nil
 }
 
 func (m *Mailer) SendWelcomeEmail(email, firstName, verificationURL string) error {

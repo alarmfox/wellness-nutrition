@@ -355,9 +355,48 @@
                 opacity: 0;
             }
         }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-overlay.show {
+            display: flex;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: white;
+            margin-top: 16px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
+    <div id="loading-overlay" class="loading-overlay">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-text">Caricamento...</div>
+        </div>
+    </div>
+    
     <div class="header">
         <h1>Wellness & Nutrition - Admin</h1>
         <div class="nav">
@@ -495,7 +534,20 @@
         let selectedSlot = null;
         let currentAction = null;
         
+        function showLoading(text = 'Caricamento...') {
+            const overlay = document.getElementById('loading-overlay');
+            const loadingText = document.getElementById('loading-text');
+            loadingText.textContent = text;
+            overlay.classList.add('show');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.remove('show');
+        }
+        
         async function loadBookings() {
+            showLoading('Caricamento calendario...');
             const from = new Date(currentDate);
             const to = new Date(currentDate);
             
@@ -524,8 +576,10 @@
                 bookings = await bookingsResponse.json();
                 slots = await slotsResponse.json();
                 renderCalendar();
+                hideLoading();
             } catch (error) {
                 console.error('Error loading data:', error);
+                hideLoading();
             }
         }
         
@@ -769,6 +823,7 @@
                 return;
             }
             
+            showLoading('Eliminazione prenotazione...');
             try {
                 const response = await fetch('/api/user/bookings/delete', {
                     method: 'POST',
@@ -781,6 +836,7 @@
                 });
                 
                 const data = await response.json();
+                hideLoading();
                 
                 if (data.error) {
                     showToast(data.error, false);
@@ -790,6 +846,7 @@
                     loadBookings(); // Reload calendar
                 }
             } catch (error) {
+                hideLoading();
                 showToast('Errore durante l\'eliminazione', false);
                 console.error(error);
             }
@@ -820,6 +877,7 @@
                 return;
             }
             
+            showLoading('Riabilitazione slot...');
             try {
                 const response = await fetch('/api/admin/slots/enable', {
                     method: 'POST',
@@ -832,6 +890,7 @@
                 });
                 
                 const data = await response.json();
+                hideLoading();
                 
                 if (data.error) {
                     showToast(data.error, false);
@@ -841,6 +900,7 @@
                     loadBookings(); // Reload calendar
                 }
             } catch (error) {
+                hideLoading();
                 showToast('Errore durante la riabilitazione', false);
                 console.error(error);
             }
@@ -910,6 +970,7 @@
         }
         
         async function markSlotUnavailable() {
+            showLoading('Disabilitazione slot...');
             try {
                 const response = await fetch('/api/admin/slots/disable', {
                     method: 'POST',
@@ -922,6 +983,7 @@
                 });
                 
                 const data = await response.json();
+                hideLoading();
                 
                 if (data.error) {
                     showToast(data.error, false);
@@ -939,12 +1001,14 @@
                     loadBookings(); // Reload calendar
                 }
             } catch (error) {
+                hideLoading();
                 showToast('Errore durante l\'operazione', false);
                 console.error(error);
             }
         }
         
         async function markSlotUnavailableConfirm() {
+            showLoading('Eliminazione prenotazioni...');
             try {
                 const response = await fetch('/api/admin/slots/disable-confirm', {
                     method: 'POST',
@@ -958,6 +1022,7 @@
                 });
                 
                 const data = await response.json();
+                hideLoading();
                 
                 if (data.error) {
                     showToast(data.error, false);
@@ -967,6 +1032,7 @@
                     loadBookings(); // Reload calendar
                 }
             } catch (error) {
+                hideLoading();
                 showToast('Errore durante l\'operazione', false);
                 console.error(error);
             }
@@ -980,6 +1046,7 @@
                 return;
             }
             
+            showLoading('Creazione prenotazione...');
             try {
                 const response = await fetch('/api/admin/bookings/create', {
                     method: 'POST',
@@ -993,6 +1060,7 @@
                 });
                 
                 const data = await response.json();
+                hideLoading();
                 
                 if (data.error) {
                     showToast(data.error, false);
@@ -1002,6 +1070,7 @@
                     loadBookings(); // Reload calendar
                 }
             } catch (error) {
+                hideLoading();
                 showToast('Errore durante la creazione della prenotazione', false);
                 console.error(error);
             }
