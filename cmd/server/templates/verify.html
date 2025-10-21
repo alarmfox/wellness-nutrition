@@ -108,6 +108,15 @@
             font-size: 16px;
             margin-right: 6px;
         }
+        .password-mismatch {
+            font-size: 12px;
+            color: #d32f2f;
+            margin-top: 4px;
+            display: none;
+        }
+        .password-mismatch.show {
+            display: block;
+        }
         .error {
             background-color: #d32f2f;
             color: white;
@@ -223,6 +232,9 @@
                         <span class="material-icons">visibility</span>
                     </button>
                 </div>
+                <div class="password-mismatch" id="mismatchWarning">
+                    Le password non corrispondono
+                </div>
             </div>
             
             <button type="submit" id="submitBtn">Conferma</button>
@@ -246,6 +258,8 @@
 
         // Password requirements validation
         const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const mismatchWarning = document.getElementById('mismatchWarning');
         const requirements = {
             length: { regex: /.{6,}/, element: document.getElementById('req-length') },
             uppercase: { regex: /[A-Z]/, element: document.getElementById('req-uppercase') },
@@ -253,8 +267,21 @@
             number: { regex: /[0-9]/, element: document.getElementById('req-number') }
         };
 
-        passwordInput.addEventListener('input', function() {
-            const password = this.value;
+        function checkPasswordsMatch() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            if (confirmPassword.length > 0 && password !== confirmPassword) {
+                mismatchWarning.classList.add('show');
+                return false;
+            } else {
+                mismatchWarning.classList.remove('show');
+                return true;
+            }
+        }
+
+        function validateForm() {
+            const password = passwordInput.value;
             let allMet = true;
             
             for (const [key, req] of Object.entries(requirements)) {
@@ -269,8 +296,12 @@
                 }
             }
             
-            document.getElementById('submitBtn').disabled = !allMet;
-        });
+            const passwordsMatch = checkPasswordsMatch();
+            document.getElementById('submitBtn').disabled = !allMet || !passwordsMatch;
+        }
+
+        passwordInput.addEventListener('input', validateForm);
+        confirmPasswordInput.addEventListener('input', validateForm);
 
         // Form submission
         document.getElementById('verifyForm').addEventListener('submit', async function(e) {
