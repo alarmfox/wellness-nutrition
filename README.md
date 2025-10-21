@@ -1,33 +1,237 @@
-# Wellness & Nutrition
-A React application designed to manage bookings, time slots, and users for a local gym.
-## Description
-The app is used by an admin to manage users and the calendar. An admin can:
-- Book slots for other users
-- Mark slots as unavailable
-- Create, update, or delete users
-- Receive notifications when clients make or delete a booking
+# Wellness & Nutrition - Go Application
 
-Users can:
-- View their plan information
-- Check their bookings
-- Make new bookings according to available slots
+This is the Go-based server-side rendered application for Wellness & Nutrition, migrated from Next.js.
 
-Plans can be SINGLE or SHARED. On a shared plan, users can share their slots with another user. On a single plan, slots are dedicated to the individual user.
-Users are registered with credentials (Email and Password).
+## Features
 
-The email is verified through an activation link sent when the admin registers a new client. This allows users to perform their first access, verify their email, and set their password on their own.
+- **Authentication**: JWT-based session authentication with secure cookies
+- **Role-based Authorization**: Users cannot access admin API endpoints
+- **Server-Side Rendering**: HTML templates using Go's `html/template`
+- **Email Notifications**: Mail template system for user notifications (welcome emails, booking notifications)
+- **Material UI**: Frontend styling using Material UI CDN
+- **API Endpoints**: RESTful API for user management, bookings, and events
+- **Admin Calendar View**: Interactive calendar showing all bookings (month and week views)
+- **User Dashboard**: Personalized view showing only user's own bookings
+- **Database Seeder**: Tool to populate database with test data
 
-When a user performs an action (e.g., DELETE or CREATE a booking), the admin is notified with an in-app notification (delivered through a websocket) and an email. The event is also logged in the database to be viewed on the events page.
+## Architecture
 
-### App
-The app is scaffolded with [T3 Stack](https://create.t3.gg/) and uses the following modules:
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [tRPC](https://trpc.io)
-Styling is done using Material UI.
+### Packages
 
-### Cleanup
-The project also contains a Go module called `cleanup`, which contains programs to periodically clean up obsolete data in the database.
-### Events
-Events are sent using a [Soketi](https://docs.soketi.app/) instance with the Pusher SDK.
+- **`main.go`**: Entry point, HTTP server setup, and route configuration
+- **`models/`**: Database models and repositories (User, Booking, Slot, Event)
+- **`handlers/`**: HTTP request handlers for authentication, users, and bookings
+- **`middleware/`**: Authentication and authorization middleware
+- **`mail/`**: Email template system for sending notifications
+- **`templates/`**: HTML templates for server-side rendering
+- **`static/`**: Static assets (CSS, JavaScript)
+
+### Database
+
+The application uses PostgreSQL with **lowercase snake_case table and column names**. All migrations are idempotent using `CREATE TABLE IF NOT EXISTS` statements.
+
+**Tables:**
+- `users` - User accounts and subscriptions
+- `slots` - Available time slots for bookings
+- `bookings` - User bookings linked to slots
+- `events` - Event log for booking actions
+- `sessions` - Session management for authentication
+
+**Key Differences from Prisma:**
+- Prisma uses PascalCase table names (`User`, `Booking`) and camelCase columns (`firstName`, `startsAt`)
+- Go app uses lowercase snake_case (`users`, `bookings`, `first_name`, `starts_at`)
+- Both schemas are functionally equivalent
+
+**Running Migrations:**
+```bash
+cd app/migrations
+go run . -db-uri="$DATABASE_URL"
+```
+
+See [`migrations/README.md`](migrations/README.md) for complete schema documentation.
+
+### Authentication
+
+- Sessions are stored in a `sessions` table
+- Passwords are hashed using Argon2
+- Session tokens are stored in secure HTTP-only cookies
+- Session duration: 30 days
+
+### Authorization
+
+- **Public routes**: `/signin`, `/api/auth/login`
+- **User routes**: Require authentication, accessible to both users and admins
+  - `/` (home page)
+  - `/api/user/current`
+  - `/api/bookings/*`
+- **Admin routes**: Require admin role
+  - `/admin` (redirects to calendar)
+  - `/admin/calendar` (admin calendar view with all bookings)
+  - `/admin/users` (user management page)
+  - `/admin/events` (event log page)
+  - `/api/admin/users` (user CRUD endpoints)
+  - `/api/admin/bookings` (get all bookings for calendar)
+
+Admin API endpoints return a 403 Forbidden error if accessed by non-admin users.
+
+### Views
+
+The application provides two distinct views based on user role:
+
+**Admin View** (`/admin/*`):
+- Redirected to `/admin/calendar` on login
+- `/admin/calendar` - Interactive calendar showing all bookings from all users
+- `/admin/users` - User management page
+- `/admin/events` - Event log page
+- Week and month calendar views available
+- Color-coded by subscription type (SHARED vs SINGLE)
+- Access to user management and event logs
+- Can view bookings owned by any user
+
+**User View** (`/user`):
+- Dashboard at `/user` showing only their own bookings
+- Can create new bookings from available slots
+- Can delete their own bookings
+- Cannot view or modify other users' bookings
+- Bottom navigation for mobile-friendly experience
+
+The root path `/` automatically redirects users to their appropriate view based on role.
+
+## Environment Variables
+
+Required environment variables:
+
+```bash
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+# Email Server
+EMAIL_SERVER_HOST=smtp.example.com
+EMAIL_SERVER_PORT=587
+EMAIL_SERVER_USER=user@example.com
+EMAIL_SERVER_PASSWORD=password
+EMAIL_FROM=noreply@example.com
+EMAIL_NOTIFY_ADDRESS=admin@example.com
+
+# Application
+NEXTAUTH_URL=http://localhost:3000
+```
+
+## Building and Running
+
+### Database Migrations
+
+**First, run the migrations to create the database schema:**
+
+```bash
+cd app/migrations
+go run . -db-uri="$DATABASE_URL"
+
+# Or build and run
+go build -o migrate
+./migrate -db-uri="$DATABASE_URL"
+```
+
+This creates all required tables using **lowercase snake_case naming** with idempotent `CREATE TABLE IF NOT EXISTS` statements. Safe to run multiple times.
+
+See [`migrations/README.md`](migrations/README.md) for details.
+
+### Database Seeding (for Testing)
+
+After running migrations, seed the database with test data:
+
+```bash
+cd app/cmd/seed
+go run . -db-uri="$DATABASE_URL"
+
+# Or build and run
+go build -o seed
+./seed -db-uri="$DATABASE_URL"
+```
+
+This creates:
+- 1 admin user: `admin@wellness.local` / `admin123`
+- 5 regular users: `*.@test.local` / `password123`
+- 30 days of time slots (9 AM - 8 PM, Mon-Sat)
+- 12-15 sample bookings
+
+See [`cmd/seed/README.md`](cmd/seed/README.md) for details.
+
+### Development
+
+```bash
+cd app
+go run . -db-uri="postgresql://..." -listen-addr="localhost:3000"
+```
+
+### Production
+
+```bash
+cd app
+go build -o wellness-nutrition .
+./wellness-nutrition -db-uri="$DATABASE_URL" -listen-addr=":3000"
+```
+
+### Docker
+
+```bash
+docker build -t wellness-nutrition -f Dockerfile.app .
+docker run -p 3000:3000 --env-file .env wellness-nutrition
+```
+
+## API Endpoints
+
+### Authentication
+
+- `POST /api/auth/login` - Login with email and password
+- `POST /api/auth/logout` - Logout and clear session
+
+### User (Protected)
+
+- `GET /user` - User dashboard page
+- `GET /api/user/current` - Get current user information
+- `GET /api/user/bookings` - Get user's bookings
+- `POST /api/user/bookings/create` - Create a new booking
+- `POST /api/user/bookings/delete` - Delete a booking
+- `GET /api/user/bookings/slots` - Get available time slots
+
+### Admin (Admin Only)
+
+- `GET /admin` - Admin home (redirects to calendar)
+- `GET /admin/calendar` - Admin calendar view page
+- `GET /admin/users` - User management page
+- `GET /admin/events` - Event log page
+- `GET /api/admin/users` - Get all users
+- `POST /api/admin/users/create` - Create a new user
+- `POST /api/admin/users/update` - Update a user
+- `POST /api/admin/users/delete` - Delete users
+- `GET /api/admin/bookings` - Get all bookings (with date range filtering)
+
+## Email Templates
+
+The mail system sends HTML emails with a consistent design:
+
+- **Welcome Email**: Sent when a user is created with account verification link
+- **Reset Password Email**: Sent when a user requests password reset
+- **New Booking Notification**: Sent to admin when a user creates a booking
+- **Delete Booking Notification**: Sent to admin when a user deletes a booking
+
+## Security
+
+- Passwords are hashed using Argon2id
+- Sessions use cryptographically secure random tokens
+- HTTP-only cookies prevent XSS attacks
+- Admin endpoints are protected by role-based middleware
+- SQL queries use parameterized statements to prevent SQL injection
+
+## Migration from Next.js
+
+This application replaces the Next.js stack with:
+
+- Go `net/http` server instead of Next.js
+- Go `html/template` instead of React/JSX
+- Custom authentication instead of NextAuth.js
+- Direct PostgreSQL access instead of Prisma Client
+- Native Go email instead of Nodemailer
+
+The UI maintains the same Material UI styling using CDN links, and the database schema remains unchanged.
