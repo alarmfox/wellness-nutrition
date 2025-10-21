@@ -655,7 +655,7 @@ func (h *UserHandler) VerifyAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendJSON(w, http.StatusOK, map[string]string{"message": "Account verified successfully"})
+	http.Redirect(w, r, "/signin", http.StatusSeeOther)
 }
 
 func sendJSON(w http.ResponseWriter, status int, data interface{}) {
