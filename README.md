@@ -152,8 +152,10 @@ go build -o seed
 This creates:
 - 1 admin user: `admin@wellness.local` / `admin123`
 - 5 regular users: `*.@test.local` / `password123`
-- 30 days of time slots (9 AM - 8 PM, Mon-Sat)
+- 30 days of time slots (7 AM - 9 PM UTC, Mon-Sat)
 - 12-15 sample bookings
+
+**Note**: Time slots are created in UTC. Browsers automatically display them in the user's local timezone. See [`TIMEZONE_FIX.md`](TIMEZONE_FIX.md) for details.
 
 See [`cmd/seed/README.md`](cmd/seed/README.md) for details.
 
