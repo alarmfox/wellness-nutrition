@@ -144,27 +144,33 @@
         .btn-secondary:hover {
             background-color: #616161;
         }
-        .nav-links {
+        .nav {
             display: flex;
-            gap: 15px;
+            gap: 20px;
         }
-        .nav-links a {
-            color: #1976d2;
+        .nav a {
+            color: rgba(0, 0, 0, 0.7);
             text-decoration: none;
-            font-size: 14px;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
         }
-        .nav-links a:hover {
-            text-decoration: underline;
+        .nav a:hover {
+            color: #1976d2;
+        }
+        .nav a.active {
+            color: #1976d2;
+            border-bottom-color: #1976d2;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Gestione Sondaggio</h1>
-        <div class="nav-links">
-            <a href="/admin/survey/results">Visualizza Risultati</a>
+        <h1>Wellness & Nutrition - Admin</h1>
+        <div class="nav">
             <a href="/admin/calendar">Calendario</a>
             <a href="/admin/users">Utenti</a>
+            <a href="/admin/events">Eventi</a>
+            <a href="/admin/survey/results" class="active">Sondaggio</a>
             <a href="/api/auth/logout">Esci</a>
         </div>
     </div>
