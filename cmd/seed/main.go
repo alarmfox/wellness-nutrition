@@ -41,6 +41,9 @@ func main() {
 	// Pre-create slots
 	case "slot":
 		seedSlot(db)
+	// Seed survey questions
+	case "survey":
+		seedSurvey(db)
 	default:
 		log.Fatalf("unknown command %q", *cmd)
 	}
@@ -240,4 +243,45 @@ func generateID() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)[:22]
+}
+
+func seedSurvey(db *sql.DB) {
+log.Println("Seeding survey questions...")
+
+questions := []struct {
+sku      string
+index    int
+question string
+}{
+{"q1", 1, "Come giudichi la qualità del servizio ricevuto?"},
+{"q2", 2, "Quanto sei soddisfatto/a della professionalità dello staff?"},
+{"q3", 3, "Le informazioni ricevute sono state chiare e utili?"},
+{"q4", 4, "Come valuti l'ambiente e la pulizia della struttura?"},
+{"q5", 5, "Raccomanderesti questo servizio ad amici o familiari?"},
+}
+
+for i, q := range questions {
+previous := 0
+next := 0
+
+if i > 0 {
+previous = questions[i-1].index
+}
+if i < len(questions)-1 {
+next = questions[i+1].index
+}
+
+query := `INSERT INTO questions (sku, index, next, previous, question, star1, star2, star3, star4, star5)
+  VALUES ($1, $2, $3, $4, $5, 0, 0, 0, 0, 0)
+  ON CONFLICT (sku) DO NOTHING`
+
+_, err := db.Exec(query, q.sku, q.index, next, previous, q.question)
+if err != nil {
+log.Printf("Error seeding question %s: %v", q.sku, err)
+} else {
+log.Printf("Seeded question: %s", q.question)
+}
+}
+
+log.Println("Survey seeding completed!")
 }
