@@ -97,6 +97,9 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 		return fmt.Errorf("failed to initialize mailer: %w", err)
 	}
 	defer mailer.Close()
+	
+	// Start mailer goroutine
+	go mailer.Run(ctx)
 
 	// Initialize WebSocket hub
 	hub := websocket.NewHub()
