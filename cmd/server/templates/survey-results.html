@@ -26,10 +26,53 @@
             margin: 0;
             font-weight: 500;
         }
+        .nav {
+            display: flex;
+            gap: 20px;
+        }
+        .nav a {
+            color: rgba(0, 0, 0, 0.7);
+            text-decoration: none;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+        }
+        .nav a:hover {
+            color: #1976d2;
+        }
+        .nav a.active {
+            color: #1976d2;
+            border-bottom-color: #1976d2;
+        }
         .container {
             max-width: 1200px;
             margin: 20px auto;
             padding: 0 20px;
+        }
+        .toolbar {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background-color: #1565c0;
         }
         .results-container {
             background: white;
@@ -60,6 +103,7 @@
             justify-content: center;
             margin-right: 12px;
             font-weight: 500;
+            flex-shrink: 0;
         }
         .question-text {
             font-size: 16px;
@@ -67,8 +111,8 @@
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
             margin-top: 12px;
         }
         .stat-card {
@@ -81,12 +125,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 2px;
             margin-bottom: 8px;
         }
         .star {
             color: #ffc107;
-            font-size: 20px;
+            font-size: 18px;
         }
         .star.empty {
             color: #e0e0e0;
@@ -98,6 +142,216 @@
         }
         .stat-label {
             font-size: 12px;
+            color: #757575;
+        }
+        .total-responses {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            text-align: center;
+        }
+        .total-responses strong {
+            color: #1976d2;
+            font-size: 18px;
+        }
+        .chart-container {
+            margin-top: 16px;
+            padding: 16px;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .bar-label {
+            min-width: 80px;
+            font-size: 14px;
+            color: #757575;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .bar-wrapper {
+            flex: 1;
+            background: #e0e0e0;
+            height: 28px;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1976d2, #42a5f5);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .bar-count {
+            min-width: 40px;
+            text-align: right;
+            font-weight: 500;
+            color: #333;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #757575;
+        }
+        .empty-state .material-icons {
+            font-size: 64px;
+            color: #bdbdbd;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Wellness & Nutrition - Admin</h1>
+        <div class="nav">
+            <a href="/admin/calendar">Calendario</a>
+            <a href="/admin/users">Utenti</a>
+            <a href="/admin/events">Eventi</a>
+            <a href="/admin/survey/results" class="active">Sondaggio</a>
+            <a href="/api/auth/logout">Esci</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="toolbar">
+            <h2 style="margin: 0; font-size: 18px;">Risultati Sondaggio</h2>
+            <a href="/admin/survey/questions" class="btn">
+                <span class="material-icons" style="font-size: 18px;">settings</span>
+                Gestisci Domande
+            </a>
+        </div>
+
+        <div class="results-container" id="resultsContainer">
+            <!-- Results will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadResults);
+        
+        async function loadResults() {
+            try {
+                const response = await fetch('/api/admin/survey/results');
+                if (!response.ok) throw new Error('Failed to load results');
+                const questions = await response.json();
+                renderResults(questions);
+            } catch (error) {
+                console.error('Error loading results:', error);
+                document.getElementById('resultsContainer').innerHTML = 
+                    '<div class="empty-state"><span class="material-icons">error_outline</span><p>Errore nel caricamento dei risultati</p></div>';
+            }
+        }
+        
+        function renderResults(questions) {
+            const container = document.getElementById('resultsContainer');
+            
+            if (!questions || questions.length === 0) {
+                container.innerHTML = 
+                    '<div class="empty-state"><span class="material-icons">poll</span><p>Nessun risultato disponibile.<br>Le domande del sondaggio non hanno ancora ricevuto risposte.</p></div>';
+                return;
+            }
+            
+            // Sort by index
+            questions.sort((a, b) => a.Index - b.Index);
+            
+            container.innerHTML = questions.map(q => {
+                const total = q.Star1 + q.Star2 + q.Star3 + q.Star4 + q.Star5;
+                const maxValue = Math.max(q.Star1, q.Star2, q.Star3, q.Star4, q.Star5, 1);
+                
+                return `
+                    <div class="result-item">
+                        <div class="question-header">
+                            <div class="question-number">${q.Index}</div>
+                            <div class="question-text">${q.Question}</div>
+                        </div>
+                        
+                        <div class="total-responses">
+                            <strong>${total}</strong> ${total === 1 ? 'risposta ricevuta' : 'risposte ricevute'}
+                        </div>
+                        
+                        <div class="chart-container">
+                            <div class="bar-chart">
+                                ${renderBar(5, q.Star5, maxValue)}
+                                ${renderBar(4, q.Star4, maxValue)}
+                                ${renderBar(3, q.Star3, maxValue)}
+                                ${renderBar(2, q.Star2, maxValue)}
+                                ${renderBar(1, q.Star1, maxValue)}
+                            </div>
+                        </div>
+                        
+                        <div class="stats-grid">
+                            ${renderStatCard(1, q.Star1)}
+                            ${renderStatCard(2, q.Star2)}
+                            ${renderStatCard(3, q.Star3)}
+                            ${renderStatCard(4, q.Star4)}
+                            ${renderStatCard(5, q.Star5)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function renderBar(stars, count, maxValue) {
+            const percentage = maxValue > 0 ? (count / maxValue * 100) : 0;
+            return `
+                <div class="bar-row">
+                    <div class="bar-label">
+                        ${renderStars(stars, 16)}
+                    </div>
+                    <div class="bar-wrapper">
+                        <div class="bar-fill" style="width: ${percentage}%">
+                            ${count > 0 && percentage > 15 ? count : ''}
+                        </div>
+                    </div>
+                    <div class="bar-count">${count}</div>
+                </div>
+            `;
+        }
+        
+        function renderStatCard(stars, count) {
+            return `
+                <div class="stat-card">
+                    <div class="star-rating">
+                        ${renderStars(stars, 18)}
+                    </div>
+                    <div class="stat-count">${count}</div>
+                    <div class="stat-label">${count === 1 ? 'voto' : 'voti'}</div>
+                </div>
+            `;
+        }
+        
+        function renderStars(count, size) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                stars += `<span class="material-icons star${i > count ? ' empty' : ''}" style="font-size: ${size}px;">star</span>`;
+            }
+            return stars;
+        }
+    </script>
+</body>
+</html>
             color: #757575;
         }
         .total-responses {
