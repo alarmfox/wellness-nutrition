@@ -160,6 +160,12 @@
         .legend-box.shared {
             background-color: #7b1fa2;
         }
+        .legend-box.massage {
+            background-color: #ff9800;
+        }
+        .legend-box.appointment {
+            background-color: #4caf50;
+        }
         .week-view {
             display: grid;
             grid-template-columns: 80px repeat(6, 1fr);
@@ -466,6 +472,14 @@
                     <div class="legend-box shared"></div>
                     <span>Abbonamento Condiviso</span>
                 </div>
+                <div class="legend-item">
+                    <div class="legend-box massage"></div>
+                    <span>Massaggio</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box appointment"></div>
+                    <span>Appuntamento</span>
+                </div>
             </div>
         </div>
     </div>
@@ -536,19 +550,23 @@
             </div>
             <div class="modal-body">
                 <div id="actionSelection">
-                    <div class="action-card" onclick="showMarkUnavailable()">
+                    <div id="actionUnreserve" class="action-card" style="display: none;" onclick="showUnreserveSlot()">
+                        <h3>🔓 Rilascia Slot</h3>
+                        <p>Rendi questo slot nuovamente disponibile per le prenotazioni</p>
+                    </div>
+                    <div id="actionUnavailable" class="action-card" onclick="showMarkUnavailable()">
                         <h3>🚫 Segna come Non Disponibile</h3>
                         <p>Gli utenti non potranno prenotare questo slot</p>
                     </div>
-                    <div class="action-card" onclick="showReserveMassage()">
+                    <div id="actionMassage" class="action-card" onclick="showReserveMassage()">
                         <h3>💆 Riserva per Massaggio</h3>
                         <p>Riserva questo slot per un massaggio (gli utenti non potranno prenotare)</p>
                     </div>
-                    <div class="action-card" onclick="showReserveAppointment()">
+                    <div id="actionAppointment" class="action-card" onclick="showReserveAppointment()">
                         <h3>📅 Riserva per Appuntamento</h3>
                         <p>Riserva questo slot per un appuntamento (gli utenti non potranno prenotare)</p>
                     </div>
-                    <div class="action-card" onclick="showCreateBooking()">
+                    <div id="actionCreateBooking" class="action-card" onclick="showCreateBooking()">
                         <h3>➕ Crea Prenotazione</h3>
                         <p>Crea una prenotazione per un utente specifico</p>
                     </div>
@@ -594,6 +612,7 @@
         let users = [];
         let selectedSlot = null;
         let currentAction = null;
+        let selectedSlotState = null; // Track the state of the selected slot
         
         function showLoading(text = 'Caricamento...') {
             const overlay = document.getElementById('loading-overlay');
@@ -837,18 +856,15 @@
             if (slotState === 'UNAVAILABLE') {
                 // Open enable slot modal
                 selectedSlot = slotTime;
+                selectedSlotState = slotState;
                 openEnableSlotModal();
                 return;
             }
             
-            if (slotState === 'MASSAGE' || slotState === 'APPOINTMENT') {
-                // Open unreserve slot modal
-                selectedSlot = slotTime;
-                openUnreserveSlotModal();
-                return;
-            }
-            
+            // For all other states (FREE, MASSAGE, APPOINTMENT), show the full slot management modal
+            // This allows admin to create bookings even on MASSAGE/APPOINTMENT slots
             selectedSlot = slotTime;
+            selectedSlotState = slotState;
             openSlotModal();
         }
         
@@ -881,11 +897,32 @@
             document.getElementById('confirmBtn').style.display = 'none';
             document.getElementById('modalTitle').textContent = 'Gestione Slot';
             currentAction = null;
+            
+            // Show/hide actions based on current slot state
+            if (selectedSlotState === 'MASSAGE' || selectedSlotState === 'APPOINTMENT') {
+                // For reserved slots, show unreserve and create booking options
+                document.getElementById('actionUnreserve').style.display = 'block';
+                document.getElementById('actionUnavailable').style.display = 'none';
+                document.getElementById('actionMassage').style.display = 'none';
+                document.getElementById('actionAppointment').style.display = 'none';
+                document.getElementById('actionCreateBooking').style.display = 'block';
+            } else {
+                // For FREE slots, show all reservation options
+                document.getElementById('actionUnreserve').style.display = 'none';
+                document.getElementById('actionUnavailable').style.display = 'block';
+                document.getElementById('actionMassage').style.display = 'block';
+                document.getElementById('actionAppointment').style.display = 'block';
+                document.getElementById('actionCreateBooking').style.display = 'block';
+            }
         }
         
         function closeSlotModal() {
             document.getElementById('slotModal').style.display = 'none';
+            // Clean up any dynamic content
+            const confirmDiv = document.getElementById('unreserveConfirm');
+            if (confirmDiv) confirmDiv.remove();
             selectedSlot = null;
+            selectedSlotState = null;
             currentAction = null;
         }
         
@@ -1054,6 +1091,36 @@
             document.getElementById('slotInfoReserveAppointment').textContent = `Slot: ${formatted}`;
         }
         
+        function showUnreserveSlot() {
+            currentAction = 'unreserve';
+            document.getElementById('actionSelection').style.display = 'none';
+            document.getElementById('unavailableForm').style.display = 'none';
+            document.getElementById('reserveMassageForm').style.display = 'none';
+            document.getElementById('reserveAppointmentForm').style.display = 'none';
+            document.getElementById('bookingForm').style.display = 'none';
+            document.getElementById('confirmBtn').style.display = 'block';
+            document.getElementById('modalTitle').textContent = 'Rilascia Slot';
+            
+            // Show confirmation message based on current state
+            const stateLabel = selectedSlotState === 'MASSAGE' ? 'massaggio' : 'appuntamento';
+            const confirmDiv = document.createElement('div');
+            confirmDiv.id = 'unreserveConfirm';
+            confirmDiv.innerHTML = `
+                <p style="margin-bottom: 16px; color: #666;">Slot riservato per: ${stateLabel}</p>
+                <p>Sei sicuro di voler rendere questo slot nuovamente disponibile per le prenotazioni?</p>
+            `;
+            
+            // Remove any existing unreserve confirm div
+            const existing = document.getElementById('unreserveConfirm');
+            if (existing) {
+                existing.remove();
+            }
+            
+            // Insert into modal body
+            const modalBody = document.querySelector('#slotModal .modal-body');
+            modalBody.appendChild(confirmDiv);
+        }
+        
         async function showCreateBooking() {
             currentAction = 'booking';
             document.getElementById('actionSelection').style.display = 'none';
@@ -1100,6 +1167,8 @@
                 await reserveSlot('MASSAGE');
             } else if (currentAction === 'reserve-appointment') {
                 await reserveSlot('APPOINTMENT');
+            } else if (currentAction === 'unreserve') {
+                await confirmUnreserveSlotFromModal();
             } else if (currentAction === 'booking') {
                 await createAdminBooking();
             }
@@ -1254,6 +1323,44 @@
                 } else {
                     showToast('Slot rilasciato con successo', true);
                     closeUnreserveSlotModal();
+                    loadBookings(); // Reload calendar
+                }
+            } catch (error) {
+                hideLoading();
+                showToast('Errore durante l\'operazione', false);
+                console.error(error);
+            }
+        }
+        
+        async function confirmUnreserveSlotFromModal() {
+            if (!selectedSlot) {
+                showToast('Errore: slot non selezionato', false);
+                return;
+            }
+            
+            showLoading('Rilascio slot...');
+            try {
+                const response = await fetch('/api/admin/slots/unreserve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        startsAt: selectedSlot
+                    })
+                });
+                
+                const data = await response.json();
+                hideLoading();
+                
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    showToast('Slot rilasciato con successo', true);
+                    // Remove the unreserve confirm div
+                    const confirmDiv = document.getElementById('unreserveConfirm');
+                    if (confirmDiv) confirmDiv.remove();
+                    closeSlotModal();
                     loadBookings(); // Reload calendar
                 }
             } catch (error) {
