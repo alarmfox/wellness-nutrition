@@ -83,24 +83,3 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_id VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL
 );
-
--- Questions table for survey
-CREATE TABLE IF NOT EXISTS questions (
-    id SERIAL PRIMARY KEY,
-    sku VARCHAR(255) UNIQUE NOT NULL,
-    index INTEGER NOT NULL,
-    next INTEGER NOT NULL,
-    previous INTEGER NOT NULL,
-    question TEXT NOT NULL,
-    star1 INTEGER NOT NULL DEFAULT 0, 
-    star2 INTEGER NOT NULL DEFAULT 0, 
-    star3 INTEGER NOT NULL DEFAULT 0, 
-    star4 INTEGER NOT NULL DEFAULT 0, 
-    star5 INTEGER NOT NULL DEFAULT 0
-);
-
--- Index on sku for faster lookups
-CREATE INDEX IF NOT EXISTS idx_questions_sku ON questions(sku);
-
--- Index on index for ordering
-CREATE INDEX IF NOT EXISTS idx_questions_index ON questions(index);
