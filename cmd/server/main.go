@@ -139,8 +139,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// User routes - /user prefix
 	authMiddleware := middleware.Auth(sessionStore, userRepo)
-	mux.Handle("/user", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo))))
-	mux.Handle("/user/", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo))))
+	mux.Handle("/user", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo, instructorRepo))))
+	mux.Handle("/user/", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo, instructorRepo))))
 	mux.Handle("/api/user/current", authMiddleware(http.HandlerFunc(userHandler.GetCurrent)))
 	mux.Handle("/api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent)))
 	mux.Handle("/api/user/bookings/create", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
@@ -244,7 +244,7 @@ func serveRoot() http.HandlerFunc {
 	}
 }
 
-func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc {
+func serveUserDashboard(bookingRepo *models.BookingRepository, instructorRepo *models.InstructorRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -272,19 +272,32 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 
 		// Format dates for display
 		type BookingDisplay struct {
-			ID                int64
-			StartsAt          string
-			StartsAtFormatted string
-			CreatedAt         string
+			ID                 int64
+			StartsAt           string
+			StartsAtFormatted  string
+			CreatedAt          string
+			InstructorName     string
 		}
 
 		var displayBookings []BookingDisplay
 		for _, b := range bookings {
+			instructorName := ""
+			if b.InstructorID.Valid {
+				instructor, err := instructorRepo.GetByID(b.InstructorID.String)
+				if err == nil {
+					instructorName = instructor.FirstName
+					if instructor.LastName.Valid {
+						instructorName += " " + instructor.LastName.String
+					}
+				}
+			}
+			
 			displayBookings = append(displayBookings, BookingDisplay{
 				ID:                b.ID,
 				StartsAt:          b.StartsAt.Format(time.RFC3339),
 				StartsAtFormatted: b.StartsAt.Format("02 Jan 2006, 15:04"),
 				CreatedAt:         b.CreatedAt.Format(time.RFC3339),
+				InstructorName:    instructorName,
 			})
 		}
 
