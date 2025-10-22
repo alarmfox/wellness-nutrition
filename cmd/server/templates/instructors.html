@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Istruttori - Wellness & Nutrition</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: white;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0;
+            font-weight: 500;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .toolbar {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #1565c0;
+        }
+        .btn-danger {
+            background-color: #d32f2f;
+        }
+        .btn-danger:hover {
+            background-color: #c62828;
+        }
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background-color: #f5f5f5;
+            padding: 16px;
+            text-align: left;
+            font-weight: 500;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .nav {
+            display: flex;
+            gap: 20px;
+        }
+        .nav a {
+            color: rgba(0, 0, 0, 0.7);
+            text-decoration: none;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+        }
+        .nav a:hover {
+            color: #1976d2;
+        }
+        .nav a.active {
+            color: #1976d2;
+            border-bottom-color: #1976d2;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 50px auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 500;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .close {
+            cursor: pointer;
+            font-size: 28px;
+            font-weight: bold;
+            color: #666;
+        }
+        .close:hover {
+            color: #000;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .btn-outline {
+            background-color: white;
+            color: #1976d2;
+            border: 1px solid #1976d2;
+        }
+        .btn-outline:hover {
+            background-color: #f5f5f5;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #d32f2f;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 2000;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success {
+            background-color: #388e3c;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            color: #666;
+            font-size: 18px;
+        }
+        .btn-icon:hover {
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Wellness & Nutrition</h1>
+        <div class="nav">
+            <a href="/admin/calendar">Calendario</a>
+            <a href="/admin/users">Utenti</a>
+            <a href="/admin/instructors" class="active">Istruttori</a>
+            <a href="/admin/events">Eventi</a>
+            <a href="/api/auth/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="toolbar">
+            <h2 style="margin: 0; font-size: 18px;">Gestione Istruttori</h2>
+            <button class="btn" onclick="openCreateModal()">
+                <span class="material-icons" style="font-size: 18px;">add</span>
+                Nuovo Istruttore
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Cognome</th>
+                        <th>Email</th>
+                        <th>Data Creazione</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="instructors-table-body">
+                    {{range .Instructors}}
+                    <tr data-id="{{.ID}}">
+                        <td>{{.FirstName}}</td>
+                        <td>{{.LastName}}</td>
+                        <td>{{.Email}}</td>
+                        <td>{{.CreatedAt}}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-icon" onclick="openEditModal('{{.ID}}', '{{.FirstName}}', '{{.LastName}}', '{{.Email}}')" title="Modifica">
+                                    <span class="material-icons">edit</span>
+                                </button>
+                                <button class="btn-icon" onclick="deleteInstructor('{{.ID}}')" title="Elimina">
+                                    <span class="material-icons">delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuovo Istruttore</h2>
+                <span class="close" onclick="closeCreateModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="form-group">
+                        <label for="create-firstName">Nome *</label>
+                        <input type="text" id="create-firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="create-lastName">Cognome *</label>
+                        <input type="text" id="create-lastName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="create-email">Email *</label>
+                        <input type="email" id="create-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="create-password">Password (opzionale)</label>
+                        <input type="password" id="create-password">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeCreateModal()">Annulla</button>
+                <button class="btn" onclick="createInstructor()">Crea</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Modifica Istruttore</h2>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="edit-id">
+                    <div class="form-group">
+                        <label for="edit-firstName">Nome *</label>
+                        <input type="text" id="edit-firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-lastName">Cognome *</label>
+                        <input type="text" id="edit-lastName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-email">Email *</label>
+                        <input type="email" id="edit-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-password">Nuova Password (lascia vuoto per non modificare)</label>
+                        <input type="password" id="edit-password">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeEditModal()">Annulla</button>
+                <button class="btn" onclick="updateInstructor()">Salva</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        function openCreateModal() {
+            document.getElementById('createModal').style.display = 'block';
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').style.display = 'none';
+            document.getElementById('createForm').reset();
+        }
+
+        function openEditModal(id, firstName, lastName, email) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-firstName').value = firstName;
+            document.getElementById('edit-lastName').value = lastName;
+            document.getElementById('edit-email').value = email;
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editForm').reset();
+        }
+
+        function showToast(message, success = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (success ? ' success' : '');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        async function createInstructor() {
+            const firstName = document.getElementById('create-firstName').value;
+            const lastName = document.getElementById('create-lastName').value;
+            const email = document.getElementById('create-email').value;
+            const password = document.getElementById('create-password').value;
+
+            if (!firstName || !lastName || !email) {
+                showToast('Compila tutti i campi obbligatori');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/instructors/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        firstName,
+                        lastName,
+                        email,
+                        password,
+                    }),
+                });
+
+                if (response.ok) {
+                    showToast('Istruttore creato con successo', true);
+                    closeCreateModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Errore durante la creazione');
+                }
+            } catch (error) {
+                showToast('Errore di connessione');
+                console.error('Error:', error);
+            }
+        }
+
+        async function updateInstructor() {
+            const id = document.getElementById('edit-id').value;
+            const firstName = document.getElementById('edit-firstName').value;
+            const lastName = document.getElementById('edit-lastName').value;
+            const email = document.getElementById('edit-email').value;
+            const password = document.getElementById('edit-password').value;
+
+            if (!firstName || !lastName || !email) {
+                showToast('Compila tutti i campi obbligatori');
+                return;
+            }
+
+            try {
+                const body = {
+                    id,
+                    firstName,
+                    lastName,
+                    email,
+                };
+                
+                if (password) {
+                    body.password = password;
+                }
+
+                const response = await fetch('/api/admin/instructors/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                if (response.ok) {
+                    showToast('Istruttore aggiornato con successo', true);
+                    closeEditModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Errore durante l\'aggiornamento');
+                }
+            } catch (error) {
+                showToast('Errore di connessione');
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteInstructor(id) {
+            if (!confirm('Sei sicuro di voler eliminare questo istruttore?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/instructors/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id }),
+                });
+
+                if (response.ok) {
+                    showToast('Istruttore eliminato con successo', true);
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Errore durante l\'eliminazione');
+                }
+            } catch (error) {
+                showToast('Errore di connessione');
+                console.error('Error:', error);
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const createModal = document.getElementById('createModal');
+            const editModal = document.getElementById('editModal');
+            if (event.target == createModal) {
+                closeCreateModal();
+            } else if (event.target == editModal) {
+                closeEditModal();
+            }
+        }
+    </script>
+</body>
+</html>

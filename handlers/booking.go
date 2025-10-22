@@ -816,8 +816,9 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 	}
 
 	var req struct {
-		UserID   string `json:"userId"`
-		StartsAt string `json:"startsAt"`
+		UserID       string `json:"userId"`
+		StartsAt     string `json:"startsAt"`
+		InstructorID string `json:"instructorId"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -825,8 +826,8 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if req.UserID == "" || req.StartsAt == "" {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "userId and startsAt are required"})
+	if req.UserID == "" || req.StartsAt == "" || req.InstructorID == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "userId, startsAt and instructorId are required"})
 		return
 	}
 
@@ -875,17 +876,69 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 	// Note: The original code used slot.Capacity but our Slot struct doesn't have it
 	// We'll check against people_count which tracks current bookings
 
+	// Verify instructor exists
+	_, err = h.instructorRepo.GetByID(req.InstructorID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid instructor"})
+			return
+		}
+		log.Printf("Error getting instructor: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+
+	// Check instructor slot capacity (max 2 people per instructor per slot)
+	instructorSlot, err := h.instructorSlotRepo.GetByInstructorAndTime(req.InstructorID, startsAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Create instructor slot
+			instructorSlot = &models.InstructorSlot{
+				InstructorID: req.InstructorID,
+				StartsAt:     startsAt,
+				PeopleCount:  0,
+				MaxCapacity:  2,
+			}
+			if err := h.instructorSlotRepo.Create(instructorSlot); err != nil {
+				log.Printf("Error creating instructor slot: %v", err)
+				sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+				return
+			}
+		} else {
+			log.Printf("Error getting instructor slot: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
+	}
+
+	// Check if instructor slot is full
+	if instructorSlot.PeopleCount >= instructorSlot.MaxCapacity {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "This instructor's slot is full"})
+		return
+	}
+
 	// Create booking
 	booking := &models.Booking{
-		UserID:    user.ID,
-		StartsAt:  startsAt,
-		CreatedAt: time.Now(),
+		UserID:       user.ID,
+		InstructorID: sql.NullString{String: req.InstructorID, Valid: true},
+		StartsAt:     startsAt,
+		CreatedAt:    time.Now(),
 	}
 
 	if err := h.bookingRepo.Create(booking); err != nil {
 		log.Printf("Error creating booking: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
+	}
+
+	// Update slot people count
+	if err := h.slotRepo.IncrementPeopleCount(startsAt); err != nil {
+		log.Printf("Error updating slot: %v", err)
+	}
+
+	// Update instructor slot people count
+	if err := h.instructorSlotRepo.IncrementPeopleCount(req.InstructorID, startsAt); err != nil {
+		log.Printf("Error updating instructor slot: %v", err)
 	}
 
 	// Update user's remaining accesses
