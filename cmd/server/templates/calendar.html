@@ -892,15 +892,19 @@
                     html += `<div class="${slotClass}" onclick="handleSlotClick('${date.toISOString()}', '${slotState}')">`;
                     if (isDisabled) {
                         html += '<div class="disabled-text">Non disponibile</div>';
-                    } else if (isMassage && slotBookings.length === 0) {
+                    } else if (isMassage) {
                         html += '<div class="reserved-text">Massaggio</div>';
-                    } else if (isAppointment && slotBookings.length === 0) {
+                    } else if (isAppointment) {
                         html += '<div class="reserved-text">Appuntamento</div>';
                     }
                     slotBookings.forEach(booking => {
                         const cssClass = booking.User.SubType === 'SHARED' ? 'booking shared' : 'booking';
-                        html += `<div class="${cssClass}" title="${booking.User.FirstName} ${booking.User.LastName}" onclick="event.stopPropagation(); handleBookingClick('${booking.ID}', '${booking.User.FirstName}', '${booking.User.LastName}', '${date.toISOString()}')">
-                            ${booking.User.LastName} ${booking.User.FirstName.substring(0, 1)}.
+                        // Get instructor name if available
+                        const instructorName = booking.Instructor ? `${booking.Instructor.FirstName} ${booking.Instructor.LastName || ''}`.trim() : '';
+                        const displayName = instructorName ? `${instructorName} - ${booking.User.LastName} ${booking.User.FirstName.substring(0, 1)}.` : `${booking.User.LastName} ${booking.User.FirstName.substring(0, 1)}.`;
+                        const title = instructorName ? `${instructorName} - ${booking.User.FirstName} ${booking.User.LastName}` : `${booking.User.FirstName} ${booking.User.LastName}`;
+                        html += `<div class="${cssClass}" title="${title}" onclick="event.stopPropagation(); handleBookingClick('${booking.ID}', '${booking.User.FirstName}', '${booking.User.LastName}', '${date.toISOString()}')">
+                            ${displayName}
                         </div>`;
                     });
                     html += '</div>';
