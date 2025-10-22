@@ -1,7 +1,2 @@
 .env
 server
-cmd/server/server
-cmd/cleanup/cleanup
-cmd/seed/seed
-cmd/migrations/migrations
-
