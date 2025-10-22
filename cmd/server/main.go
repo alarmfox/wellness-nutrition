@@ -262,17 +262,19 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 
 		// Format dates for display
 		type BookingDisplay struct {
-			ID        int64
-			StartsAt  string
-			CreatedAt string
+			ID                int64
+			StartsAt          string
+			StartsAtFormatted string
+			CreatedAt         string
 		}
 
 		var displayBookings []BookingDisplay
 		for _, b := range bookings {
 			displayBookings = append(displayBookings, BookingDisplay{
-				ID:        b.ID,
-				StartsAt:  b.StartsAt.Format(time.RFC3339),
-				CreatedAt: b.CreatedAt.Format(time.RFC3339),
+				ID:                b.ID,
+				StartsAt:          b.StartsAt.Format(time.RFC3339),
+				StartsAtFormatted: b.StartsAt.Format("02 Jan 2006, 15:04"),
+				CreatedAt:         b.CreatedAt.Format(time.RFC3339),
 			})
 		}
 
