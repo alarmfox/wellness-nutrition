@@ -583,21 +583,45 @@
                 
                 <div id="unavailableForm" style="display: none;">
                     <p id="slotInfo" style="margin-bottom: 16px; color: #666;"></p>
-                    <p>Sei sicuro di voler segnare questo slot come non disponibile?</p>
+                    <div class="form-group">
+                        <label>Seleziona Istruttore *</label>
+                        <select id="unavailableInstructorId" required>
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
+                    <p style="margin-top: 12px;">Sei sicuro di voler segnare questo slot come non disponibile?</p>
                 </div>
                 
                 <div id="reserveMassageForm" style="display: none;">
                     <p id="slotInfoReserveMassage" style="margin-bottom: 16px; color: #666;"></p>
-                    <p>Sei sicuro di voler riservare questo slot per un massaggio? Gli utenti non potranno prenotarlo.</p>
+                    <div class="form-group">
+                        <label>Seleziona Istruttore *</label>
+                        <select id="massageInstructorId" required>
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
+                    <p style="margin-top: 12px;">Sei sicuro di voler riservare questo slot per un massaggio? Gli utenti non potranno prenotarlo.</p>
                 </div>
                 
                 <div id="reserveAppointmentForm" style="display: none;">
                     <p id="slotInfoReserveAppointment" style="margin-bottom: 16px; color: #666;"></p>
-                    <p>Sei sicuro di voler riservare questo slot per un appuntamento? Gli utenti non potranno prenotarlo.</p>
+                    <div class="form-group">
+                        <label>Seleziona Istruttore *</label>
+                        <select id="appointmentInstructorId" required>
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
+                    <p style="margin-top: 12px;">Sei sicuro di voler riservare questo slot per un appuntamento? Gli utenti non potranno prenotarlo.</p>
                 </div>
                 
                 <div id="bookingForm" style="display: none;">
                     <p id="slotInfoBooking" style="margin-bottom: 16px; color: #666;"></p>
+                    <div class="form-group">
+                        <label>Seleziona Istruttore *</label>
+                        <select id="bookingInstructorId" required>
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Seleziona Utente *</label>
                         <select id="bookingUserId" required>
@@ -714,6 +738,27 @@
             const select = document.getElementById('instructorFilter');
             selectedInstructorId = select.value;
             loadBookings();
+        }
+        
+        function populateInstructorDropdown(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            
+            select.innerHTML = '<option value="all">Tutti</option>';
+            instructors.forEach(instructor => {
+                const option = document.createElement('option');
+                option.value = instructor.ID;
+                const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
+                option.textContent = `${instructor.FirstName}${lastName}`;
+                select.appendChild(option);
+            });
+            
+            // Set default to current filter or "all"
+            if (selectedInstructorId) {
+                select.value = selectedInstructorId;
+            } else {
+                select.value = 'all';
+            }
         }
         
         function renderCalendar() {
@@ -1088,6 +1133,9 @@
                 minute: '2-digit'
             });
             document.getElementById('slotInfo').textContent = `Slot: ${formatted}`;
+            
+            // Populate instructor dropdown
+            populateInstructorDropdown('unavailableInstructorId');
         }
         
         function showReserveMassage() {
@@ -1110,6 +1158,9 @@
                 minute: '2-digit'
             });
             document.getElementById('slotInfoReserveMassage').textContent = `Slot: ${formatted}`;
+            
+            // Populate instructor dropdown
+            populateInstructorDropdown('massageInstructorId');
         }
         
         function showReserveAppointment() {
@@ -1132,6 +1183,9 @@
                 minute: '2-digit'
             });
             document.getElementById('slotInfoReserveAppointment').textContent = `Slot: ${formatted}`;
+            
+            // Populate instructor dropdown
+            populateInstructorDropdown('appointmentInstructorId');
         }
         
         function showUnreserveSlot() {
@@ -1185,6 +1239,9 @@
             });
             document.getElementById('slotInfoBooking').textContent = `Slot: ${formatted}`;
             
+            // Populate instructor dropdown
+            populateInstructorDropdown('bookingInstructorId');
+            
             // Load users if not already loaded
             if (users.length === 0) {
                 await loadUsers();
@@ -1218,6 +1275,12 @@
         }
         
         async function markSlotUnavailable() {
+            const instructorId = document.getElementById('unavailableInstructorId').value;
+            if (!instructorId) {
+                showToast('Seleziona un istruttore', false);
+                return;
+            }
+            
             showLoading('Disabilitazione slot...');
             try {
                 const response = await fetch('/api/admin/slots/disable', {
@@ -1226,7 +1289,8 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        startsAt: selectedSlot
+                        startsAt: selectedSlot,
+                        instructorId: instructorId === 'all' ? null : instructorId
                     })
                 });
                 
@@ -1244,7 +1308,7 @@
                         closeSlotModal();
                     }
                 } else {
-                    showToast('Slot segnato come non disponibile', true);
+                    showToast(instructorId === 'all' ? 'Slot segnato come non disponibile per tutti gli istruttori' : 'Slot segnato come non disponibile', true);
                     closeSlotModal();
                     loadBookings(); // Reload calendar
                 }
@@ -1256,6 +1320,8 @@
         }
         
         async function markSlotUnavailableConfirm() {
+            const instructorId = document.getElementById('unavailableInstructorId').value;
+            
             showLoading('Eliminazione prenotazioni...');
             try {
                 const response = await fetch('/api/admin/slots/disable-confirm', {
@@ -1265,7 +1331,8 @@
                     },
                     body: JSON.stringify({
                         startsAt: selectedSlot,
-                        confirmed: true
+                        confirmed: true,
+                        instructorId: instructorId === 'all' ? null : instructorId
                     })
                 });
                 
@@ -1287,6 +1354,13 @@
         }
         
         async function reserveSlot(reservationType) {
+            const selectId = reservationType === 'MASSAGE' ? 'massageInstructorId' : 'appointmentInstructorId';
+            const instructorId = document.getElementById(selectId).value;
+            if (!instructorId) {
+                showToast('Seleziona un istruttore', false);
+                return;
+            }
+            
             showLoading('Prenotazione slot...');
             try {
                 const response = await fetch('/api/admin/slots/reserve', {
@@ -1296,7 +1370,8 @@
                     },
                     body: JSON.stringify({
                         startsAt: selectedSlot,
-                        reservationType: reservationType
+                        reservationType: reservationType,
+                        instructorId: instructorId === 'all' ? null : instructorId
                     })
                 });
                 
@@ -1310,7 +1385,7 @@
                     showToast(`Questo slot ha ${data.bookingCount} prenotazioni. Eliminale prima.`, false);
                     closeSlotModal();
                 } else {
-                    showToast('Slot riservato con successo', true);
+                    showToast(instructorId === 'all' ? 'Slot riservato per tutti gli istruttori' : 'Slot riservato con successo', true);
                     closeSlotModal();
                     loadBookings(); // Reload calendar
                 }
@@ -1415,9 +1490,20 @@
         
         async function createAdminBooking() {
             const userId = document.getElementById('bookingUserId').value;
+            const instructorId = document.getElementById('bookingInstructorId').value;
             
             if (!userId) {
                 showToast('Seleziona un utente', false);
+                return;
+            }
+            
+            if (!instructorId) {
+                showToast('Seleziona un istruttore', false);
+                return;
+            }
+            
+            if (instructorId === 'all') {
+                showToast('Seleziona un istruttore specifico (non "Tutti")', false);
                 return;
             }
             
@@ -1430,7 +1516,8 @@
                     },
                     body: JSON.stringify({
                         userId: userId,
-                        startsAt: selectedSlot
+                        startsAt: selectedSlot,
+                        instructorId: instructorId
                     })
                 });
                 
