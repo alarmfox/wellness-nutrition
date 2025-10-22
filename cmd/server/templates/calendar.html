@@ -412,22 +412,30 @@
         <div class="calendar-container">
             <div class="calendar-header">
                 <h2 id="currentMonth" style="margin: 0; font-size: 24px; font-weight: 400;"></h2>
-                <div class="calendar-nav">
-                    <button class="btn btn-secondary" onclick="changeView('week')">
-                        <span class="material-icons" style="font-size: 18px;">view_week</span>
-                        Settimana
-                    </button>
-                    <button class="btn btn-secondary" onclick="changeView('month')" style="display: none;">
-                        <span class="material-icons" style="font-size: 18px;">calendar_month</span>
-                        Mese
-                    </button>
-                    <button class="btn" onclick="previousPeriod()">
-                        <span class="material-icons" style="font-size: 18px;">chevron_left</span>
-                    </button>
-                    <button class="btn" onclick="today()">Oggi</button>
-                    <button class="btn" onclick="nextPeriod()">
-                        <span class="material-icons" style="font-size: 18px;">chevron_right</span>
-                    </button>
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="instructorFilter" style="font-size: 14px; font-weight: 500;">Istruttore:</label>
+                        <select id="instructorFilter" onchange="onInstructorFilterChange()" style="padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-family: 'Roboto', sans-serif;">
+                            <option value="">Tutti</option>
+                        </select>
+                    </div>
+                    <div class="calendar-nav">
+                        <button class="btn btn-secondary" onclick="changeView('week')">
+                            <span class="material-icons" style="font-size: 18px;">view_week</span>
+                            Settimana
+                        </button>
+                        <button class="btn btn-secondary" onclick="changeView('month')" style="display: none;">
+                            <span class="material-icons" style="font-size: 18px;">calendar_month</span>
+                            Mese
+                        </button>
+                        <button class="btn" onclick="previousPeriod()">
+                            <span class="material-icons" style="font-size: 18px;">chevron_left</span>
+                        </button>
+                        <button class="btn" onclick="today()">Oggi</button>
+                        <button class="btn" onclick="nextPeriod()">
+                            <span class="material-icons" style="font-size: 18px;">chevron_right</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -532,6 +540,8 @@
         let bookings = [];
         let slots = [];
         let users = [];
+        let instructors = [];
+        let selectedInstructorId = '';
         let selectedSlot = null;
         let currentAction = null;
         
@@ -568,9 +578,15 @@
             }
             
             try {
+                // Build URL with instructor filter if selected
+                let bookingsUrl = `/api/admin/bookings?from=${from.toISOString()}&to=${to.toISOString()}`;
+                if (selectedInstructorId) {
+                    bookingsUrl += `&instructorId=${selectedInstructorId}`;
+                }
+                
                 // Load both bookings and slots
                 const [bookingsResponse, slotsResponse] = await Promise.all([
-                    fetch(`/api/admin/bookings?from=${from.toISOString()}&to=${to.toISOString()}`),
+                    fetch(bookingsUrl),
                     fetch(`/api/admin/slots?from=${from.toISOString()}&to=${to.toISOString()}`)
                 ]);
                 
@@ -592,6 +608,32 @@
             } catch (error) {
                 console.error('Error loading users:', error);
             }
+        }
+        
+        async function loadInstructors() {
+            try {
+                const response = await fetch('/api/admin/instructors');
+                const data = await response.json();
+                instructors = data || [];
+                
+                // Populate instructor filter dropdown
+                const select = document.getElementById('instructorFilter');
+                select.innerHTML = '<option value="">Tutti</option>';
+                instructors.forEach(instructor => {
+                    const option = document.createElement('option');
+                    option.value = instructor.ID;
+                    option.textContent = `${instructor.FirstName} ${instructor.LastName}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading instructors:', error);
+            }
+        }
+        
+        function onInstructorFilterChange() {
+            const select = document.getElementById('instructorFilter');
+            selectedInstructorId = select.value;
+            loadBookings();
         }
         
         function renderCalendar() {
@@ -1160,6 +1202,7 @@
         // Initial load
         loadBookings();
         loadUsers();
+        loadInstructors();
     </script>
 </body>
 </html>

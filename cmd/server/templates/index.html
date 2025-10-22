@@ -408,6 +408,52 @@
         }
         
         function createBooking(startsAt) {
+            // First, load instructors and show selection
+            showLoading('Caricamento istruttori...');
+            
+            fetch('/api/admin/instructors')
+                .then(response => response.json())
+                .then(instructors => {
+                    hideLoading();
+                    
+                    if (!instructors || instructors.length === 0) {
+                        showToast('Nessun istruttore disponibile');
+                        return;
+                    }
+                    
+                    // If only one instructor, select it automatically
+                    if (instructors.length === 1) {
+                        confirmBooking(startsAt, instructors[0].ID);
+                        return;
+                    }
+                    
+                    // Show instructor selection
+                    let instructorHtml = '<h1>Seleziona Istruttore</h1>';
+                    instructorHtml += '<div style="margin-bottom: 16px; color: rgba(0,0,0,0.6);">Scegli un istruttore per la prenotazione</div>';
+                    
+                    instructors.forEach(instructor => {
+                        instructorHtml += `
+                            <div class="list-item" style="cursor: pointer;" onclick="confirmBooking('${startsAt}', '${instructor.ID}')">
+                                <span class="material-icons list-icon" style="color: #1976d2;">person</span>
+                                <div class="list-text">
+                                    <div class="list-primary">${instructor.FirstName} ${instructor.LastName}</div>
+                                    <div class="list-secondary">${instructor.Email}</div>
+                                </div>
+                                <span class="material-icons list-icon">arrow_forward</span>
+                            </div>
+                        `;
+                    });
+                    
+                    document.getElementById('content').innerHTML = instructorHtml;
+                })
+                .catch(error => {
+                    hideLoading();
+                    showToast('Errore durante il caricamento degli istruttori');
+                    console.error(error);
+                });
+        }
+        
+        function confirmBooking(startsAt, instructorId) {
             if (!confirm('Vuoi confermare questa prenotazione?')) {
                 return;
             }
@@ -419,7 +465,10 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ startsAt }),
+                body: JSON.stringify({ 
+                    startsAt,
+                    instructorId
+                }),
             })
             .then(response => response.json())
             .then(data => {
