@@ -120,9 +120,9 @@ func seedTest(db *sql.DB) {
 			continue
 		}
 
-		// Create slots from 07:00 to 19:00 in Rome local time
+		// Create slots from 07:00 to 21:00 in Rome local time
 		// We create the time in Rome timezone, then convert to UTC for storage
-		for hour := 7; hour <= 19; hour++ {
+		for hour := 7; hour <= 21; hour++ {
 			// Create time at this hour in Rome timezone
 			romeTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
 				hour, 0, 0, 0, romeLocation)
@@ -263,9 +263,9 @@ func seedSlot(db *sql.DB) {
 			continue
 		}
 
-		// Create slots from 7 AM to 7 PM (07:00-19:00) in Rome local time
+		// Create slots from 7 AM to 9 PM (07:00-21:00) in Rome local time
 		// We create the time in Rome timezone, then convert to UTC for storage
-		for hour := 7; hour <= 19; hour++ {
+		for hour := 7; hour <= 21; hour++ {
 			// Create time at this hour in Rome timezone
 			romeTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
 				hour, 0, 0, 0, romeLocation)
