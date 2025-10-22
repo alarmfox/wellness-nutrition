@@ -740,11 +740,28 @@
             loadBookings();
         }
         
-        function populateInstructorDropdown(selectId) {
+        function populateInstructorDropdown(selectId, includeAll = false) {
             const select = document.getElementById(selectId);
             if (!select) return;
             
-            select.innerHTML = '<option value="all">Tutti</option>';
+            select.innerHTML = '';
+            
+            // Add "Tutti" option only if explicitly requested (for disable operation)
+            if (includeAll) {
+                const allOption = document.createElement('option');
+                allOption.value = 'all';
+                allOption.textContent = 'Tutti';
+                select.appendChild(allOption);
+            } else {
+                // Add placeholder for operations that require specific instructor
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = '';
+                placeholderOption.textContent = '-- Seleziona istruttore --';
+                placeholderOption.disabled = true;
+                placeholderOption.selected = true;
+                select.appendChild(placeholderOption);
+            }
+            
             instructors.forEach(instructor => {
                 const option = document.createElement('option');
                 option.value = instructor.ID;
@@ -753,11 +770,14 @@
                 select.appendChild(option);
             });
             
-            // Set default to current filter or "all"
-            if (selectedInstructorId) {
+            // Set default to current filter if "all" option is included
+            if (includeAll && selectedInstructorId) {
                 select.value = selectedInstructorId;
-            } else {
+            } else if (includeAll) {
                 select.value = 'all';
+            } else if (selectedInstructorId) {
+                // For non-"all" dropdowns, select current filter if it's a specific instructor
+                select.value = selectedInstructorId;
             }
         }
         
@@ -890,12 +910,33 @@
                     if (isAppointment) slotClass += ' appointment';
                     
                     html += `<div class="${slotClass}" onclick="handleSlotClick('${date.toISOString()}', '${slotState}')">`;
-                    if (isDisabled) {
-                        html += '<div class="disabled-text">Non disponibile</div>';
-                    } else if (isMassage) {
-                        html += '<div class="reserved-text">Massaggio</div>';
-                    } else if (isAppointment) {
-                        html += '<div class="reserved-text">Appuntamento</div>';
+                    
+                    // Show instructor-specific slot states
+                    if (slot && slot.InstructorSlots) {
+                        const disabledSlots = slot.InstructorSlots.filter(is => is.Disabled || is.State === 'UNAVAILABLE');
+                        const massageSlots = slot.InstructorSlots.filter(is => is.State === 'MASSAGE');
+                        const appointmentSlots = slot.InstructorSlots.filter(is => is.State === 'APPOINTMENT');
+                        
+                        // Show disabled slots
+                        if (disabledSlots.length > 0) {
+                            if (disabledSlots.length === slot.InstructorSlots.length) {
+                                html += '<div class="disabled-text">Non disponibile (tutti)</div>';
+                            } else {
+                                disabledSlots.forEach(ds => {
+                                    html += `<div class="disabled-text">Non disponibile - ${ds.InstructorName}</div>`;
+                                });
+                            }
+                        }
+                        
+                        // Show massage reservations
+                        massageSlots.forEach(ms => {
+                            html += `<div class="reserved-text">💆 Massaggio - ${ms.InstructorName}</div>`;
+                        });
+                        
+                        // Show appointment reservations
+                        appointmentSlots.forEach(as => {
+                            html += `<div class="reserved-text">📅 Appuntamento - ${as.InstructorName}</div>`;
+                        });
                     }
                     slotBookings.forEach(booking => {
                         const cssClass = booking.User.SubType === 'SHARED' ? 'booking shared' : 'booking';
@@ -1138,8 +1179,8 @@
             });
             document.getElementById('slotInfo').textContent = `Slot: ${formatted}`;
             
-            // Populate instructor dropdown
-            populateInstructorDropdown('unavailableInstructorId');
+            // Populate instructor dropdown (include "Tutti" option for disable)
+            populateInstructorDropdown('unavailableInstructorId', true);
         }
         
         function showReserveMassage() {
@@ -1163,8 +1204,8 @@
             });
             document.getElementById('slotInfoReserveMassage').textContent = `Slot: ${formatted}`;
             
-            // Populate instructor dropdown
-            populateInstructorDropdown('massageInstructorId');
+            // Populate instructor dropdown (no "Tutti" option for massage)
+            populateInstructorDropdown('massageInstructorId', false);
         }
         
         function showReserveAppointment() {
@@ -1188,8 +1229,8 @@
             });
             document.getElementById('slotInfoReserveAppointment').textContent = `Slot: ${formatted}`;
             
-            // Populate instructor dropdown
-            populateInstructorDropdown('appointmentInstructorId');
+            // Populate instructor dropdown (no "Tutti" option for appointment)
+            populateInstructorDropdown('appointmentInstructorId', false);
         }
         
         function showUnreserveSlot() {
@@ -1243,8 +1284,8 @@
             });
             document.getElementById('slotInfoBooking').textContent = `Slot: ${formatted}`;
             
-            // Populate instructor dropdown
-            populateInstructorDropdown('bookingInstructorId');
+            // Populate instructor dropdown (no "Tutti" option for booking)
+            populateInstructorDropdown('bookingInstructorId', false);
             
             // Load users if not already loaded
             if (users.length === 0) {
@@ -1360,8 +1401,8 @@
         async function reserveSlot(reservationType) {
             const selectId = reservationType === 'MASSAGE' ? 'massageInstructorId' : 'appointmentInstructorId';
             const instructorId = document.getElementById(selectId).value;
-            if (!instructorId) {
-                showToast('Seleziona un istruttore', false);
+            if (!instructorId || instructorId === '') {
+                showToast('Seleziona un istruttore specifico', false);
                 return;
             }
             
@@ -1375,7 +1416,7 @@
                     body: JSON.stringify({
                         startsAt: selectedSlot,
                         reservationType: reservationType,
-                        instructorId: instructorId === 'all' ? null : instructorId
+                        instructorId: instructorId
                     })
                 });
                 
@@ -1386,10 +1427,10 @@
                     showToast(data.error, false);
                 } else if (data.hasBookings) {
                     // Slot has bookings
-                    showToast(`Questo slot ha ${data.bookingCount} prenotazioni. Eliminale prima.`, false);
+                    showToast(`Questo slot ha ${data.bookingCount} prenotazioni per questo istruttore. Eliminale prima.`, false);
                     closeSlotModal();
                 } else {
-                    showToast(instructorId === 'all' ? 'Slot riservato per tutti gli istruttori' : 'Slot riservato con successo', true);
+                    showToast('Slot riservato con successo per l\'istruttore selezionato', true);
                     closeSlotModal();
                     loadBookings(); // Reload calendar
                 }
@@ -1501,13 +1542,8 @@
                 return;
             }
             
-            if (!instructorId) {
-                showToast('Seleziona un istruttore', false);
-                return;
-            }
-            
-            if (instructorId === 'all') {
-                showToast('Seleziona un istruttore specifico (non "Tutti")', false);
+            if (!instructorId || instructorId === '') {
+                showToast('Seleziona un istruttore specifico', false);
                 return;
             }
             

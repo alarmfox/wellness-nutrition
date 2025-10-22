@@ -8,7 +8,7 @@ import (
 type Instructor struct {
 	ID        string
 	FirstName string
-	LastName  sql.NullString
+	LastName  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -295,6 +295,16 @@ func (r *InstructorSlotRepository) SetStateForAllAtTime(startsAt time.Time, stat
 		WHERE starts_at = $1
 	`
 	_, err := r.db.Exec(query, startsAt, state, disabled)
+	return err
+}
+
+func (r *InstructorSlotRepository) SetStateForInstructorAtTime(instructorID string, startsAt time.Time, state SlotState, disabled bool) error {
+	query := `
+		UPDATE instructor_slots
+		SET state = $3, disabled = $4
+		WHERE instructor_id = $1 AND starts_at = $2
+	`
+	_, err := r.db.Exec(query, instructorID, startsAt, state, disabled)
 	return err
 }
 

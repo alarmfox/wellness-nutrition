@@ -286,8 +286,8 @@ func serveUserDashboard(bookingRepo *models.BookingRepository, instructorRepo *m
 				instructor, err := instructorRepo.GetByID(b.InstructorID.String)
 				if err == nil {
 					instructorName = instructor.FirstName
-					if instructor.LastName.Valid {
-						instructorName += " " + instructor.LastName.String
+					if instructor.LastName != "" {
+						instructorName += " " + instructor.LastName
 					}
 				}
 			}
@@ -643,7 +643,7 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 			displayInstructors = append(displayInstructors, InstructorDisplay{
 				ID:        i.ID,
 				FirstName: i.FirstName,
-				LastName:  i.LastName.String,
+				LastName:  i.LastName,
 				CreatedAt: i.CreatedAt.Format("02 Jan 2006"),
 			})
 		}

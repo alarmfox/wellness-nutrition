@@ -59,7 +59,7 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	instructor := &models.Instructor{
 		ID:        uuid.New().String(),
 		FirstName: req.FirstName,
-		LastName:  sql.NullString{String: req.LastName, Valid: req.LastName != ""},
+		LastName:  req.LastName,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -105,7 +105,7 @@ func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	// Update fields
 	instructor.FirstName = req.FirstName
-	instructor.LastName = sql.NullString{String: req.LastName, Valid: req.LastName != ""}
+	instructor.LastName = req.LastName
 
 	if err := h.instructorRepo.Update(instructor); err != nil {
 		log.Printf("Error updating instructor: %v", err)

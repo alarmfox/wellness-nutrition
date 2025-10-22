@@ -479,7 +479,7 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 				}{
 					ID:        instructor.ID,
 					FirstName: instructor.FirstName,
-					LastName:  instructor.LastName.String,
+					LastName:  instructor.LastName,
 				}
 			}
 		}
@@ -524,18 +524,36 @@ func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert to JSON-friendly format
-	// Aggregate instructor slots by time to show overall slot state
-	type SlotResponse struct {
-		StartsAt    time.Time `json:"StartsAt"`
-		PeopleCount int       `json:"PeopleCount"`
-		Disabled    bool      `json:"Disabled"`
-		State       string    `json:"State"`
+	// Convert to JSON-friendly format with instructor details
+	type InstructorSlotDetail struct {
+		InstructorID   string `json:"InstructorID"`
+		InstructorName string `json:"InstructorName"`
+		State          string `json:"State"`
+		Disabled       bool   `json:"Disabled"`
+		PeopleCount    int    `json:"PeopleCount"`
 	}
 
-	// Group by starts_at and aggregate
+	type SlotResponse struct {
+		StartsAt         time.Time               `json:"StartsAt"`
+		PeopleCount      int                     `json:"PeopleCount"`
+		Disabled         bool                    `json:"Disabled"`
+		State            string                  `json:"State"`
+		InstructorSlots  []InstructorSlotDetail  `json:"InstructorSlots"`
+	}
+
+	// Group by starts_at and include instructor details
 	slotMap := make(map[time.Time]*SlotResponse)
 	for _, iSlot := range instructorSlots {
+		// Get instructor name
+		instructor, err := h.instructorRepo.GetByID(iSlot.InstructorID)
+		instructorName := ""
+		if err == nil {
+			instructorName = instructor.FirstName
+			if instructor.LastName != "" {
+				instructorName += " " + instructor.LastName
+			}
+		}
+
 		if existing, ok := slotMap[iSlot.StartsAt]; ok {
 			// Aggregate counts
 			existing.PeopleCount += iSlot.PeopleCount
@@ -546,12 +564,29 @@ func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 			if iSlot.State != models.SlotStateFree {
 				existing.State = string(iSlot.State)
 			}
+			// Add instructor slot detail
+			existing.InstructorSlots = append(existing.InstructorSlots, InstructorSlotDetail{
+				InstructorID:   iSlot.InstructorID,
+				InstructorName: instructorName,
+				State:          string(iSlot.State),
+				Disabled:       iSlot.Disabled,
+				PeopleCount:    iSlot.PeopleCount,
+			})
 		} else {
 			slotMap[iSlot.StartsAt] = &SlotResponse{
 				StartsAt:    iSlot.StartsAt,
 				PeopleCount: iSlot.PeopleCount,
 				Disabled:    iSlot.Disabled,
 				State:       string(iSlot.State),
+				InstructorSlots: []InstructorSlotDetail{
+					{
+						InstructorID:   iSlot.InstructorID,
+						InstructorName: instructorName,
+						State:          string(iSlot.State),
+						Disabled:       iSlot.Disabled,
+						PeopleCount:    iSlot.PeopleCount,
+					},
+				},
 			}
 		}
 	}
@@ -782,7 +817,7 @@ func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ReserveSlot allows admin to reserve all instructor slots at a time for a specific purpose (massage or appointment)
+// ReserveSlot allows admin to reserve instructor slot(s) at a time for a specific purpose (massage or appointment)
 func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -792,10 +827,17 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		StartsAt        string `json:"startsAt"`
 		ReservationType string `json:"reservationType"` // "MASSAGE" or "APPOINTMENT"
+		InstructorID    string `json:"instructorId"`    // Empty string means all instructors
 	}
 	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+	
+	// Instructor selection is required for massage/appointment
+	if req.InstructorID == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Please select an instructor"})
 		return
 	}
 	
@@ -820,7 +862,7 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// Check if there are any bookings at this time
+	// Check if there are any bookings at this time for this instructor
 	bookings, err := h.bookingRepo.GetBySlotTime(startsAt)
 	if err != nil {
 		log.Printf("Error getting bookings for slot: %v", err)
@@ -828,19 +870,27 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 		bookings = []*models.Booking{}
 	}
 	
-	if len(bookings) > 0 {
+	// Filter bookings for the specific instructor
+	instructorBookings := make([]*models.Booking, 0)
+	for _, booking := range bookings {
+		if booking.InstructorID.Valid && booking.InstructorID.String == req.InstructorID {
+			instructorBookings = append(instructorBookings, booking)
+		}
+	}
+	
+	if len(instructorBookings) > 0 {
 		// Return info about bookings that need confirmation
 		sendJSON(w, http.StatusOK, map[string]interface{}{
 			"hasBookings":  true,
-			"bookingCount": len(bookings),
-			"message":      "This slot has bookings. Please delete them first.",
+			"bookingCount": len(instructorBookings),
+			"message":      "This slot has bookings for the selected instructor. Please delete them first.",
 		})
 		return
 	}
 	
-	// Update all instructor slots to specified state
-	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, slotState, false); err != nil {
-		log.Printf("Error updating instructor slots: %v", err)
+	// Update the instructor slot to specified state
+	if err := h.instructorSlotRepo.SetStateForInstructorAtTime(req.InstructorID, startsAt, slotState, false); err != nil {
+		log.Printf("Error updating instructor slot: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
@@ -862,7 +912,7 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Slot reserved successfully"})
 }
 
-// UnreserveSlot allows admin to unreserve all instructor slots at a time (mark them as free)
+// UnreserveSlot allows admin to unreserve instructor slot(s) at a time (mark them as free)
 func (h *BookingHandler) UnreserveSlot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -870,7 +920,8 @@ func (h *BookingHandler) UnreserveSlot(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	var req struct {
-		StartsAt string `json:"startsAt"`
+		StartsAt     string `json:"startsAt"`
+		InstructorID string `json:"instructorId"` // Empty string means all instructors
 	}
 	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -884,11 +935,21 @@ func (h *BookingHandler) UnreserveSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// Mark all instructor slots as FREE
-	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateFree, false); err != nil {
-		log.Printf("Error updating instructor slots: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
+	// Mark instructor slot(s) as FREE
+	if req.InstructorID == "" {
+		// Unreserve for all instructors
+		if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateFree, false); err != nil {
+			log.Printf("Error updating instructor slots: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
+	} else {
+		// Unreserve for specific instructor
+		if err := h.instructorSlotRepo.SetStateForInstructorAtTime(req.InstructorID, startsAt, models.SlotStateFree, false); err != nil {
+			log.Printf("Error updating instructor slot: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
 	}
 	
 	// Create event log
