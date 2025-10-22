@@ -15,7 +15,8 @@ import (
 type contextKey string
 
 const (
-	UserContextKey contextKey = "user"
+	UserContextKey  contextKey = "user"
+	AdminContextKey contextKey = "admin"
 )
 
 // Hash password using argon2
@@ -91,8 +92,8 @@ func VerifyPassword(password, encodedHash string) bool {
 	return true
 }
 
-// Auth middleware checks if user is authenticated
-func Auth(sessionStore *models.SessionStore, userRepo *models.UserRepository) func(http.Handler) http.Handler {
+// Auth middleware checks if user is authenticated (supports both users and admins)
+func Auth(sessionStore *models.SessionStore, userRepo *models.UserRepository, adminRepo *models.AdminRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("session")
@@ -107,20 +108,36 @@ func Auth(sessionStore *models.SessionStore, userRepo *models.UserRepository) fu
 				return
 			}
 
-			user, err := userRepo.GetByID(session.UserID)
-			if err != nil {
+			var ctx context.Context
+			
+			// Check if it's a user session
+			if session.UserID.Valid {
+				user, err := userRepo.GetByID(session.UserID.String)
+				if err != nil {
+					http.Redirect(w, r, "/signin", http.StatusSeeOther)
+					return
+				}
+				ctx = context.WithValue(r.Context(), UserContextKey, user)
+			} else if session.AdminID.Valid {
+				// It's an admin session
+				admin, err := adminRepo.GetByID(session.AdminID.String)
+				if err != nil {
+					http.Redirect(w, r, "/signin", http.StatusSeeOther)
+					return
+				}
+				ctx = context.WithValue(r.Context(), AdminContextKey, admin)
+			} else {
 				http.Redirect(w, r, "/signin", http.StatusSeeOther)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), UserContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
 // AdminAuth middleware checks if user is authenticated and is an admin
-func AdminAuth(sessionStore *models.SessionStore, userRepo *models.UserRepository) func(http.Handler) http.Handler {
+func AdminAuth(sessionStore *models.SessionStore, adminRepo *models.AdminRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("session")
@@ -135,18 +152,19 @@ func AdminAuth(sessionStore *models.SessionStore, userRepo *models.UserRepositor
 				return
 			}
 
-			user, err := userRepo.GetByID(session.UserID)
+			// Must be an admin session
+			if !session.AdminID.Valid {
+				sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden - Admin access required"})
+				return
+			}
+
+			admin, err := adminRepo.GetByID(session.AdminID.String)
 			if err != nil {
 				sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 				return
 			}
 
-			if user.Role != models.RoleAdmin {
-				sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden - Admin access required"})
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), UserContextKey, user)
+			ctx := context.WithValue(r.Context(), AdminContextKey, admin)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -159,6 +177,15 @@ func GetUserFromContext(ctx context.Context) *models.User {
 		return nil
 	}
 	return user
+}
+
+// GetAdminFromContext retrieves admin from context
+func GetAdminFromContext(ctx context.Context) *models.Admin {
+	admin, ok := ctx.Value(AdminContextKey).(*models.Admin)
+	if !ok {
+		return nil
+	}
+	return admin
 }
 
 func sendJSON(w http.ResponseWriter, status int, data interface{}) {

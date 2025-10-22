@@ -20,12 +20,14 @@ import (
 
 type AuthHandler struct {
 	userRepo     *models.UserRepository
+	adminRepo    *models.AdminRepository
 	sessionStore *models.SessionStore
 }
 
-func NewAuthHandler(userRepo *models.UserRepository, sessionStore *models.SessionStore) *AuthHandler {
+func NewAuthHandler(userRepo *models.UserRepository, adminRepo *models.AdminRepository, sessionStore *models.SessionStore) *AuthHandler {
 	return &AuthHandler{
 		userRepo:     userRepo,
+		adminRepo:    adminRepo,
 		sessionStore: sessionStore,
 	}
 }
@@ -67,6 +69,46 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Try to authenticate as admin first
+	admin, err := h.adminRepo.GetByEmail(req.Email)
+	if err == nil {
+		// Admin found, verify password
+		if !verifyPassword(req.Password, admin.Password) {
+			sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid credentials"})
+			return
+		}
+
+		// Create admin session
+		token, err := h.sessionStore.CreateAdminSession(admin.ID)
+		if err != nil {
+			log.Printf("Error creating admin session: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session",
+			Value:    token,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false, // Set to true in production with HTTPS
+			SameSite: http.SameSiteLaxMode,
+			Expires:  time.Now().Add(30 * 24 * time.Hour),
+		})
+
+		sendJSON(w, http.StatusOK, map[string]interface{}{
+			"success": true,
+			"admin": map[string]interface{}{
+				"id":        admin.ID,
+				"firstName": admin.FirstName,
+				"lastName":  admin.LastName,
+				"email":     admin.Email,
+			},
+		})
+		return
+	}
+
+	// Try to authenticate as user
 	user, err := h.userRepo.GetByEmail(req.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -89,7 +131,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.sessionStore.CreateSession(user.ID)
+	token, err := h.sessionStore.CreateUserSession(user.ID)
 	if err != nil {
 		log.Printf("Error creating session: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
@@ -113,7 +155,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			"firstName": user.FirstName,
 			"lastName":  user.LastName,
 			"email":     user.Email,
-			"role":      user.Role,
 			"subType":   user.SubType,
 		},
 	})
@@ -159,11 +200,10 @@ func (h *UserHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, map[string]interface{}{
 		"id":                user.ID,
 		"firstName":         user.FirstName,
-		"lastName":          user.LastName,
+		"lastName":          user.LastName.String,
 		"email":             user.Email,
 		"address":           user.Address,
 		"cellphone":         user.Cellphone.String,
-		"role":              user.Role,
 		"subType":           user.SubType,
 		"medOk":             user.MedOk,
 		"expiresAt":         user.ExpiresAt,
@@ -243,7 +283,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	user := &models.User{
 		ID:                         userID,
 		FirstName:                  req.FirstName,
-		LastName:                   req.LastName,
+		LastName:                   sql.NullString{String: req.LastName, Valid: req.LastName != ""},
 		Email:                      req.Email,
 		Address:                    req.Address,
 		Cellphone:                  sql.NullString{String: req.Cellphone, Valid: req.Cellphone != ""},
@@ -251,7 +291,6 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		MedOk:                      req.MedOk,
 		ExpiresAt:                  expiresAt,
 		RemainingAccesses:          req.RemainingAccesses,
-		Role:                       models.RoleUser,
 		VerificationToken:          sql.NullString{String: verificationToken, Valid: true},
 		VerificationTokenExpiresIn: sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true},
 		Goals:                      sql.NullString{String: goals, Valid: goals != ""},
@@ -323,7 +362,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	// Update user fields
 	user.FirstName = req.FirstName
-	user.LastName = req.LastName
+	user.LastName = sql.NullString{String: req.LastName, Valid: req.LastName != ""}
 	user.Email = req.Email
 	user.Address = req.Address
 	user.Cellphone = sql.NullString{String: req.Cellphone, Valid: req.Cellphone != ""}

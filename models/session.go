@@ -13,7 +13,8 @@ type SessionStore struct {
 
 type Session struct {
 	Token     string
-	UserID    string
+	UserID    sql.NullString
+	AdminID   sql.NullString
 	ExpiresAt time.Time
 }
 
@@ -21,7 +22,7 @@ func NewSessionStore(db *sql.DB) *SessionStore {
 	return &SessionStore{db: db}
 }
 
-func (s *SessionStore) CreateSession(userID string) (string, error) {
+func (s *SessionStore) CreateUserSession(userID string) (string, error) {
 	token := generateToken()
 	expiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days
 
@@ -34,11 +35,24 @@ func (s *SessionStore) CreateSession(userID string) (string, error) {
 	return token, nil
 }
 
+func (s *SessionStore) CreateAdminSession(adminID string) (string, error) {
+	token := generateToken()
+	expiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days
+
+	query := `INSERT INTO sessions (token, admin_id, expires_at) VALUES ($1, $2, $3)`
+	_, err := s.db.Exec(query, token, adminID, expiresAt)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
 func (s *SessionStore) GetSession(token string) (*Session, error) {
-	query := `SELECT token, user_id, expires_at FROM sessions WHERE token = $1 AND expires_at > NOW()`
+	query := `SELECT token, user_id, admin_id, expires_at FROM sessions WHERE token = $1 AND expires_at > NOW()`
 
 	var session Session
-	err := s.db.QueryRow(query, token).Scan(&session.Token, &session.UserID, &session.ExpiresAt)
+	err := s.db.QueryRow(query, token).Scan(&session.Token, &session.UserID, &session.AdminID, &session.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}

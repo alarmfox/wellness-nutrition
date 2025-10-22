@@ -9,7 +9,6 @@ import (
 
 	"github.com/alarmfox/wellness-nutrition/app/models"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/argon2"
 )
 
 type InstructorHandler struct {
@@ -36,8 +35,6 @@ func (h *InstructorHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 type CreateInstructorRequest struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
 }
 
 func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -53,15 +50,8 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate required fields
-	if req.FirstName == "" || req.LastName == "" || req.Email == "" {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "First name, last name, and email are required"})
-		return
-	}
-
-	// Check if instructor with email already exists
-	existing, err := h.instructorRepo.GetByEmail(req.Email)
-	if err == nil && existing != nil {
-		sendJSON(w, http.StatusConflict, map[string]string{"error": "Instructor with this email already exists"})
+	if req.FirstName == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "First name is required"})
 		return
 	}
 
@@ -69,16 +59,9 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	instructor := &models.Instructor{
 		ID:        uuid.New().String(),
 		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
+		LastName:  sql.NullString{String: req.LastName, Valid: req.LastName != ""},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-	}
-
-	// Hash password if provided
-	if req.Password != "" {
-		hash := argon2.IDKey([]byte(req.Password), []byte("salt"), 1, 64*1024, 4, 32)
-		instructor.Password = sql.NullString{String: string(hash), Valid: true}
 	}
 
 	if err := h.instructorRepo.Create(instructor); err != nil {
@@ -94,8 +77,6 @@ type UpdateInstructorRequest struct {
 	ID        string `json:"id"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
-	Email     string `json:"email"`
-	Password  string `json:"password,omitempty"`
 }
 
 func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -124,14 +105,7 @@ func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	// Update fields
 	instructor.FirstName = req.FirstName
-	instructor.LastName = req.LastName
-	instructor.Email = req.Email
-
-	// Update password if provided
-	if req.Password != "" {
-		hash := argon2.IDKey([]byte(req.Password), []byte("salt"), 1, 64*1024, 4, 32)
-		instructor.Password = sql.NullString{String: string(hash), Valid: true}
-	}
+	instructor.LastName = sql.NullString{String: req.LastName, Valid: req.LastName != ""}
 
 	if err := h.instructorRepo.Update(instructor); err != nil {
 		log.Printf("Error updating instructor: %v", err)

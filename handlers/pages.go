@@ -27,8 +27,8 @@ func NewPageHandler(
 }
 
 func (h *PageHandler) ServeUsers(w http.ResponseWriter, r *http.Request) {
-	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user.Role != models.RoleAdmin {
+	admin := middleware.GetAdminFromContext(r.Context())
+	if admin == nil {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -57,7 +57,7 @@ func (h *PageHandler) ServeUsers(w http.ResponseWriter, r *http.Request) {
 		displayUsers = append(displayUsers, UserDisplay{
 			ID:                  u.ID,
 			FirstName:           u.FirstName,
-			LastName:            u.LastName,
+			LastName:            u.LastName.String,
 			Email:               u.Email,
 			SubType:             string(u.SubType),
 			EmailVerified:       u.EmailVerified.Valid,
@@ -77,8 +77,8 @@ func (h *PageHandler) ServeUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PageHandler) ServeEvents(w http.ResponseWriter, r *http.Request) {
-	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user.Role != models.RoleAdmin {
+	admin := middleware.GetAdminFromContext(r.Context())
+	if admin == nil {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -105,7 +105,7 @@ func (h *PageHandler) ServeEvents(w http.ResponseWriter, r *http.Request) {
 		u, err := h.userRepo.GetByID(e.UserID)
 		userName := "Unknown"
 		if err == nil {
-			userName = u.FirstName + " " + u.LastName
+			userName = u.FirstName + " " + u.LastName.String
 		}
 		
 		displayEvents = append(displayEvents, EventDisplay{

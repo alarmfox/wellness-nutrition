@@ -8,9 +8,7 @@ import (
 type Instructor struct {
 	ID        string
 	FirstName string
-	LastName  string
-	Email     string
-	Password  sql.NullString
+	LastName  sql.NullString
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -32,7 +30,7 @@ func NewInstructorRepository(db *sql.DB) *InstructorRepository {
 
 func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 	query := `
-		SELECT id, first_name, last_name, email, password, created_at, updated_at
+		SELECT id, first_name, last_name, created_at, updated_at
 		FROM instructors
 		ORDER BY first_name, last_name
 	`
@@ -50,8 +48,6 @@ func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 			&instructor.ID,
 			&instructor.FirstName,
 			&instructor.LastName,
-			&instructor.Email,
-			&instructor.Password,
 			&instructor.CreatedAt,
 			&instructor.UpdatedAt,
 		)
@@ -66,7 +62,7 @@ func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 
 func (r *InstructorRepository) GetByID(id string) (*Instructor, error) {
 	query := `
-		SELECT id, first_name, last_name, email, password, created_at, updated_at
+		SELECT id, first_name, last_name, created_at, updated_at
 		FROM instructors
 		WHERE id = $1
 	`
@@ -76,33 +72,6 @@ func (r *InstructorRepository) GetByID(id string) (*Instructor, error) {
 		&instructor.ID,
 		&instructor.FirstName,
 		&instructor.LastName,
-		&instructor.Email,
-		&instructor.Password,
-		&instructor.CreatedAt,
-		&instructor.UpdatedAt,
-	)
-	
-	if err != nil {
-		return nil, err
-	}
-	
-	return &instructor, nil
-}
-
-func (r *InstructorRepository) GetByEmail(email string) (*Instructor, error) {
-	query := `
-		SELECT id, first_name, last_name, email, password, created_at, updated_at
-		FROM instructors
-		WHERE LOWER(email) = LOWER($1)
-	`
-	
-	var instructor Instructor
-	err := r.db.QueryRow(query, email).Scan(
-		&instructor.ID,
-		&instructor.FirstName,
-		&instructor.LastName,
-		&instructor.Email,
-		&instructor.Password,
 		&instructor.CreatedAt,
 		&instructor.UpdatedAt,
 	)
@@ -116,16 +85,14 @@ func (r *InstructorRepository) GetByEmail(email string) (*Instructor, error) {
 
 func (r *InstructorRepository) Create(instructor *Instructor) error {
 	query := `
-		INSERT INTO instructors (id, first_name, last_name, email, password, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO instructors (id, first_name, last_name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)
 	`
 	
 	_, err := r.db.Exec(query,
 		instructor.ID,
 		instructor.FirstName,
 		instructor.LastName,
-		instructor.Email,
-		instructor.Password,
 		instructor.CreatedAt,
 		instructor.UpdatedAt,
 	)
@@ -136,7 +103,7 @@ func (r *InstructorRepository) Create(instructor *Instructor) error {
 func (r *InstructorRepository) Update(instructor *Instructor) error {
 	query := `
 		UPDATE instructors
-		SET first_name = $2, last_name = $3, email = $4, password = $5, updated_at = $6
+		SET first_name = $2, last_name = $3, updated_at = $4
 		WHERE id = $1
 	`
 	
@@ -144,8 +111,6 @@ func (r *InstructorRepository) Update(instructor *Instructor) error {
 		instructor.ID,
 		instructor.FirstName,
 		instructor.LastName,
-		instructor.Email,
-		instructor.Password,
 		time.Now(),
 	)
 	

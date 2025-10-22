@@ -1,19 +1,14 @@
 -- Migration: Add instructors table and instructor_id to bookings
 -- This migration adds support for per-instructor booking management
 
--- Create instructors table
+-- Create instructors table (instructors are just tags, no email/password)
 CREATE TABLE IF NOT EXISTS instructors (
     id VARCHAR(255) PRIMARY KEY,
     first_name VARCHAR(255) NOT NULL,
-    last_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password TEXT,
+    last_name VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
--- Index on email for faster lookups
-CREATE INDEX IF NOT EXISTS idx_instructors_email ON instructors(email);
 
 -- Add instructor_id column to bookings table if it doesn't exist
 DO $$ 
@@ -42,18 +37,14 @@ END $$;
 -- Create index on instructor_id for faster filtering
 CREATE INDEX IF NOT EXISTS idx_bookings_instructor_id ON bookings(instructor_id);
 
--- Update slots table to support per-instructor capacity tracking
--- Since we need to track capacity per instructor, we'll need to modify our approach
--- We'll create a new table for instructor-slot capacity tracking
-
+-- Create instructor_slots table for per-instructor capacity tracking
 CREATE TABLE IF NOT EXISTS instructor_slots (
     instructor_id VARCHAR(255) NOT NULL,
     starts_at TIMESTAMP NOT NULL,
     people_count INTEGER NOT NULL DEFAULT 0,
     max_capacity INTEGER NOT NULL DEFAULT 2,
     PRIMARY KEY (instructor_id, starts_at),
-    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE,
-    FOREIGN KEY (starts_at) REFERENCES slots(starts_at) ON DELETE CASCADE
+    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE
 );
 
 -- Index for faster lookups
