@@ -41,9 +41,6 @@ func main() {
 	// Pre-create slots
 	case "slot":
 		seedSlot(db)
-	// Seed survey questions
-	case "survey":
-		seedSurvey(db)
 	default:
 		log.Fatalf("unknown command %q", *cmd)
 	}
@@ -132,6 +129,12 @@ func seedTest(db *sql.DB) {
 	}
 
 	// Create time slots for the next 30 days
+	// Load Europe/Rome timezone to determine DST correctly
+	romeLocation, err := time.LoadLocation("Europe/Rome")
+	if err != nil {
+		log.Fatalf("Failed to load Europe/Rome timezone: %v", err)
+	}
+
 	now := time.Now().UTC()
 	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
@@ -144,10 +147,15 @@ func seedTest(db *sql.DB) {
 			continue
 		}
 
-		// Create slots from 07:00 to 21:00 (every hour)
-		for hour := 5; hour <= 19; hour++ {
-			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
-				hour, 0, 0, 0, time.UTC)
+		// Create slots from 07:00 to 21:00 in Rome local time
+		// We create the time in Rome timezone, then convert to UTC for storage
+		for hour := 7; hour <= 21; hour++ {
+			// Create time at this hour in Rome timezone
+			romeTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
+				hour, 0, 0, 0, romeLocation)
+
+			// Convert to UTC for storage (database stores as UTC TIMESTAMP)
+			slotTime := romeTime.UTC()
 
 			_, err = db.Exec(`
 				INSERT INTO slots (starts_at, people_count, disabled)
@@ -177,9 +185,11 @@ func seedTest(db *sql.DB) {
 			bookingDay := 1 + (i*2 + j)  // Spread bookings across days
 			bookingHour := 10 + (i*2)%10 // Different hours for each user
 
-			bookingTime := startDate.AddDate(0, 0, bookingDay)
-			bookingTime = time.Date(bookingTime.Year(), bookingTime.Month(), bookingTime.Day(),
-				bookingHour, 0, 0, 0, time.UTC)
+			// Create time at this hour in Rome timezone, then convert to UTC
+			bookingTimeRome := time.Date(startDate.Year(), startDate.Month(), startDate.Day(),
+				0, 0, 0, 0, romeLocation).AddDate(0, 0, bookingDay)
+			bookingTime := time.Date(bookingTimeRome.Year(), bookingTimeRome.Month(), bookingTimeRome.Day(),
+				bookingHour, 0, 0, 0, romeLocation).UTC()
 
 			// Skip if Sunday
 			if bookingTime.Weekday() == time.Sunday {
@@ -217,7 +227,6 @@ func seedTest(db *sql.DB) {
 	}
 	log.Printf("✓ Created %d bookings for test users", bookingsCreated)
 
-	log.Println("\n=== Seeding Complete ===")
 	log.Println("\nTest Accounts:")
 	log.Println("  Admin: admin@wellness.local / admin123")
 	log.Println("  Users: *.@test.local / password123")
@@ -230,6 +239,46 @@ func seedTest(db *sql.DB) {
 	log.Println("    - Marco Bianchi")
 	log.Println("    - Giulia Ferrari")
 	log.Println("    - Alessandro Russo")
+
+	log.Println("\nSeeding survey questions...")
+
+	questions := []struct {
+		sku      string
+		index    int
+		question string
+	}{
+		{"q1", 1, "Come giudichi la qualità del servizio ricevuto?"},
+		{"q2", 2, "Quanto sei soddisfatto/a della professionalità dello staff?"},
+		{"q3", 3, "Le informazioni ricevute sono state chiare e utili?"},
+		{"q4", 4, "Come valuti l'ambiente e la pulizia della struttura?"},
+		{"q5", 5, "Raccomanderesti questo servizio ad amici o familiari?"},
+	}
+
+	for i, q := range questions {
+		previous := 0
+		next := 0
+
+		if i > 0 {
+			previous = questions[i-1].index
+		}
+		if i < len(questions)-1 {
+			next = questions[i+1].index
+		}
+
+		query := `INSERT INTO questions (sku, index, next, previous, question, star1, star2, star3, star4, star5)
+  VALUES ($1, $2, $3, $4, $5, 0, 0, 0, 0, 0)
+  ON CONFLICT (sku) DO NOTHING`
+
+		_, err := db.Exec(query, q.sku, q.index, next, previous, q.question)
+		if err != nil {
+			log.Printf("Error seeding question %s: %v", q.sku, err)
+		} else {
+			log.Printf("Seeded question: %s", q.question)
+		}
+	}
+
+	log.Println("Survey seeding completed!")
+	log.Println("\n\n=== Seeding Complete ===")
 }
 
 func seedSlot(db *sql.DB) {
@@ -238,6 +287,12 @@ func seedSlot(db *sql.DB) {
 		err          error
 		slotsCreated = 0
 	)
+
+	// Load Europe/Rome timezone to determine DST correctly
+	romeLocation, err := time.LoadLocation("Europe/Rome")
+	if err != nil {
+		log.Fatalf("Failed to load Europe/Rome timezone: %v", err)
+	}
 
 	now := time.Now().UTC()
 	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
@@ -249,9 +304,16 @@ func seedSlot(db *sql.DB) {
 		if currentDate.Weekday() == time.Sunday {
 			continue
 		}
-		for hour := 5; hour <= 19; hour++ {
-			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
-				hour, 0, 0, 0, time.UTC)
+
+		// Create slots from 7 AM to 9 PM (07:00-21:00) in Rome local time
+		// We create the time in Rome timezone, then convert to UTC for storage
+		for hour := 7; hour <= 21; hour++ {
+			// Create time at this hour in Rome timezone
+			romeTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
+				hour, 0, 0, 0, romeLocation)
+
+			// Convert to UTC for storage (database stores as UTC TIMESTAMP)
+			slotTime := romeTime.UTC()
 
 			_, err = db.Exec(`
 				INSERT INTO slots (starts_at, people_count, disabled)
@@ -285,45 +347,4 @@ func generateID() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)[:22]
-}
-
-func seedSurvey(db *sql.DB) {
-log.Println("Seeding survey questions...")
-
-questions := []struct {
-sku      string
-index    int
-question string
-}{
-{"q1", 1, "Come giudichi la qualità del servizio ricevuto?"},
-{"q2", 2, "Quanto sei soddisfatto/a della professionalità dello staff?"},
-{"q3", 3, "Le informazioni ricevute sono state chiare e utili?"},
-{"q4", 4, "Come valuti l'ambiente e la pulizia della struttura?"},
-{"q5", 5, "Raccomanderesti questo servizio ad amici o familiari?"},
-}
-
-for i, q := range questions {
-previous := 0
-next := 0
-
-if i > 0 {
-previous = questions[i-1].index
-}
-if i < len(questions)-1 {
-next = questions[i+1].index
-}
-
-query := `INSERT INTO questions (sku, index, next, previous, question, star1, star2, star3, star4, star5)
-  VALUES ($1, $2, $3, $4, $5, 0, 0, 0, 0, 0)
-  ON CONFLICT (sku) DO NOTHING`
-
-_, err := db.Exec(query, q.sku, q.index, next, previous, q.question)
-if err != nil {
-log.Printf("Error seeding question %s: %v", q.sku, err)
-} else {
-log.Printf("Seeded question: %s", q.question)
-}
-}
-
-log.Println("Survey seeding completed!")
 }

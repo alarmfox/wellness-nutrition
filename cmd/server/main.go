@@ -173,6 +173,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/api/admin/slots/disable", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlot)))
 	mux.Handle("/api/admin/slots/disable-confirm", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlotConfirm)))
 	mux.Handle("/api/admin/slots/enable", adminMiddleware(http.HandlerFunc(bookingHandler.EnableSlot)))
+	mux.Handle("/api/admin/slots/reserve", adminMiddleware(http.HandlerFunc(bookingHandler.ReserveSlot)))
+	mux.Handle("/api/admin/slots/unreserve", adminMiddleware(http.HandlerFunc(bookingHandler.UnreserveSlot)))
 	mux.Handle("/api/admin/survey/questions", adminMiddleware(http.HandlerFunc(surveyHandler.GetAllQuestions)))
 	mux.Handle("/api/admin/survey/questions/create", adminMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion)))
 	mux.Handle("/api/admin/survey/questions/update", adminMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion)))
@@ -271,19 +273,19 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 
 		// Format dates for display
 		type BookingDisplay struct {
-			ID                 int64
-			StartsAt           string
-			StartsAtFormatted  string
-			CreatedAtFormatted string
+			ID                int64
+			StartsAt          string
+			StartsAtFormatted string
+			CreatedAt         string
 		}
 
 		var displayBookings []BookingDisplay
 		for _, b := range bookings {
 			displayBookings = append(displayBookings, BookingDisplay{
-				ID:                 b.ID,
-				StartsAt:           b.StartsAt.Format(time.RFC3339),
-				StartsAtFormatted:  b.StartsAt.Format("02 Jan 2006 15:04"),
-				CreatedAtFormatted: b.CreatedAt.Format("02 Jan 2006"),
+				ID:                b.ID,
+				StartsAt:          b.StartsAt.Format(time.RFC3339),
+				StartsAtFormatted: b.StartsAt.Format("02 Jan 2006, 15:04"),
+				CreatedAt:         b.CreatedAt.Format(time.RFC3339),
 			})
 		}
 
@@ -482,11 +484,11 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 
 		// Format event data for display
 		type EventDisplay struct {
-			ID                  int
-			UserName            string
-			Type                string
-			OccurredAtFormatted string
-			StartsAtFormatted   string
+			ID         int
+			UserName   string
+			Type       string
+			OccurredAt string
+			StartsAt   string
 		}
 
 		var displayEvents []EventDisplay
@@ -499,11 +501,11 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 			}
 
 			displayEvents = append(displayEvents, EventDisplay{
-				ID:                  e.ID,
-				UserName:            userName,
-				Type:                string(e.Type),
-				OccurredAtFormatted: e.OccurredAt.Format("02 Jan 2006 15:04"),
-				StartsAtFormatted:   e.StartsAt.Format("02 Jan 2006 15:04"),
+				ID:         e.ID,
+				UserName:   userName,
+				Type:       string(e.Type),
+				OccurredAt: e.OccurredAt.Format(time.RFC3339),
+				StartsAt:   e.StartsAt.Format(time.RFC3339),
 			})
 		}
 

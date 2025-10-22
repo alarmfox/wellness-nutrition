@@ -216,8 +216,8 @@
                     <div class="list-item">
                         <span class="material-icons list-icon">event</span>
                         <div class="list-text">
-                            <div class="list-primary">{{.StartsAtFormatted}}</div>
-                            <div class="list-secondary">Effettuata {{.CreatedAtFormatted}}</div>
+                            <div class="list-primary" data-timestamp="{{.StartsAt}}"></div>
+                            <div class="list-secondary" data-created="{{.CreatedAt}}"></div>
                         </div>
                         <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
                     </div>
@@ -250,6 +250,154 @@
         const userSubType = '{{.User.SubType}}';
         let availableSlots = [];
 
+        // Browser Notification System
+        const NotificationManager = {
+            STORAGE_KEY: 'wellness_bookings_notifications',
+            CHECK_INTERVAL: 60000, // Check every minute
+            NOTIFICATION_ADVANCE_MS: 6 * 60 * 60 * 1000, // 6 hours in milliseconds
+
+            init: function() {
+                this.requestPermission();
+                this.syncBookings();
+                this.scheduleCheck();
+            },
+
+            requestPermission: function() {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            console.log('Notification permission granted');
+                        }
+                    });
+                }
+            },
+
+            syncBookings: function() {
+                // Store current bookings in localStorage for notification scheduling
+                const bookings = [
+                    {{range .Bookings}}
+                    {
+                        id: '{{.ID}}',
+                        startsAt: '{{.StartsAt}}',
+                        startsAtFormatted: '{{.StartsAtFormatted}}'
+                    },
+                    {{end}}
+                ];
+                
+                // Filter future bookings only
+                const futureBookings = bookings.filter(b => {
+                    const bookingTime = new Date(b.startsAt);
+                    return bookingTime > new Date();
+                });
+                
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(futureBookings));
+            },
+
+            scheduleCheck: function() {
+                // Check immediately
+                this.checkAndNotify();
+                
+                // Then check periodically
+                setInterval(() => {
+                    this.checkAndNotify();
+                }, this.CHECK_INTERVAL);
+            },
+
+            checkAndNotify: function() {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const bookingsJson = localStorage.getItem(this.STORAGE_KEY);
+                    if (!bookingsJson) return;
+
+                    const bookings = JSON.parse(bookingsJson);
+                    const now = new Date();
+                    const notifiedKey = 'wellness_notified_bookings';
+                    const notified = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
+
+                    bookings.forEach(booking => {
+                        const bookingTime = new Date(booking.startsAt);
+                        const timeDiff = bookingTime - now;
+                        
+                        // Check if notification should be sent (6 hours before, within 1 minute window)
+                        const shouldNotify = timeDiff > 0 && 
+                                           timeDiff <= this.NOTIFICATION_ADVANCE_MS && 
+                                           timeDiff > (this.NOTIFICATION_ADVANCE_MS - this.CHECK_INTERVAL);
+                        
+                        // Check if already notified for this booking
+                        const alreadyNotified = notified.includes(booking.id);
+                        
+                        if (shouldNotify && !alreadyNotified) {
+                            this.sendNotification(booking);
+                            notified.push(booking.id);
+                            localStorage.setItem(notifiedKey, JSON.stringify(notified));
+                        }
+                        
+                        // Clean up old notified bookings (past bookings)
+                        if (bookingTime < now && alreadyNotified) {
+                            const index = notified.indexOf(booking.id);
+                            if (index > -1) {
+                                notified.splice(index, 1);
+                                localStorage.setItem(notifiedKey, JSON.stringify(notified));
+                            }
+                        }
+                    });
+                }
+            },
+
+            sendNotification: function(booking) {
+                const notification = new Notification('Promemoria Prenotazione', {
+                    body: `La tua prenotazione è tra 6 ore: ${booking.startsAtFormatted}`,
+                    icon: 'https://fonts.gstatic.com/s/i/materialicons/event/v12/24px.svg',
+                    badge: 'https://fonts.gstatic.com/s/i/materialicons/event/v12/24px.svg',
+                    tag: 'booking-' + booking.id,
+                    requireInteraction: false,
+                    silent: false
+                });
+
+                notification.onclick = function() {
+                    window.focus();
+                    this.close();
+                };
+            }
+        };
+
+        // Initialize notification system on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            NotificationManager.init();
+        });
+        // Format all timestamps on the page to local time
+        function formatTimestamps() {
+            // Format booking start times
+            document.querySelectorAll('[data-timestamp]').forEach(el => {
+                const timestamp = el.getAttribute('data-timestamp');
+                if (timestamp) {
+                    const date = new Date(timestamp);
+                    el.textContent = date.toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            });
+
+            // Format booking created dates
+            document.querySelectorAll('[data-created]').forEach(el => {
+                const timestamp = el.getAttribute('data-created');
+                if (timestamp) {
+                    const date = new Date(timestamp);
+                    el.textContent = 'Effettuata ' + date.toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                    });
+                }
+            });
+        }
+
+        // Format timestamps when page loads
+        document.addEventListener('DOMContentLoaded', formatTimestamps);
+
         function showLoading(text = 'Caricamento...') {
             const overlay = document.getElementById('loading-overlay');
             const loadingText = document.getElementById('loading-text');
@@ -281,8 +429,8 @@
                         <div class="list-item">
                             <span class="material-icons list-icon">event</span>
                             <div class="list-text">
-                                <div class="list-primary">{{.StartsAtFormatted}}</div>
-                                <div class="list-secondary">Effettuata {{.CreatedAtFormatted}}</div>
+                                <div class="list-primary" data-timestamp="{{.StartsAt}}"></div>
+                                <div class="list-secondary" data-created="{{.CreatedAt}}"></div>
                             </div>
                             <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
                         </div>
@@ -292,6 +440,9 @@
                     {{end}}
                 </div>
             `;
+            
+            // Format timestamps to local time
+            formatTimestamps();
             
             // Update active nav item
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -309,8 +460,10 @@
             // Show loading indicator
             showLoading('Caricamento slot disponibili...');
             
-            // Fetch available slots
-            fetch('/api/user/bookings/slots')
+            // Fetch available slots, sending client's current time for proper DST handling
+            const start = new Date();
+            start.setHours(start.getHours() + 3)
+            fetch(`/api/user/bookings/slots?now=${encodeURIComponent(start.toISOString())}`)
                 .then(response => response.json())
                 .then(data => {
                     hideLoading();
@@ -341,11 +494,15 @@
                     }
                     
                     // Group slots by date
-                    // 1️⃣ Group slots by the date (using ISO YYYY-MM-DD keys)
+                    // 1️⃣ Group slots by the LOCAL date (in browser timezone)
                     const groupedSlots = {};
                     filtered.forEach(slot => {
                         const date = new Date(slot.StartsAt);
-                        const dateKey = date.toISOString().split('T')[0]; // e.g. "2025-10-21"
+                        // Use local date for grouping, not UTC
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const dateKey = `${year}-${month}-${day}`; // e.g. "2025-10-21" in local timezone
                         if (!groupedSlots[dateKey]) {
                             groupedSlots[dateKey] = [];
                         }
@@ -358,7 +515,9 @@
                     // 3️⃣ Build HTML
                     let html = '<h1>Seleziona uno slot</h1>';
                     sortedKeys.forEach(dateKey => {
-                        const date = new Date(dateKey);
+                        // Parse the date key and use the first slot's date for the label
+                        const firstSlot = groupedSlots[dateKey][0];
+                        const date = new Date(firstSlot.StartsAt);
                         const dateLabel = date.toLocaleDateString('it-IT', { 
                             weekday: 'long', 
                             year: 'numeric', 
@@ -477,6 +636,7 @@
                     showToast(data.error || 'Errore durante la creazione della prenotazione');
                 } else {
                     showToast('Prenotazione creata con successo', true);
+                    NotificationManager.syncBookings();
                     setTimeout(() => location.reload(), 1000);
                 }
             })
@@ -512,6 +672,7 @@
                     showToast(errorMessage);
                 } else {
                     showToast('Prenotazione cancellata con successo', true);
+                    NotificationManager.syncBookings();
                     setTimeout(() => location.reload(), 1000);
                 }
             })

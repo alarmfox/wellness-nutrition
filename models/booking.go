@@ -13,20 +13,33 @@ type Booking struct {
 	StartsAt     time.Time
 }
 
+type SlotState string
+
+const (
+	SlotStateFree        SlotState = "FREE"
+	SlotStateUnavailable SlotState = "UNAVAILABLE"
+	SlotStateMassage     SlotState = "MASSAGE"
+	SlotStateAppointment SlotState = "APPOINTMENT"
+)
+
 type Slot struct {
 	StartsAt    time.Time
 	PeopleCount int
-	Disabled    bool
+	Disabled    bool      // Deprecated: Use State instead
+	State       SlotState
 }
 
 type EventType string
 
 const (
-	EventTypeCreated        EventType = "CREATED"
-	EventTypeDeleted        EventType = "DELETED"
-	EventTypeBookingCreated EventType = "BOOKING_CREATED"
-	EventTypeSlotDisabled   EventType = "SLOT_DISABLED"
-	EventTypeSlotEnabled    EventType = "SLOT_ENABLED"
+	EventTypeCreated            EventType = "CREATED"
+	EventTypeDeleted            EventType = "DELETED"
+	EventTypeBookingCreated     EventType = "BOOKING_CREATED"
+	EventTypeSlotDisabled       EventType = "SLOT_DISABLED"
+	EventTypeSlotEnabled        EventType = "SLOT_ENABLED"
+	EventTypeSlotMassage        EventType = "SLOT_MASSAGE"
+	EventTypeSlotAppointment    EventType = "SLOT_APPOINTMENT"
+	EventTypeSlotUnreserved     EventType = "SLOT_UNRESERVED"
 )
 
 type Event struct {
@@ -53,13 +66,13 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 			AND starts_at > date_trunc('month', CURRENT_TIMESTAMP)
 		ORDER BY starts_at DESC
 	`
-	
+
 	rows, err := r.db.Query(query, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var bookings []*Booking
 	for rows.Next() {
 		var booking Booking
@@ -73,9 +86,12 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		booking.CreatedAt = booking.CreatedAt.UTC()
+		booking.StartsAt = booking.StartsAt.UTC()
 		bookings = append(bookings, &booking)
 	}
-	
+
 	return bookings, rows.Err()
 }
 
@@ -86,13 +102,13 @@ func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, erro
 		WHERE starts_at >= $1 AND starts_at <= $2
 		ORDER BY starts_at ASC
 	`
-	
+
 	rows, err := r.db.Query(query, from, to)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var bookings []*Booking
 	for rows.Next() {
 		var booking Booking
@@ -106,9 +122,12 @@ func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, erro
 		if err != nil {
 			return nil, err
 		}
+		// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		booking.CreatedAt = booking.CreatedAt.UTC()
+		booking.StartsAt = booking.StartsAt.UTC()
 		bookings = append(bookings, &booking)
 	}
-	
+
 	return bookings, rows.Err()
 }
 
@@ -118,7 +137,7 @@ func (r *BookingRepository) Create(booking *Booking) error {
 		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`
-	
+
 	err := r.db.QueryRow(query, booking.UserID, booking.InstructorID, booking.CreatedAt, booking.StartsAt).Scan(&booking.ID)
 	return err
 }
@@ -136,13 +155,13 @@ func (r *BookingRepository) GetBySlotTime(startsAt time.Time) ([]*Booking, error
 		WHERE starts_at = $1
 		ORDER BY created_at ASC
 	`
-	
+
 	rows, err := r.db.Query(query, startsAt)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var bookings []*Booking
 	for rows.Next() {
 		var booking Booking
@@ -156,9 +175,12 @@ func (r *BookingRepository) GetBySlotTime(startsAt time.Time) ([]*Booking, error
 		if err != nil {
 			return nil, err
 		}
+		// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		booking.CreatedAt = booking.CreatedAt.UTC()
+		booking.StartsAt = booking.StartsAt.UTC()
 		bookings = append(bookings, &booking)
 	}
-	
+
 	return bookings, rows.Err()
 }
 
@@ -168,7 +190,7 @@ func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 		FROM bookings
 		WHERE id = $1
 	`
-	
+
 	var booking Booking
 	err := r.db.QueryRow(query, id).Scan(
 		&booking.ID,
@@ -177,11 +199,15 @@ func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 		&booking.CreatedAt,
 		&booking.StartsAt,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
+	// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+	booking.CreatedAt = booking.CreatedAt.UTC()
+	booking.StartsAt = booking.StartsAt.UTC()
+
 	return &booking, nil
 }
 
@@ -228,19 +254,19 @@ func NewSlotRepository(db *sql.DB) *SlotRepository {
 
 func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) {
 	query := `
-		SELECT starts_at, people_count, disabled
+		SELECT starts_at, people_count, disabled, state
 		FROM slots
 		WHERE starts_at >= $1 AND starts_at < $2
-			AND disabled = false
+			AND state = 'FREE'
 		ORDER BY starts_at ASC
 	`
-	
+
 	rows, err := r.db.Query(query, from, to)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var slots []*Slot
 	for rows.Next() {
 		var slot Slot
@@ -248,31 +274,34 @@ func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) 
 			&slot.StartsAt,
 			&slot.PeopleCount,
 			&slot.Disabled,
+			&slot.State,
 		)
 		if err != nil {
 			return nil, err
 		}
+		// Ensure the time is treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		slot.StartsAt = slot.StartsAt.UTC()
 		slots = append(slots, &slot)
 	}
-	
+
 	return slots, rows.Err()
 }
 
 // GetSlotsByDateRange returns all slots (including disabled) in a date range
 func (r *SlotRepository) GetSlotsByDateRange(from, to time.Time) ([]*Slot, error) {
 	query := `
-		SELECT starts_at, people_count, disabled
+		SELECT starts_at, people_count, disabled, state
 		FROM slots
 		WHERE starts_at >= $1 AND starts_at < $2
 		ORDER BY starts_at ASC
 	`
-	
+
 	rows, err := r.db.Query(query, from, to)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var slots []*Slot
 	for rows.Next() {
 		var slot Slot
@@ -280,34 +309,41 @@ func (r *SlotRepository) GetSlotsByDateRange(from, to time.Time) ([]*Slot, error
 			&slot.StartsAt,
 			&slot.PeopleCount,
 			&slot.Disabled,
+			&slot.State,
 		)
 		if err != nil {
 			return nil, err
 		}
+		// Ensure the time is treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		slot.StartsAt = slot.StartsAt.UTC()
 		slots = append(slots, &slot)
 	}
-	
+
 	return slots, rows.Err()
 }
 
 func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
 	query := `
-		SELECT starts_at, people_count, disabled
+		SELECT starts_at, people_count, disabled, state
 		FROM slots
 		WHERE starts_at = $1
 	`
-	
+
 	var slot Slot
 	err := r.db.QueryRow(query, startsAt).Scan(
 		&slot.StartsAt,
 		&slot.PeopleCount,
 		&slot.Disabled,
+		&slot.State,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
+	// Ensure the time is treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+	slot.StartsAt = slot.StartsAt.UTC()
+
 	return &slot, nil
 }
 
@@ -334,19 +370,19 @@ func (r *SlotRepository) DecrementPeopleCount(startsAt time.Time) error {
 func (r *SlotRepository) Update(slot *Slot) error {
 	query := `
 		UPDATE slots
-		SET disabled = $1, people_count = $2
-		WHERE starts_at = $3
+		SET disabled = $1, people_count = $2, state = $3
+		WHERE starts_at = $4
 	`
-	_, err := r.db.Exec(query, slot.Disabled, slot.PeopleCount, slot.StartsAt)
+	_, err := r.db.Exec(query, slot.Disabled, slot.PeopleCount, slot.State, slot.StartsAt)
 	return err
 }
 
 func (r *SlotRepository) Create(slot *Slot) error {
 	query := `
-		INSERT INTO slots (starts_at, people_count, disabled)
-		VALUES ($1, $2, $3)
+		INSERT INTO slots (starts_at, people_count, disabled, state)
+		VALUES ($1, $2, $3, $4)
 	`
-	_, err := r.db.Exec(query, slot.StartsAt, slot.PeopleCount, slot.Disabled)
+	_, err := r.db.Exec(query, slot.StartsAt, slot.PeopleCount, slot.Disabled, slot.State)
 	return err
 }
 
@@ -364,7 +400,7 @@ func (r *EventRepository) Create(event *Event) error {
 		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`
-	
+
 	err := r.db.QueryRow(query, event.UserID, event.StartsAt, event.Type, event.OccurredAt).Scan(&event.ID)
 	return err
 }
@@ -376,13 +412,13 @@ func (r *EventRepository) GetAll() ([]*Event, error) {
 		ORDER BY occurred_at DESC
 		LIMIT 100
 	`
-	
+
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var events []*Event
 	for rows.Next() {
 		var event Event
@@ -398,6 +434,6 @@ func (r *EventRepository) GetAll() ([]*Event, error) {
 		}
 		events = append(events, &event)
 	}
-	
+
 	return events, rows.Err()
 }
