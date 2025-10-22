@@ -7,5 +7,5 @@ cmd/cleanup/cleanup
 cmd/seed/seed
 server
 seed
-migrations
+/migrations
 cleanup
