@@ -52,6 +52,13 @@ CREATE TABLE IF NOT EXISTS instructors (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Slots table (global time slots for bookings)
+CREATE TABLE IF NOT EXISTS slots (
+    starts_at TIMESTAMP PRIMARY KEY,
+    people_count INTEGER NOT NULL DEFAULT 0,
+    disabled BOOLEAN NOT NULL DEFAULT false
+);
+
 -- Bookings table
 CREATE TABLE IF NOT EXISTS bookings (
     id BIGSERIAL PRIMARY KEY,
@@ -60,13 +67,17 @@ CREATE TABLE IF NOT EXISTS bookings (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     starts_at TIMESTAMP NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE SET NULL
+    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE SET NULL,
+    FOREIGN KEY (starts_at) REFERENCES slots(starts_at) ON DELETE CASCADE
 );
 
 -- Indexes for bookings
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_starts_at ON bookings(starts_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_instructor_id ON bookings(instructor_id);
+
+-- Index for slots
+CREATE INDEX IF NOT EXISTS idx_slots_starts_at ON slots(starts_at);
 
 -- Instructor slots table for per-instructor capacity tracking
 CREATE TABLE IF NOT EXISTS instructor_slots (
