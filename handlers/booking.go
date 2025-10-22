@@ -48,14 +48,14 @@ func (h *BookingHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
-
+	
 	bookings, err := h.bookingRepo.GetByUserID(user.ID)
 	if err != nil {
 		log.Printf("Error getting bookings: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	sendJSON(w, http.StatusOK, bookings)
 }
 
@@ -69,25 +69,25 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
-
+	
 	// Check if user can create booking
 	if time.Now().After(user.ExpiresAt) || user.RemainingAccesses <= 0 {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Subscription expired or no remaining accesses"})
 		return
 	}
-
+	
 	var req CreateBookingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
-
+	
 	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
 		return
 	}
-
+	
 	// Check if slot exists and is not disabled
 	// If slot doesn't exist, create it (lazy creation)
 	slot, err := h.slotRepo.GetByTime(startsAt)
@@ -110,35 +110,35 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
+	
 	if slot.Disabled {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is disabled"})
 		return
 	}
-
+	
 	// Create booking
 	booking := &models.Booking{
 		UserID:    user.ID,
 		CreatedAt: time.Now(),
 		StartsAt:  startsAt,
 	}
-
+	
 	if err := h.bookingRepo.Create(booking); err != nil {
 		log.Printf("Error creating booking: %v", err)
 		sendJSON(w, http.StatusConflict, map[string]string{"error": "Booking already exists"})
 		return
 	}
-
+	
 	// Update slot people count
 	if err := h.slotRepo.IncrementPeopleCount(startsAt); err != nil {
 		log.Printf("Error updating slot: %v", err)
 	}
-
+	
 	// Decrement user remaining accesses
 	if err := h.userRepo.DecrementAccesses(user.ID); err != nil {
 		log.Printf("Error decrementing accesses: %v", err)
 	}
-
+	
 	// Create event
 	event := &models.Event{
 		UserID:     user.ID,
@@ -149,14 +149,14 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := h.eventRepo.Create(event); err != nil {
 		log.Printf("Error creating event: %v", err)
 	}
-
+	
 	// Send notification email
 	go func() {
 		if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName, startsAt); err != nil {
 			log.Printf("Error sending notification: %v", err)
 		}
 	}()
-
+	
 	// Send WebSocket notification
 	if h.hub != nil {
 		h.hub.BroadcastJSON(
@@ -166,7 +166,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 			startsAt.Format("02/01/2006 15:04"),
 		)
 	}
-
+	
 	sendJSON(w, http.StatusCreated, booking)
 }
 
@@ -181,19 +181,19 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
-
+	
 	var req DeleteBookingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
-
+	
 	id, err := strconv.ParseInt(req.ID, 10, 64)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid booking ID"})
 		return
 	}
-
+	
 	// Get booking to verify ownership
 	booking, err := h.bookingRepo.GetByID(id)
 	if err != nil {
@@ -205,36 +205,36 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Admin can delete any booking, regular user only their own
 	if user.Role != models.RoleAdmin && booking.UserID != user.ID {
 		sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden"})
 		return
 	}
-
+	
 	// Delete booking
 	if err := h.bookingRepo.Delete(id); err != nil {
 		log.Printf("Error deleting booking: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Update slot people count
 	if err := h.slotRepo.DecrementPeopleCount(booking.StartsAt); err != nil {
 		log.Printf("Error updating slot: %v", err)
 	}
-
+	
 	// Refund policy: only refund if deleted 3+ hours before event
 	timeUntilBooking := booking.StartsAt.Sub(time.Now())
 	shouldRefund := timeUntilBooking >= 3*time.Hour
-
+	
 	// Only increment accesses if cancelling 3+ hours before
 	if shouldRefund {
 		if err := h.userRepo.IncrementAccesses(booking.UserID); err != nil {
 			log.Printf("Error incrementing accesses: %v", err)
 		}
 	}
-
+	
 	// Create event
 	event := &models.Event{
 		UserID:     user.ID,
@@ -245,14 +245,14 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.eventRepo.Create(event); err != nil {
 		log.Printf("Error creating event: %v", err)
 	}
-
+	
 	// Send notification email
 	go func() {
 		if err := h.mailer.SendDeleteBookingNotification(user.FirstName, user.LastName, booking.StartsAt); err != nil {
 			log.Printf("Error sending notification: %v", err)
 		}
 	}()
-
+	
 	// Send WebSocket notification
 	if h.hub != nil {
 		// Get user info for the notification
@@ -268,7 +268,7 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			booking.StartsAt.Format("02/01/2006 15:04"),
 		)
 	}
-
+	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Booking deleted successfully"})
 }
 
@@ -278,28 +278,25 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
-
+	
 	// Get slots for the next 30 days
 	from := time.Now()
 	to := from.AddDate(0, 1, 0)
-	if user.ExpiresAt.Before(to) {
-		to = user.ExpiresAt
-	}
-
+	
 	slots, err := h.slotRepo.GetAvailableSlots(from, to)
 	if err != nil {
 		log.Printf("Error getting slots: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Convert to response format with slot details
 	type SlotResponse struct {
 		StartsAt    string `json:"StartsAt"`
 		PeopleCount int    `json:"PeopleCount"`
 		Disabled    bool   `json:"Disabled"`
 	}
-
+	
 	response := make([]SlotResponse, 0, len(slots))
 	for _, slot := range slots {
 		response = append(response, SlotResponse{
@@ -308,7 +305,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 			Disabled:    slot.Disabled,
 		})
 	}
-
+	
 	sendJSON(w, http.StatusOK, map[string]interface{}{
 		"slots": response,
 	})
@@ -319,10 +316,10 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 	// Get date range from query parameters
 	fromStr := r.URL.Query().Get("from")
 	toStr := r.URL.Query().Get("to")
-
+	
 	var from, to time.Time
 	var err error
-
+	
 	if fromStr != "" {
 		from, err = time.Parse(time.RFC3339, fromStr)
 		if err != nil {
@@ -331,7 +328,7 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 	} else {
 		from = time.Now().AddDate(0, 0, -7)
 	}
-
+	
 	if toStr != "" {
 		to, err = time.Parse(time.RFC3339, toStr)
 		if err != nil {
@@ -340,14 +337,14 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 	} else {
 		to = time.Now().AddDate(0, 1, 0)
 	}
-
+	
 	bookings, err := h.bookingRepo.GetByDateRange(from, to)
 	if err != nil {
 		log.Printf("Error getting bookings: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Enrich bookings with user information
 	type BookingWithUser struct {
 		ID        int64     `json:"ID"`
@@ -361,7 +358,7 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 			SubType   string `json:"SubType"`
 		} `json:"User"`
 	}
-
+	
 	result := make([]BookingWithUser, len(bookings))
 	for i, booking := range bookings {
 		user, err := h.userRepo.GetByID(booking.UserID)
@@ -369,7 +366,7 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 			log.Printf("Error getting user %s: %v", booking.UserID, err)
 			continue
 		}
-
+		
 		result[i].ID = booking.ID
 		result[i].StartsAt = booking.StartsAt
 		result[i].CreatedAt = booking.CreatedAt
@@ -379,7 +376,7 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 		result[i].User.Email = user.Email
 		result[i].User.SubType = string(user.SubType)
 	}
-
+	
 	sendJSON(w, http.StatusOK, result)
 }
 
@@ -388,10 +385,10 @@ func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 	// Get date range from query parameters
 	fromStr := r.URL.Query().Get("from")
 	toStr := r.URL.Query().Get("to")
-
+	
 	var from, to time.Time
 	var err error
-
+	
 	if fromStr != "" {
 		from, err = time.Parse(time.RFC3339, fromStr)
 		if err != nil {
@@ -400,7 +397,7 @@ func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 	} else {
 		from = time.Now().AddDate(0, 0, -7)
 	}
-
+	
 	if toStr != "" {
 		to, err = time.Parse(time.RFC3339, toStr)
 		if err != nil {
@@ -409,28 +406,28 @@ func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 	} else {
 		to = time.Now().AddDate(0, 1, 0)
 	}
-
+	
 	slots, err := h.slotRepo.GetSlotsByDateRange(from, to)
 	if err != nil {
 		log.Printf("Error getting slots: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Convert to JSON-friendly format
 	type SlotResponse struct {
 		StartsAt    time.Time `json:"StartsAt"`
 		PeopleCount int       `json:"PeopleCount"`
 		Disabled    bool      `json:"Disabled"`
 	}
-
+	
 	result := make([]SlotResponse, len(slots))
 	for i, slot := range slots {
 		result[i].StartsAt = slot.StartsAt
 		result[i].PeopleCount = slot.PeopleCount
 		result[i].Disabled = slot.Disabled
 	}
-
+	
 	sendJSON(w, http.StatusOK, result)
 }
 
@@ -440,22 +437,22 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
-
+	
 	var req struct {
 		StartsAt string `json:"startsAt"`
 	}
-
+	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
-
+	
 	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
 		return
 	}
-
+	
 	// Check if slot exists
 	slot, err := h.slotRepo.GetByTime(startsAt)
 	if err != nil {
@@ -467,7 +464,7 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Check if slot has bookings
 	bookings, err := h.bookingRepo.GetBySlotTime(startsAt)
 	if err != nil {
@@ -475,7 +472,7 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		// Continue anyway, don't fail on this
 		bookings = []*models.Booking{}
 	}
-
+	
 	if len(bookings) > 0 {
 		// Return info about bookings that need confirmation
 		sendJSON(w, http.StatusOK, map[string]interface{}{
@@ -485,7 +482,7 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
+	
 	// No bookings, proceed to disable
 	slot.Disabled = true
 	if err := h.slotRepo.Update(slot); err != nil {
@@ -493,7 +490,7 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Create event log
 	user := middleware.GetUserFromContext(r.Context())
 	event := &models.Event{
@@ -507,7 +504,7 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 	if err := h.eventRepo.Create(event); err != nil {
 		log.Printf("Error creating event: %v", err)
 	}
-
+	
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Slot disabled successfully"})
 }
 
@@ -517,28 +514,28 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
-
+	
 	var req struct {
 		StartsAt  string `json:"startsAt"`
 		Confirmed bool   `json:"confirmed"`
 	}
-
+	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
-
+	
 	if !req.Confirmed {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Confirmation required"})
 		return
 	}
-
+	
 	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
 		return
 	}
-
+	
 	// Get all bookings for this slot
 	bookings, err := h.bookingRepo.GetBySlotTime(startsAt)
 	if err != nil {
@@ -546,7 +543,7 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Delete all bookings and refund accesses
 	user := middleware.GetUserFromContext(r.Context())
 	for _, booking := range bookings {
@@ -555,12 +552,12 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 			log.Printf("Error deleting booking %d: %v", booking.ID, err)
 			continue
 		}
-
+		
 		// Refund remaining access
 		if err := h.userRepo.IncrementRemainingAccesses(booking.UserID); err != nil {
 			log.Printf("Error refunding access for user %s: %v", booking.UserID, err)
 		}
-
+		
 		// Create event log
 		event := &models.Event{
 			UserID:     booking.UserID,
@@ -571,7 +568,7 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 		if err := h.eventRepo.Create(event); err != nil {
 			log.Printf("Error creating event: %v", err)
 		}
-
+		
 		// Send notification email
 		bookingUser, err := h.userRepo.GetByID(booking.UserID)
 		if err == nil {
@@ -582,7 +579,7 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 			}(bookingUser, booking.StartsAt)
 		}
 	}
-
+	
 	// Now disable the slot
 	slot, err := h.slotRepo.GetByTime(startsAt)
 	if err != nil {
@@ -590,14 +587,14 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	slot.Disabled = true
 	if err := h.slotRepo.Update(slot); err != nil {
 		log.Printf("Error updating slot: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Create event log for slot disable
 	event := &models.Event{
 		Type:       models.EventTypeSlotDisabled,
@@ -610,10 +607,10 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 	if err := h.eventRepo.Create(event); err != nil {
 		log.Printf("Error creating event: %v", err)
 	}
-
+	
 	sendJSON(w, http.StatusOK, map[string]interface{}{
-		"message":      "Slot disabled and bookings deleted",
-		"deletedCount": len(bookings),
+		"message":       "Slot disabled and bookings deleted",
+		"deletedCount":  len(bookings),
 	})
 }
 
@@ -623,22 +620,22 @@ func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
-
+	
 	var req struct {
 		StartsAt string `json:"startsAt"`
 	}
-
+	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
-
+	
 	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
 		return
 	}
-
+	
 	// Get the slot
 	slot, err := h.slotRepo.GetByTime(startsAt)
 	if err != nil {
@@ -646,7 +643,7 @@ func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Re-enable the slot
 	slot.Disabled = false
 	if err := h.slotRepo.Update(slot); err != nil {
@@ -654,7 +651,7 @@ func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Create event log
 	user := middleware.GetUserFromContext(r.Context())
 	event := &models.Event{
@@ -668,7 +665,7 @@ func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 	if err := h.eventRepo.Create(event); err != nil {
 		log.Printf("Error creating event: %v", err)
 	}
-
+	
 	sendJSON(w, http.StatusOK, map[string]string{
 		"message": "Slot riabilitato con successo",
 	})
@@ -680,28 +677,28 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
-
+	
 	var req struct {
 		UserID   string `json:"userId"`
 		StartsAt string `json:"startsAt"`
 	}
-
+	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
-
+	
 	if req.UserID == "" || req.StartsAt == "" {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "userId and startsAt are required"})
 		return
 	}
-
+	
 	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
 		return
 	}
-
+	
 	// Get the user
 	user, err := h.userRepo.GetByID(req.UserID)
 	if err != nil {
@@ -713,13 +710,13 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Check if user can create booking
 	if time.Now().After(user.ExpiresAt) || user.RemainingAccesses <= 0 {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "User subscription expired or no remaining accesses"})
 		return
 	}
-
+	
 	// Check if slot exists and is not disabled
 	slot, err := h.slotRepo.GetByTime(startsAt)
 	if err != nil {
@@ -731,35 +728,35 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	if slot.Disabled {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is disabled"})
 		return
 	}
-
+	
 	// Check slot capacity - check if slot is at capacity based on people_count
 	// Note: The original code used slot.Capacity but our Slot struct doesn't have it
 	// We'll check against people_count which tracks current bookings
-
+	
 	// Create booking
 	booking := &models.Booking{
 		UserID:    user.ID,
 		StartsAt:  startsAt,
 		CreatedAt: time.Now(),
 	}
-
+	
 	if err := h.bookingRepo.Create(booking); err != nil {
 		log.Printf("Error creating booking: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
-
+	
 	// Update user's remaining accesses
 	user.RemainingAccesses--
 	if err := h.userRepo.Update(user); err != nil {
 		log.Printf("Error updating user: %v", err)
 	}
-
+	
 	// Create event log
 	event := &models.Event{
 		Type:       models.EventTypeBookingCreated,
@@ -770,12 +767,12 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 	if err := h.eventRepo.Create(event); err != nil {
 		log.Printf("Error creating event: %v", err)
 	}
-
+	
 	// Send notification email (synchronous)
 	if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName, startsAt); err != nil {
 		log.Printf("Error sending notification: %v", err)
 	}
-
+	
 	sendJSON(w, http.StatusCreated, map[string]interface{}{
 		"message":   "Booking created successfully",
 		"bookingId": booking.ID,

@@ -5,7 +5,3 @@ cmd/server/server
 cmd/migrations/migrations
 cmd/cleanup/cleanup
 cmd/seed/seed
-server
-seed
-migrations
-cleanup
