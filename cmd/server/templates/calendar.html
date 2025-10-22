@@ -1084,7 +1084,7 @@
                     
                     html += `<div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
                         <span style="font-weight: 500;">${is.InstructorName}</span>
-                        <span style="color: ${stateColor}; font-size: 13px;">${stateText} (${is.PeopleCount}/${is.MaxCapacity})</span>
+                        <span style="color: ${stateColor}; font-size: 13px;">${stateText} (${is.PeopleCount}/${is.MaxCapacity || 2})</span>
                     </div>`;
                 });
             } else {
@@ -1092,6 +1092,82 @@
             }
             
             container.innerHTML = html;
+            
+            // After displaying states, update context-aware actions
+            updateContextAwareActions();
+        }
+        
+        function updateContextAwareActions() {
+            // Hide all static action cards first
+            document.getElementById('actionUnreserve').style.display = 'none';
+            document.getElementById('actionEnableSlot').style.display = 'none';
+            
+            if (!selectedSlotState || !selectedSlotState.InstructorSlots) return;
+            
+            // Check what states exist
+            const disabledInstructors = [];
+            const massageInstructors = [];
+            const appointmentInstructors = [];
+            
+            selectedSlotState.InstructorSlots.forEach(is => {
+                if (is.Disabled || is.State === 'UNAVAILABLE') {
+                    disabledInstructors.push(is);
+                } else if (is.State === 'MASSAGE') {
+                    massageInstructors.push(is);
+                } else if (is.State === 'APPOINTMENT') {
+                    appointmentInstructors.push(is);
+                }
+            });
+            
+            // Create dynamic action container after state display
+            let dynamicActionsDiv = document.getElementById('dynamicActions');
+            if (!dynamicActionsDiv) {
+                const stateContainer = document.getElementById('instructorStatesDisplay');
+                dynamicActionsDiv = document.createElement('div');
+                dynamicActionsDiv.id = 'dynamicActions';
+                dynamicActionsDiv.style.marginTop = '15px';
+                stateContainer.after(dynamicActionsDiv);
+            }
+            
+            let dynamicHtml = '';
+            
+            // Add dynamic actions based on current state
+            if (disabledInstructors.length > 0) {
+                const allDisabled = disabledInstructors.length === selectedSlotState.InstructorSlots.length;
+                if (allDisabled) {
+                    dynamicHtml += `<div class="action-card" onclick="enableAllInstructors()">
+                        <h3>✅ Abilita per Tutti</h3>
+                        <p>Rendi disponibile lo slot per tutti gli istruttori</p>
+                    </div>`;
+                } else {
+                    disabledInstructors.forEach(is => {
+                        dynamicHtml += `<div class="action-card" onclick="enableSpecificInstructor(${is.InstructorID}, '${is.InstructorName}')">
+                            <h3>✅ Abilita per ${is.InstructorName}</h3>
+                            <p>Rendi disponibile lo slot per questo istruttore</p>
+                        </div>`;
+                    });
+                }
+            }
+            
+            if (massageInstructors.length > 0) {
+                massageInstructors.forEach(is => {
+                    dynamicHtml += `<div class="action-card" onclick="removeMassage(${is.InstructorID}, '${is.InstructorName}')">
+                        <h3>🔓 Rilascia Massaggio - ${is.InstructorName}</h3>
+                        <p>Rimuovi la prenotazione per massaggio</p>
+                    </div>`;
+                });
+            }
+            
+            if (appointmentInstructors.length > 0) {
+                appointmentInstructors.forEach(is => {
+                    dynamicHtml += `<div class="action-card" onclick="removeAppointment(${is.InstructorID}, '${is.InstructorName}')">
+                        <h3>🔓 Rilascia Appuntamento - ${is.InstructorName}</h3>
+                        <p>Rimuovi la prenotazione per appuntamento</p>
+                    </div>`;
+                });
+            }
+            
+            dynamicActionsDiv.innerHTML = dynamicHtml;
         }
         
         function closeSlotModal() {
@@ -1099,9 +1175,143 @@
             // Clean up any dynamic content
             const confirmDiv = document.getElementById('unreserveConfirm');
             if (confirmDiv) confirmDiv.remove();
+            const dynamicActions = document.getElementById('dynamicActions');
+            if (dynamicActions) dynamicActions.remove();
             selectedSlot = null;
             selectedSlotState = null;
             currentAction = null;
+        }
+        
+        async function enableAllInstructors() {
+            if (!selectedSlot) return;
+            
+            if (confirm('Confermi di voler abilitare lo slot per tutti gli istruttori?')) {
+                showLoading('Abilitazione slot per tutti...');
+                try {
+                    const response = await fetch('/api/admin/bookings/slots/enable', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            startsAt: selectedSlot,
+                            instructorId: null // null means all instructors
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    hideLoading();
+                    
+                    if (data.error) {
+                        showToast(data.error, false);
+                    } else {
+                        showToast('Slot abilitato per tutti gli istruttori', true);
+                        closeSlotModal();
+                        loadBookings();
+                    }
+                } catch (error) {
+                    hideLoading();
+                    showToast('Errore durante l\'abilitazione', false);
+                    console.error(error);
+                }
+            }
+        }
+        
+        async function enableSpecificInstructor(instructorId, instructorName) {
+            if (!selectedSlot) return;
+            
+            if (confirm(`Confermi di voler abilitare lo slot per ${instructorName}?`)) {
+                showLoading(`Abilitazione slot per ${instructorName}...`);
+                try {
+                    const response = await fetch('/api/admin/bookings/slots/enable', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            startsAt: selectedSlot,
+                            instructorId: instructorId
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    hideLoading();
+                    
+                    if (data.error) {
+                        showToast(data.error, false);
+                    } else {
+                        showToast(`Slot abilitato per ${instructorName}`, true);
+                        closeSlotModal();
+                        loadBookings();
+                    }
+                } catch (error) {
+                    hideLoading();
+                    showToast('Errore durante l\'abilitazione', false);
+                    console.error(error);
+                }
+            }
+        }
+        
+        async function removeMassage(instructorId, instructorName) {
+            if (!selectedSlot) return;
+            
+            if (confirm(`Confermi di voler rimuovere il massaggio per ${instructorName}?`)) {
+                showLoading(`Rimozione massaggio per ${instructorName}...`);
+                try {
+                    const response = await fetch('/api/admin/bookings/slots/unreserve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            startsAt: selectedSlot,
+                            instructorId: instructorId
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    hideLoading();
+                    
+                    if (data.error) {
+                        showToast(data.error, false);
+                    } else {
+                        showToast(`Massaggio rimosso per ${instructorName}`, true);
+                        closeSlotModal();
+                        loadBookings();
+                    }
+                } catch (error) {
+                    hideLoading();
+                    showToast('Errore durante la rimozione', false);
+                    console.error(error);
+                }
+            }
+        }
+        
+        async function removeAppointment(instructorId, instructorName) {
+            if (!selectedSlot) return;
+            
+            if (confirm(`Confermi di voler rimuovere l'appuntamento per ${instructorName}?`)) {
+                showLoading(`Rimozione appuntamento per ${instructorName}...`);
+                try {
+                    const response = await fetch('/api/admin/bookings/slots/unreserve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            startsAt: selectedSlot,
+                            instructorId: instructorId
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    hideLoading();
+                    
+                    if (data.error) {
+                        showToast(data.error, false);
+                    } else {
+                        showToast(`Appuntamento rimosso per ${instructorName}`, true);
+                        closeSlotModal();
+                        loadBookings();
+                    }
+                } catch (error) {
+                    hideLoading();
+                    showToast('Errore durante la rimozione', false);
+                    console.error(error);
+                }
+            }
         }
         
         function openDeleteBookingModal() {
