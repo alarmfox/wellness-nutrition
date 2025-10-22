@@ -65,13 +65,13 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 			AND starts_at > date_trunc('month', CURRENT_TIMESTAMP)
 		ORDER BY starts_at DESC
 	`
-	
+
 	rows, err := r.db.Query(query, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var bookings []*Booking
 	for rows.Next() {
 		var booking Booking
@@ -84,9 +84,12 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		booking.CreatedAt = booking.CreatedAt.UTC()
+		booking.StartsAt = booking.StartsAt.UTC()
 		bookings = append(bookings, &booking)
 	}
-	
+
 	return bookings, rows.Err()
 }
 
@@ -97,13 +100,13 @@ func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, erro
 		WHERE starts_at >= $1 AND starts_at <= $2
 		ORDER BY starts_at ASC
 	`
-	
+
 	rows, err := r.db.Query(query, from, to)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var bookings []*Booking
 	for rows.Next() {
 		var booking Booking
@@ -116,9 +119,12 @@ func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, erro
 		if err != nil {
 			return nil, err
 		}
+		// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		booking.CreatedAt = booking.CreatedAt.UTC()
+		booking.StartsAt = booking.StartsAt.UTC()
 		bookings = append(bookings, &booking)
 	}
-	
+
 	return bookings, rows.Err()
 }
 
@@ -128,7 +134,7 @@ func (r *BookingRepository) Create(booking *Booking) error {
 		VALUES ($1, $2, $3)
 		RETURNING id
 	`
-	
+
 	err := r.db.QueryRow(query, booking.UserID, booking.CreatedAt, booking.StartsAt).Scan(&booking.ID)
 	return err
 }
@@ -146,13 +152,13 @@ func (r *BookingRepository) GetBySlotTime(startsAt time.Time) ([]*Booking, error
 		WHERE starts_at = $1
 		ORDER BY created_at ASC
 	`
-	
+
 	rows, err := r.db.Query(query, startsAt)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var bookings []*Booking
 	for rows.Next() {
 		var booking Booking
@@ -165,9 +171,12 @@ func (r *BookingRepository) GetBySlotTime(startsAt time.Time) ([]*Booking, error
 		if err != nil {
 			return nil, err
 		}
+		// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		booking.CreatedAt = booking.CreatedAt.UTC()
+		booking.StartsAt = booking.StartsAt.UTC()
 		bookings = append(bookings, &booking)
 	}
-	
+
 	return bookings, rows.Err()
 }
 
@@ -177,7 +186,7 @@ func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 		FROM bookings
 		WHERE id = $1
 	`
-	
+
 	var booking Booking
 	err := r.db.QueryRow(query, id).Scan(
 		&booking.ID,
@@ -185,11 +194,15 @@ func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 		&booking.CreatedAt,
 		&booking.StartsAt,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
+	// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+	booking.CreatedAt = booking.CreatedAt.UTC()
+	booking.StartsAt = booking.StartsAt.UTC()
+
 	return &booking, nil
 }
 
@@ -209,13 +222,13 @@ func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) 
 			AND state = 'FREE'
 		ORDER BY starts_at ASC
 	`
-	
+
 	rows, err := r.db.Query(query, from, to)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var slots []*Slot
 	for rows.Next() {
 		var slot Slot
@@ -228,9 +241,11 @@ func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) 
 		if err != nil {
 			return nil, err
 		}
+		// Ensure the time is treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		slot.StartsAt = slot.StartsAt.UTC()
 		slots = append(slots, &slot)
 	}
-	
+
 	return slots, rows.Err()
 }
 
@@ -242,13 +257,13 @@ func (r *SlotRepository) GetSlotsByDateRange(from, to time.Time) ([]*Slot, error
 		WHERE starts_at >= $1 AND starts_at < $2
 		ORDER BY starts_at ASC
 	`
-	
+
 	rows, err := r.db.Query(query, from, to)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var slots []*Slot
 	for rows.Next() {
 		var slot Slot
@@ -261,9 +276,11 @@ func (r *SlotRepository) GetSlotsByDateRange(from, to time.Time) ([]*Slot, error
 		if err != nil {
 			return nil, err
 		}
+		// Ensure the time is treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		slot.StartsAt = slot.StartsAt.UTC()
 		slots = append(slots, &slot)
 	}
-	
+
 	return slots, rows.Err()
 }
 
@@ -273,7 +290,7 @@ func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
 		FROM slots
 		WHERE starts_at = $1
 	`
-	
+
 	var slot Slot
 	err := r.db.QueryRow(query, startsAt).Scan(
 		&slot.StartsAt,
@@ -281,11 +298,14 @@ func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
 		&slot.Disabled,
 		&slot.State,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
+	// Ensure the time is treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+	slot.StartsAt = slot.StartsAt.UTC()
+
 	return &slot, nil
 }
 
@@ -342,7 +362,7 @@ func (r *EventRepository) Create(event *Event) error {
 		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`
-	
+
 	err := r.db.QueryRow(query, event.UserID, event.StartsAt, event.Type, event.OccurredAt).Scan(&event.ID)
 	return err
 }
@@ -354,13 +374,13 @@ func (r *EventRepository) GetAll() ([]*Event, error) {
 		ORDER BY occurred_at DESC
 		LIMIT 100
 	`
-	
+
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var events []*Event
 	for rows.Next() {
 		var event Event
@@ -376,6 +396,6 @@ func (r *EventRepository) GetAll() ([]*Event, error) {
 		}
 		events = append(events, &event)
 	}
-	
+
 	return events, rows.Err()
 }
