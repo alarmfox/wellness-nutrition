@@ -102,6 +102,12 @@ func seedTest(db *sql.DB) {
 	}
 
 	// Create time slots for the next 30 days
+	// Load Europe/Rome timezone to determine DST correctly
+	romeLocation, err := time.LoadLocation("Europe/Rome")
+	if err != nil {
+		log.Fatalf("Failed to load Europe/Rome timezone: %v", err)
+	}
+
 	now := time.Now().UTC()
 	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
@@ -114,10 +120,15 @@ func seedTest(db *sql.DB) {
 			continue
 		}
 
-		// Create slots from 07:00 to 21:00 (every hour)
-		for hour := 5; hour <= 19; hour++ {
-			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
-				hour, 0, 0, 0, time.UTC)
+		// Create slots from 07:00 to 21:00 in Rome local time
+		// We create the time in Rome timezone, then convert to UTC for storage
+		for hour := 7; hour <= 21; hour++ {
+			// Create time at this hour in Rome timezone
+			romeTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
+				hour, 0, 0, 0, romeLocation)
+
+			// Convert to UTC for storage (database stores as UTC TIMESTAMP)
+			slotTime := romeTime.UTC()
 
 			_, err = db.Exec(`
 				INSERT INTO slots (starts_at, people_count, disabled)
@@ -147,9 +158,11 @@ func seedTest(db *sql.DB) {
 			bookingDay := 1 + (i*2 + j)  // Spread bookings across days
 			bookingHour := 10 + (i*2)%10 // Different hours for each user
 
-			bookingTime := startDate.AddDate(0, 0, bookingDay)
-			bookingTime = time.Date(bookingTime.Year(), bookingTime.Month(), bookingTime.Day(),
-				bookingHour, 0, 0, 0, time.UTC)
+			// Create time at this hour in Rome timezone, then convert to UTC
+			bookingTimeRome := time.Date(startDate.Year(), startDate.Month(), startDate.Day(),
+				0, 0, 0, 0, romeLocation).AddDate(0, 0, bookingDay)
+			bookingTime := time.Date(bookingTimeRome.Year(), bookingTimeRome.Month(), bookingTimeRome.Day(),
+				bookingHour, 0, 0, 0, romeLocation).UTC()
 
 			// Skip if Sunday
 			if bookingTime.Weekday() == time.Sunday {
@@ -233,6 +246,12 @@ func seedSlot(db *sql.DB) {
 		slotsCreated = 0
 	)
 
+	// Load Europe/Rome timezone to determine DST correctly
+	romeLocation, err := time.LoadLocation("Europe/Rome")
+	if err != nil {
+		log.Fatalf("Failed to load Europe/Rome timezone: %v", err)
+	}
+
 	now := time.Now().UTC()
 	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	totDays := 30 * 12
@@ -243,9 +262,16 @@ func seedSlot(db *sql.DB) {
 		if currentDate.Weekday() == time.Sunday {
 			continue
 		}
-		for hour := 5; hour <= 19; hour++ {
-			slotTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
-				hour, 0, 0, 0, time.UTC)
+
+		// Create slots from 7 AM to 9 PM (07:00-21:00) in Rome local time
+		// We create the time in Rome timezone, then convert to UTC for storage
+		for hour := 7; hour <= 21; hour++ {
+			// Create time at this hour in Rome timezone
+			romeTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
+				hour, 0, 0, 0, romeLocation)
+
+			// Convert to UTC for storage (database stores as UTC TIMESTAMP)
+			slotTime := romeTime.UTC()
 
 			_, err = db.Exec(`
 				INSERT INTO slots (starts_at, people_count, disabled)

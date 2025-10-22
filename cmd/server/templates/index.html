@@ -460,8 +460,9 @@
             // Show loading indicator
             showLoading('Caricamento slot disponibili...');
             
-            // Fetch available slots
-            fetch('/api/user/bookings/slots')
+            // Fetch available slots, sending client's current time for proper DST handling
+            const now = new Date().toISOString();
+            fetch(`/api/user/bookings/slots?now=${encodeURIComponent(now)}`)
                 .then(response => response.json())
                 .then(data => {
                     hideLoading();
@@ -492,11 +493,15 @@
                     }
                     
                     // Group slots by date
-                    // 1️⃣ Group slots by the date (using ISO YYYY-MM-DD keys)
+                    // 1️⃣ Group slots by the LOCAL date (in browser timezone)
                     const groupedSlots = {};
                     filtered.forEach(slot => {
                         const date = new Date(slot.StartsAt);
-                        const dateKey = date.toISOString().split('T')[0]; // e.g. "2025-10-21"
+                        // Use local date for grouping, not UTC
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const dateKey = `${year}-${month}-${day}`; // e.g. "2025-10-21" in local timezone
                         if (!groupedSlots[dateKey]) {
                             groupedSlots[dateKey] = [];
                         }
@@ -509,7 +514,9 @@
                     // 3️⃣ Build HTML
                     let html = '<h1>Seleziona uno slot</h1>';
                     sortedKeys.forEach(dateKey => {
-                        const date = new Date(dateKey);
+                        // Parse the date key and use the first slot's date for the label
+                        const firstSlot = groupedSlots[dateKey][0];
+                        const date = new Date(firstSlot.StartsAt);
                         const dateLabel = date.toLocaleDateString('it-IT', { 
                             weekday: 'long', 
                             year: 'numeric', 
