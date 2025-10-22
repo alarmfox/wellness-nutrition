@@ -16,12 +16,14 @@ import (
 )
 
 type BookingHandler struct {
-	bookingRepo *models.BookingRepository
-	slotRepo    *models.SlotRepository
-	eventRepo   *models.EventRepository
-	userRepo    *models.UserRepository
-	mailer      *mail.Mailer
-	hub         *websocket.Hub
+	bookingRepo         *models.BookingRepository
+	slotRepo            *models.SlotRepository
+	eventRepo           *models.EventRepository
+	userRepo            *models.UserRepository
+	instructorRepo      *models.InstructorRepository
+	instructorSlotRepo  *models.InstructorSlotRepository
+	mailer              *mail.Mailer
+	hub                 *websocket.Hub
 }
 
 func NewBookingHandler(
@@ -29,16 +31,20 @@ func NewBookingHandler(
 	slotRepo *models.SlotRepository,
 	eventRepo *models.EventRepository,
 	userRepo *models.UserRepository,
+	instructorRepo *models.InstructorRepository,
+	instructorSlotRepo *models.InstructorSlotRepository,
 	mailer *mail.Mailer,
 	hub *websocket.Hub,
 ) *BookingHandler {
 	return &BookingHandler{
-		bookingRepo: bookingRepo,
-		slotRepo:    slotRepo,
-		eventRepo:   eventRepo,
-		userRepo:    userRepo,
-		mailer:      mailer,
-		hub:         hub,
+		bookingRepo:        bookingRepo,
+		slotRepo:           slotRepo,
+		eventRepo:          eventRepo,
+		userRepo:           userRepo,
+		instructorRepo:     instructorRepo,
+		instructorSlotRepo: instructorSlotRepo,
+		mailer:             mailer,
+		hub:                hub,
 	}
 }
 
@@ -60,7 +66,8 @@ func (h *BookingHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 }
 
 type CreateBookingRequest struct {
-	StartsAt string `json:"startsAt"`
+	StartsAt     string `json:"startsAt"`
+	InstructorID string `json:"instructorId"`
 }
 
 func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +86,24 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateBookingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+
+	// Validate instructor selection
+	if req.InstructorID == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Instructor selection is required"})
+		return
+	}
+
+	// Verify instructor exists
+	_, err := h.instructorRepo.GetByID(req.InstructorID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid instructor"})
+			return
+		}
+		log.Printf("Error getting instructor: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
 
@@ -116,11 +141,41 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check instructor slot capacity (max 2 people per instructor per slot)
+	instructorSlot, err := h.instructorSlotRepo.GetByInstructorAndTime(req.InstructorID, startsAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Create instructor slot
+			instructorSlot = &models.InstructorSlot{
+				InstructorID: req.InstructorID,
+				StartsAt:     startsAt,
+				PeopleCount:  0,
+				MaxCapacity:  2,
+			}
+			if err := h.instructorSlotRepo.Create(instructorSlot); err != nil {
+				log.Printf("Error creating instructor slot: %v", err)
+				sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+				return
+			}
+		} else {
+			log.Printf("Error getting instructor slot: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
+	}
+
+	// Check if instructor slot is full
+	if instructorSlot.PeopleCount >= instructorSlot.MaxCapacity {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "This instructor's slot is full"})
+		return
+	}
+
 	// Create booking
 	booking := &models.Booking{
-		UserID:    user.ID,
-		CreatedAt: time.Now(),
-		StartsAt:  startsAt,
+		UserID:       user.ID,
+		InstructorID: sql.NullString{String: req.InstructorID, Valid: true},
+		CreatedAt:    time.Now(),
+		StartsAt:     startsAt,
 	}
 
 	if err := h.bookingRepo.Create(booking); err != nil {
@@ -132,6 +187,11 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Update slot people count
 	if err := h.slotRepo.IncrementPeopleCount(startsAt); err != nil {
 		log.Printf("Error updating slot: %v", err)
+	}
+
+	// Update instructor slot people count
+	if err := h.instructorSlotRepo.IncrementPeopleCount(req.InstructorID, startsAt); err != nil {
+		log.Printf("Error updating instructor slot: %v", err)
 	}
 
 	// Decrement user remaining accesses
@@ -224,6 +284,13 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error updating slot: %v", err)
 	}
 
+	// Update instructor slot people count if instructor was assigned
+	if booking.InstructorID.Valid {
+		if err := h.instructorSlotRepo.DecrementPeopleCount(booking.InstructorID.String, booking.StartsAt); err != nil {
+			log.Printf("Error updating instructor slot: %v", err)
+		}
+	}
+
 	// Refund policy: only refund if deleted 3+ hours before event
 	timeUntilBooking := booking.StartsAt.Sub(time.Now())
 	shouldRefund := timeUntilBooking >= 3*time.Hour
@@ -279,6 +346,9 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Get instructor ID from query parameters (optional)
+	instructorID := r.URL.Query().Get("instructorId")
+
 	// Get slots for the next 30 days
 	from := time.Now()
 	to := from.AddDate(0, 1, 0)
@@ -286,6 +356,40 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		to = user.ExpiresAt
 	}
 
+	// If instructor is specified, get instructor-specific available slots
+	if instructorID != "" {
+		instructorSlots, err := h.instructorSlotRepo.GetAvailableForInstructor(instructorID, from, to)
+		if err != nil {
+			log.Printf("Error getting instructor slots: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
+
+		// Convert to response format
+		type SlotResponse struct {
+			StartsAt      string `json:"StartsAt"`
+			PeopleCount   int    `json:"PeopleCount"`
+			MaxCapacity   int    `json:"MaxCapacity"`
+			InstructorID  string `json:"InstructorId"`
+		}
+
+		response := make([]SlotResponse, 0, len(instructorSlots))
+		for _, slot := range instructorSlots {
+			response = append(response, SlotResponse{
+				StartsAt:     slot.StartsAt.Format(time.RFC3339),
+				PeopleCount:  slot.PeopleCount,
+				MaxCapacity:  slot.MaxCapacity,
+				InstructorID: slot.InstructorID,
+			})
+		}
+
+		sendJSON(w, http.StatusOK, map[string]interface{}{
+			"slots": response,
+		})
+		return
+	}
+
+	// Otherwise, get all available slots
 	slots, err := h.slotRepo.GetAvailableSlots(from, to)
 	if err != nil {
 		log.Printf("Error getting slots: %v", err)
@@ -319,6 +423,7 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 	// Get date range from query parameters
 	fromStr := r.URL.Query().Get("from")
 	toStr := r.URL.Query().Get("to")
+	instructorID := r.URL.Query().Get("instructorId")
 
 	var from, to time.Time
 	var err error
@@ -341,14 +446,22 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 		to = time.Now().AddDate(0, 1, 0)
 	}
 
-	bookings, err := h.bookingRepo.GetByDateRange(from, to)
+	var bookings []*models.Booking
+	
+	// Filter by instructor if specified
+	if instructorID != "" {
+		bookings, err = h.bookingRepo.GetByInstructorAndDateRange(instructorID, from, to)
+	} else {
+		bookings, err = h.bookingRepo.GetByDateRange(from, to)
+	}
+	
 	if err != nil {
 		log.Printf("Error getting bookings: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
 
-	// Enrich bookings with user information
+	// Enrich bookings with user and instructor information
 	type BookingWithUser struct {
 		ID        int64     `json:"ID"`
 		StartsAt  time.Time `json:"StartsAt"`
@@ -360,6 +473,11 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 			Email     string `json:"Email"`
 			SubType   string `json:"SubType"`
 		} `json:"User"`
+		Instructor *struct {
+			ID        string `json:"ID"`
+			FirstName string `json:"FirstName"`
+			LastName  string `json:"LastName"`
+		} `json:"Instructor,omitempty"`
 	}
 
 	result := make([]BookingWithUser, len(bookings))
@@ -378,6 +496,22 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 		result[i].User.LastName = user.LastName
 		result[i].User.Email = user.Email
 		result[i].User.SubType = string(user.SubType)
+
+		// Add instructor info if available
+		if booking.InstructorID.Valid {
+			instructor, err := h.instructorRepo.GetByID(booking.InstructorID.String)
+			if err == nil {
+				result[i].Instructor = &struct {
+					ID        string `json:"ID"`
+					FirstName string `json:"FirstName"`
+					LastName  string `json:"LastName"`
+				}{
+					ID:        instructor.ID,
+					FirstName: instructor.FirstName,
+					LastName:  instructor.LastName,
+				}
+			}
+		}
 	}
 
 	sendJSON(w, http.StatusOK, result)

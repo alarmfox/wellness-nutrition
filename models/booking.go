@@ -6,10 +6,11 @@ import (
 )
 
 type Booking struct {
-	ID        int64
-	UserID    string
-	CreatedAt time.Time
-	StartsAt  time.Time
+	ID           int64
+	UserID       string
+	InstructorID sql.NullString
+	CreatedAt    time.Time
+	StartsAt     time.Time
 }
 
 type Slot struct {
@@ -46,7 +47,7 @@ func NewBookingRepository(db *sql.DB) *BookingRepository {
 
 func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 	query := `
-		SELECT id, user_id, created_at, starts_at
+		SELECT id, user_id, instructor_id, created_at, starts_at
 		FROM bookings
 		WHERE user_id = $1 
 			AND starts_at > date_trunc('month', CURRENT_TIMESTAMP)
@@ -65,6 +66,7 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 		err := rows.Scan(
 			&booking.ID,
 			&booking.UserID,
+			&booking.InstructorID,
 			&booking.CreatedAt,
 			&booking.StartsAt,
 		)
@@ -79,7 +81,7 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 
 func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, error) {
 	query := `
-		SELECT id, user_id, created_at, starts_at
+		SELECT id, user_id, instructor_id, created_at, starts_at
 		FROM bookings
 		WHERE starts_at >= $1 AND starts_at <= $2
 		ORDER BY starts_at ASC
@@ -97,6 +99,7 @@ func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, erro
 		err := rows.Scan(
 			&booking.ID,
 			&booking.UserID,
+			&booking.InstructorID,
 			&booking.CreatedAt,
 			&booking.StartsAt,
 		)
@@ -111,12 +114,12 @@ func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, erro
 
 func (r *BookingRepository) Create(booking *Booking) error {
 	query := `
-		INSERT INTO bookings (user_id, created_at, starts_at)
-		VALUES ($1, $2, $3)
+		INSERT INTO bookings (user_id, instructor_id, created_at, starts_at)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`
 	
-	err := r.db.QueryRow(query, booking.UserID, booking.CreatedAt, booking.StartsAt).Scan(&booking.ID)
+	err := r.db.QueryRow(query, booking.UserID, booking.InstructorID, booking.CreatedAt, booking.StartsAt).Scan(&booking.ID)
 	return err
 }
 
@@ -128,7 +131,7 @@ func (r *BookingRepository) Delete(id int64) error {
 
 func (r *BookingRepository) GetBySlotTime(startsAt time.Time) ([]*Booking, error) {
 	query := `
-		SELECT id, user_id, created_at, starts_at
+		SELECT id, user_id, instructor_id, created_at, starts_at
 		FROM bookings
 		WHERE starts_at = $1
 		ORDER BY created_at ASC
@@ -146,6 +149,7 @@ func (r *BookingRepository) GetBySlotTime(startsAt time.Time) ([]*Booking, error
 		err := rows.Scan(
 			&booking.ID,
 			&booking.UserID,
+			&booking.InstructorID,
 			&booking.CreatedAt,
 			&booking.StartsAt,
 		)
@@ -160,7 +164,7 @@ func (r *BookingRepository) GetBySlotTime(startsAt time.Time) ([]*Booking, error
 
 func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 	query := `
-		SELECT id, user_id, created_at, starts_at
+		SELECT id, user_id, instructor_id, created_at, starts_at
 		FROM bookings
 		WHERE id = $1
 	`
@@ -169,6 +173,7 @@ func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 	err := r.db.QueryRow(query, id).Scan(
 		&booking.ID,
 		&booking.UserID,
+		&booking.InstructorID,
 		&booking.CreatedAt,
 		&booking.StartsAt,
 	)
@@ -178,6 +183,39 @@ func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 	}
 	
 	return &booking, nil
+}
+
+func (r *BookingRepository) GetByInstructorAndDateRange(instructorID string, from, to time.Time) ([]*Booking, error) {
+	query := `
+		SELECT id, user_id, instructor_id, created_at, starts_at
+		FROM bookings
+		WHERE instructor_id = $1 AND starts_at >= $2 AND starts_at <= $3
+		ORDER BY starts_at ASC
+	`
+	
+	rows, err := r.db.Query(query, instructorID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var bookings []*Booking
+	for rows.Next() {
+		var booking Booking
+		err := rows.Scan(
+			&booking.ID,
+			&booking.UserID,
+			&booking.InstructorID,
+			&booking.CreatedAt,
+			&booking.StartsAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, &booking)
+	}
+	
+	return bookings, rows.Err()
 }
 
 type SlotRepository struct {

@@ -81,6 +81,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	slotRepo := models.NewSlotRepository(db)
 	eventRepo := models.NewEventRepository(db)
 	questionRepo := models.NewQuestionRepository(db)
+	instructorRepo := models.NewInstructorRepository(db)
+	instructorSlotRepo := models.NewInstructorSlotRepository(db)
 
 	// Initialize session store
 	sessionStore := models.NewSessionStore(db)
@@ -108,7 +110,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userRepo, sessionStore)
 	userHandler := handlers.NewUserHandler(userRepo, mailer)
-	bookingHandler := handlers.NewBookingHandler(bookingRepo, slotRepo, eventRepo, userRepo, mailer, hub)
+	bookingHandler := handlers.NewBookingHandler(bookingRepo, slotRepo, eventRepo, userRepo, instructorRepo, instructorSlotRepo, mailer, hub)
+	instructorHandler := handlers.NewInstructorHandler(instructorRepo)
 	surveyHandler := handlers.NewSurveyHandler(questionRepo)
 	_ = handlers.NewPageHandler(userRepo, bookingRepo, eventRepo) // Page handler logic moved to main.go serve functions
 
@@ -150,6 +153,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/admin/", authMiddleware(http.HandlerFunc(serveAdminHome)))
 	mux.Handle("/admin/calendar", adminMiddleware(http.HandlerFunc(serveCalendar)))
 	mux.Handle("/admin/users", adminMiddleware(http.HandlerFunc(serveUsers(userRepo))))
+	mux.Handle("/admin/instructors", adminMiddleware(http.HandlerFunc(serveInstructors(instructorRepo))))
 	mux.Handle("/admin/events", adminMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
 	mux.Handle("/admin/survey/questions", adminMiddleware(http.HandlerFunc(serveSurveyQuestions)))
 	mux.Handle("/admin/survey/results", adminMiddleware(http.HandlerFunc(serveSurveyResults)))
@@ -158,6 +162,10 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/api/admin/users/update", adminMiddleware(http.HandlerFunc(userHandler.Update)))
 	mux.Handle("/api/admin/users/delete", adminMiddleware(http.HandlerFunc(userHandler.Delete)))
 	mux.Handle("/api/admin/users/resend-verification", adminMiddleware(http.HandlerFunc(userHandler.ResendVerification)))
+	mux.Handle("/api/admin/instructors", adminMiddleware(http.HandlerFunc(instructorHandler.GetAll)))
+	mux.Handle("/api/admin/instructors/create", adminMiddleware(http.HandlerFunc(instructorHandler.Create)))
+	mux.Handle("/api/admin/instructors/update", adminMiddleware(http.HandlerFunc(instructorHandler.Update)))
+	mux.Handle("/api/admin/instructors/delete", adminMiddleware(http.HandlerFunc(instructorHandler.Delete)))
 	mux.Handle("/api/admin/bookings", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings)))
 	mux.Handle("/api/admin/bookings/create", adminMiddleware(http.HandlerFunc(bookingHandler.CreateBookingForUser)))
 	mux.Handle("/api/admin/slots", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllSlots)))
@@ -584,5 +592,57 @@ func serveSurveyResults(w http.ResponseWriter, r *http.Request) {
 	if err := tpl.ExecuteTemplate(w, "survey-results.html", nil); err != nil {
 		log.Print(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+
+		user := middleware.GetUserFromContext(r.Context())
+		if user == nil || user.Role != models.RoleAdmin {
+			http.Redirect(w, r, "/signin", http.StatusSeeOther)
+			return
+		}
+
+		instructors, err := instructorRepo.GetAll()
+		if err != nil {
+			log.Printf("Error getting instructors: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// Format instructor data for display
+		type InstructorDisplay struct {
+			ID        string
+			FirstName string
+			LastName  string
+			Email     string
+			CreatedAt string
+		}
+
+		var displayInstructors []InstructorDisplay
+		for _, i := range instructors {
+			displayInstructors = append(displayInstructors, InstructorDisplay{
+				ID:        i.ID,
+				FirstName: i.FirstName,
+				LastName:  i.LastName,
+				Email:     i.Email,
+				CreatedAt: i.CreatedAt.Format("02 Jan 2006"),
+			})
+		}
+
+		data := map[string]interface{}{
+			"Instructors": displayInstructors,
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tpl.ExecuteTemplate(w, "instructors.html", data); err != nil {
+			log.Print(err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	}
 }
