@@ -1,5 +1,5 @@
 -- Migration: Add state column to slots table
--- This migration adds a state column to track FREE, UNAVAILABLE, and RESERVED states
+-- This migration adds a state column to track FREE, UNAVAILABLE, MASSAGE, and APPOINTMENT states
 -- and migrates existing disabled data to the new state column
 
 -- Add state column with default value 'FREE'

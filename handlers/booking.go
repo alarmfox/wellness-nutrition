@@ -680,7 +680,7 @@ func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ReserveSlot allows admin to reserve a slot (mark it as reserved)
+// ReserveSlot allows admin to reserve a slot for a specific purpose (massage or appointment)
 func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -688,7 +688,8 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	var req struct {
-		StartsAt string `json:"startsAt"`
+		StartsAt        string `json:"startsAt"`
+		ReservationType string `json:"reservationType"` // "MASSAGE" or "APPOINTMENT"
 	}
 	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -702,16 +703,31 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
+	// Validate reservation type
+	var slotState models.SlotState
+	var eventType models.EventType
+	switch req.ReservationType {
+	case "MASSAGE":
+		slotState = models.SlotStateMassage
+		eventType = models.EventTypeSlotMassage
+	case "APPOINTMENT":
+		slotState = models.SlotStateAppointment
+		eventType = models.EventTypeSlotAppointment
+	default:
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid reservation type. Must be MASSAGE or APPOINTMENT"})
+		return
+	}
+	
 	// Check if slot exists, if not create it
 	slot, err := h.slotRepo.GetByTime(startsAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// Create the slot with RESERVED state
+			// Create the slot with specified state
 			slot = &models.Slot{
 				StartsAt:    startsAt,
 				PeopleCount: 0,
 				Disabled:    false,
-				State:       models.SlotStateReserved,
+				State:       slotState,
 			}
 			if err := h.slotRepo.Create(slot); err != nil {
 				log.Printf("Error creating slot: %v", err)
@@ -742,8 +758,8 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
-		// Update slot to RESERVED
-		slot.State = models.SlotStateReserved
+		// Update slot to specified state
+		slot.State = slotState
 		slot.Disabled = false
 		if err := h.slotRepo.Update(slot); err != nil {
 			log.Printf("Error updating slot: %v", err)
@@ -755,7 +771,7 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	// Create event log
 	user := middleware.GetUserFromContext(r.Context())
 	event := &models.Event{
-		Type:       models.EventTypeSlotReserved,
+		Type:       eventType,
 		StartsAt:   startsAt,
 		OccurredAt: time.Now(),
 	}
@@ -885,7 +901,7 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 	
-	// Admin can book on FREE or RESERVED slots (for flexibility)
+	// Admin can book on FREE, MASSAGE, or APPOINTMENT slots
 	if slot.State == models.SlotStateUnavailable {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is unavailable"})
 		return

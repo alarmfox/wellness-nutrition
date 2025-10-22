@@ -17,7 +17,8 @@ type SlotState string
 const (
 	SlotStateFree        SlotState = "FREE"
 	SlotStateUnavailable SlotState = "UNAVAILABLE"
-	SlotStateReserved    SlotState = "RESERVED"
+	SlotStateMassage     SlotState = "MASSAGE"
+	SlotStateAppointment SlotState = "APPOINTMENT"
 )
 
 type Slot struct {
@@ -30,13 +31,14 @@ type Slot struct {
 type EventType string
 
 const (
-	EventTypeCreated        EventType = "CREATED"
-	EventTypeDeleted        EventType = "DELETED"
-	EventTypeBookingCreated EventType = "BOOKING_CREATED"
-	EventTypeSlotDisabled   EventType = "SLOT_DISABLED"
-	EventTypeSlotEnabled    EventType = "SLOT_ENABLED"
-	EventTypeSlotReserved   EventType = "SLOT_RESERVED"
-	EventTypeSlotUnreserved EventType = "SLOT_UNRESERVED"
+	EventTypeCreated            EventType = "CREATED"
+	EventTypeDeleted            EventType = "DELETED"
+	EventTypeBookingCreated     EventType = "BOOKING_CREATED"
+	EventTypeSlotDisabled       EventType = "SLOT_DISABLED"
+	EventTypeSlotEnabled        EventType = "SLOT_ENABLED"
+	EventTypeSlotMassage        EventType = "SLOT_MASSAGE"
+	EventTypeSlotAppointment    EventType = "SLOT_APPOINTMENT"
+	EventTypeSlotUnreserved     EventType = "SLOT_UNRESERVED"
 )
 
 type Event struct {
