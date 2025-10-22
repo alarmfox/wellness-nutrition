@@ -164,6 +164,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/api/admin/slots/disable", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlot)))
 	mux.Handle("/api/admin/slots/disable-confirm", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlotConfirm)))
 	mux.Handle("/api/admin/slots/enable", adminMiddleware(http.HandlerFunc(bookingHandler.EnableSlot)))
+	mux.Handle("/api/admin/slots/reserve", adminMiddleware(http.HandlerFunc(bookingHandler.ReserveSlot)))
+	mux.Handle("/api/admin/slots/unreserve", adminMiddleware(http.HandlerFunc(bookingHandler.UnreserveSlot)))
 	mux.Handle("/api/admin/survey/questions", adminMiddleware(http.HandlerFunc(surveyHandler.GetAllQuestions)))
 	mux.Handle("/api/admin/survey/questions/create", adminMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion)))
 	mux.Handle("/api/admin/survey/questions/update", adminMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion)))

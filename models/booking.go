@@ -12,20 +12,33 @@ type Booking struct {
 	StartsAt  time.Time
 }
 
+type SlotState string
+
+const (
+	SlotStateFree        SlotState = "FREE"
+	SlotStateUnavailable SlotState = "UNAVAILABLE"
+	SlotStateMassage     SlotState = "MASSAGE"
+	SlotStateAppointment SlotState = "APPOINTMENT"
+)
+
 type Slot struct {
 	StartsAt    time.Time
 	PeopleCount int
-	Disabled    bool
+	Disabled    bool      // Deprecated: Use State instead
+	State       SlotState
 }
 
 type EventType string
 
 const (
-	EventTypeCreated        EventType = "CREATED"
-	EventTypeDeleted        EventType = "DELETED"
-	EventTypeBookingCreated EventType = "BOOKING_CREATED"
-	EventTypeSlotDisabled   EventType = "SLOT_DISABLED"
-	EventTypeSlotEnabled    EventType = "SLOT_ENABLED"
+	EventTypeCreated            EventType = "CREATED"
+	EventTypeDeleted            EventType = "DELETED"
+	EventTypeBookingCreated     EventType = "BOOKING_CREATED"
+	EventTypeSlotDisabled       EventType = "SLOT_DISABLED"
+	EventTypeSlotEnabled        EventType = "SLOT_ENABLED"
+	EventTypeSlotMassage        EventType = "SLOT_MASSAGE"
+	EventTypeSlotAppointment    EventType = "SLOT_APPOINTMENT"
+	EventTypeSlotUnreserved     EventType = "SLOT_UNRESERVED"
 )
 
 type Event struct {
@@ -203,10 +216,10 @@ func NewSlotRepository(db *sql.DB) *SlotRepository {
 
 func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) {
 	query := `
-		SELECT starts_at, people_count, disabled
+		SELECT starts_at, people_count, disabled, state
 		FROM slots
 		WHERE starts_at >= $1 AND starts_at < $2
-			AND disabled = false
+			AND state = 'FREE'
 		ORDER BY starts_at ASC
 	`
 
@@ -223,6 +236,7 @@ func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) 
 			&slot.StartsAt,
 			&slot.PeopleCount,
 			&slot.Disabled,
+			&slot.State,
 		)
 		if err != nil {
 			return nil, err
@@ -238,7 +252,7 @@ func (r *SlotRepository) GetAvailableSlots(from, to time.Time) ([]*Slot, error) 
 // GetSlotsByDateRange returns all slots (including disabled) in a date range
 func (r *SlotRepository) GetSlotsByDateRange(from, to time.Time) ([]*Slot, error) {
 	query := `
-		SELECT starts_at, people_count, disabled
+		SELECT starts_at, people_count, disabled, state
 		FROM slots
 		WHERE starts_at >= $1 AND starts_at < $2
 		ORDER BY starts_at ASC
@@ -257,6 +271,7 @@ func (r *SlotRepository) GetSlotsByDateRange(from, to time.Time) ([]*Slot, error
 			&slot.StartsAt,
 			&slot.PeopleCount,
 			&slot.Disabled,
+			&slot.State,
 		)
 		if err != nil {
 			return nil, err
@@ -271,7 +286,7 @@ func (r *SlotRepository) GetSlotsByDateRange(from, to time.Time) ([]*Slot, error
 
 func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
 	query := `
-		SELECT starts_at, people_count, disabled
+		SELECT starts_at, people_count, disabled, state
 		FROM slots
 		WHERE starts_at = $1
 	`
@@ -281,6 +296,7 @@ func (r *SlotRepository) GetByTime(startsAt time.Time) (*Slot, error) {
 		&slot.StartsAt,
 		&slot.PeopleCount,
 		&slot.Disabled,
+		&slot.State,
 	)
 
 	if err != nil {
@@ -316,19 +332,19 @@ func (r *SlotRepository) DecrementPeopleCount(startsAt time.Time) error {
 func (r *SlotRepository) Update(slot *Slot) error {
 	query := `
 		UPDATE slots
-		SET disabled = $1, people_count = $2
-		WHERE starts_at = $3
+		SET disabled = $1, people_count = $2, state = $3
+		WHERE starts_at = $4
 	`
-	_, err := r.db.Exec(query, slot.Disabled, slot.PeopleCount, slot.StartsAt)
+	_, err := r.db.Exec(query, slot.Disabled, slot.PeopleCount, slot.State, slot.StartsAt)
 	return err
 }
 
 func (r *SlotRepository) Create(slot *Slot) error {
 	query := `
-		INSERT INTO slots (starts_at, people_count, disabled)
-		VALUES ($1, $2, $3)
+		INSERT INTO slots (starts_at, people_count, disabled, state)
+		VALUES ($1, $2, $3, $4)
 	`
-	_, err := r.db.Exec(query, slot.StartsAt, slot.PeopleCount, slot.Disabled)
+	_, err := r.db.Exec(query, slot.StartsAt, slot.PeopleCount, slot.Disabled, slot.State)
 	return err
 }
 
