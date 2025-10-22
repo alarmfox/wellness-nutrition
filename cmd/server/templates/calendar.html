@@ -785,6 +785,58 @@
             }
         }
         
+        function populateAvailableInstructorDropdown(selectId, excludeStates = []) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            
+            select.innerHTML = '';
+            
+            // Add placeholder
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = '-- Seleziona istruttore --';
+            placeholderOption.disabled = true;
+            placeholderOption.selected = true;
+            select.appendChild(placeholderOption);
+            
+            // Get list of instructor IDs that are already occupied with excluded states
+            const occupiedInstructorIds = new Set();
+            if (selectedSlotState && selectedSlotState.InstructorSlots) {
+                selectedSlotState.InstructorSlots.forEach(is => {
+                    if (excludeStates.includes(is.State) || (excludeStates.includes('UNAVAILABLE') && is.Disabled)) {
+                        occupiedInstructorIds.add(is.InstructorID);
+                    }
+                });
+            }
+            
+            // Filter instructors - only show those that are available
+            const availableInstructors = instructors.filter(instructor => 
+                !occupiedInstructorIds.has(instructor.ID)
+            );
+            
+            if (availableInstructors.length === 0) {
+                const noOption = document.createElement('option');
+                noOption.value = '';
+                noOption.textContent = 'Nessun istruttore disponibile';
+                noOption.disabled = true;
+                select.appendChild(noOption);
+                return;
+            }
+            
+            availableInstructors.forEach(instructor => {
+                const option = document.createElement('option');
+                option.value = instructor.ID;
+                const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
+                option.textContent = `${instructor.FirstName}${lastName}`;
+                select.appendChild(option);
+            });
+            
+            // Set default to current filter if it's available
+            if (selectedInstructorId && !occupiedInstructorIds.has(parseInt(selectedInstructorId))) {
+                select.value = selectedInstructorId;
+            }
+        }
+        
         function renderCalendar() {
             if (viewMode === 'month') {
                 renderMonthView();
@@ -1459,8 +1511,8 @@
             });
             document.getElementById('slotInfoReserveMassage').textContent = `Slot: ${formatted}`;
             
-            // Populate instructor dropdown (no "Tutti" option for massage)
-            populateInstructorDropdown('massageInstructorId', false);
+            // Populate instructor dropdown - exclude instructors with massage, appointment, or disabled
+            populateAvailableInstructorDropdown('massageInstructorId', ['MASSAGE', 'APPOINTMENT', 'UNAVAILABLE']);
         }
         
         function showReserveAppointment() {
@@ -1484,8 +1536,8 @@
             });
             document.getElementById('slotInfoReserveAppointment').textContent = `Slot: ${formatted}`;
             
-            // Populate instructor dropdown (no "Tutti" option for appointment)
-            populateInstructorDropdown('appointmentInstructorId', false);
+            // Populate instructor dropdown - exclude instructors with massage, appointment, or disabled
+            populateAvailableInstructorDropdown('appointmentInstructorId', ['MASSAGE', 'APPOINTMENT', 'UNAVAILABLE']);
         }
         
         function showUnreserveSlot() {
@@ -1632,8 +1684,8 @@
             });
             document.getElementById('slotInfoBooking').textContent = `Slot: ${formatted}`;
             
-            // Populate instructor dropdown (no "Tutti" option for booking)
-            populateInstructorDropdown('bookingInstructorId', false);
+            // Populate instructor dropdown - exclude disabled instructors only
+            populateAvailableInstructorDropdown('bookingInstructorId', ['UNAVAILABLE']);
             
             // Load users if not already loaded
             if (users.length === 0) {
