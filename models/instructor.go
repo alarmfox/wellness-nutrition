@@ -251,3 +251,50 @@ func (r *InstructorSlotRepository) Update(slot *InstructorSlot) error {
 	)
 	return err
 }
+
+func (r *InstructorSlotRepository) GetByDateRange(from, to time.Time) ([]*InstructorSlot, error) {
+	query := `
+		SELECT instructor_id, starts_at, people_count, max_capacity, state, disabled
+		FROM instructor_slots
+		WHERE starts_at >= $1 AND starts_at < $2
+		ORDER BY starts_at ASC, instructor_id ASC
+	`
+	
+	rows, err := r.db.Query(query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var slots []*InstructorSlot
+	for rows.Next() {
+		var slot InstructorSlot
+		err := rows.Scan(
+			&slot.InstructorID,
+			&slot.StartsAt,
+			&slot.PeopleCount,
+			&slot.MaxCapacity,
+			&slot.State,
+			&slot.Disabled,
+		)
+		if err != nil {
+			return nil, err
+		}
+		// Ensure the time is treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
+		slot.StartsAt = slot.StartsAt.UTC()
+		slots = append(slots, &slot)
+	}
+	
+	return slots, rows.Err()
+}
+
+func (r *InstructorSlotRepository) SetStateForAllAtTime(startsAt time.Time, state SlotState, disabled bool) error {
+	query := `
+		UPDATE instructor_slots
+		SET state = $2, disabled = $3
+		WHERE starts_at = $1
+	`
+	_, err := r.db.Exec(query, startsAt, state, disabled)
+	return err
+}
+

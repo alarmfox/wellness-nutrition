@@ -489,6 +489,7 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 }
 
 // GetAllSlots returns all slots (including disabled) for admin calendar view
+// Now using instructor_slots table aggregated by time
 func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 	// Get date range from query parameters
 	fromStr := r.URL.Query().Get("from")
@@ -515,14 +516,16 @@ func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 		to = time.Now().AddDate(0, 1, 0)
 	}
 
-	slots, err := h.slotRepo.GetSlotsByDateRange(from, to)
+	// Get all instructor slots in the range
+	instructorSlots, err := h.instructorSlotRepo.GetByDateRange(from, to)
 	if err != nil {
-		log.Printf("Error getting slots: %v", err)
+		log.Printf("Error getting instructor slots: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
 
 	// Convert to JSON-friendly format
+	// Aggregate instructor slots by time to show overall slot state
 	type SlotResponse struct {
 		StartsAt    time.Time `json:"StartsAt"`
 		PeopleCount int       `json:"PeopleCount"`
@@ -530,18 +533,39 @@ func (h *BookingHandler) GetAllSlots(w http.ResponseWriter, r *http.Request) {
 		State       string    `json:"State"`
 	}
 
-	result := make([]SlotResponse, len(slots))
-	for i, slot := range slots {
-		result[i].StartsAt = slot.StartsAt
-		result[i].PeopleCount = slot.PeopleCount
-		result[i].Disabled = slot.Disabled
-		result[i].State = string(slot.State)
+	// Group by starts_at and aggregate
+	slotMap := make(map[time.Time]*SlotResponse)
+	for _, iSlot := range instructorSlots {
+		if existing, ok := slotMap[iSlot.StartsAt]; ok {
+			// Aggregate counts
+			existing.PeopleCount += iSlot.PeopleCount
+			// If any instructor slot is disabled or not FREE, mark overall slot
+			if iSlot.Disabled {
+				existing.Disabled = true
+			}
+			if iSlot.State != models.SlotStateFree {
+				existing.State = string(iSlot.State)
+			}
+		} else {
+			slotMap[iSlot.StartsAt] = &SlotResponse{
+				StartsAt:    iSlot.StartsAt,
+				PeopleCount: iSlot.PeopleCount,
+				Disabled:    iSlot.Disabled,
+				State:       string(iSlot.State),
+			}
+		}
+	}
+
+	// Convert map to slice
+	result := make([]SlotResponse, 0, len(slotMap))
+	for _, slot := range slotMap {
+		result = append(result, *slot)
 	}
 
 	sendJSON(w, http.StatusOK, result)
 }
 
-// DisableSlot marks a slot as unavailable (with booking check)
+// DisableSlot marks all instructor slots at a time as unavailable (with booking check)
 func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -563,18 +587,6 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if slot exists
-	slot, err := h.slotRepo.GetByTime(startsAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot not found"})
-			return
-		}
-		log.Printf("Error getting slot: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
-	}
-
 	// Check if slot has bookings
 	bookings, err := h.bookingRepo.GetBySlotTime(startsAt)
 	if err != nil {
@@ -593,11 +605,9 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// No bookings, proceed to disable
-	slot.Disabled = true
-	slot.State = models.SlotStateUnavailable
-	if err := h.slotRepo.Update(slot); err != nil {
-		log.Printf("Error updating slot: %v", err)
+	// No bookings, proceed to disable all instructor slots at this time
+	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateUnavailable, true); err != nil {
+		log.Printf("Error updating instructor slots: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
@@ -619,7 +629,7 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Slot disabled successfully"})
 }
 
-// DisableSlotConfirm disables a slot and deletes all associated bookings
+// DisableSlotConfirm disables all instructor slots at a time and deletes all associated bookings
 func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -664,6 +674,13 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 
+		// Decrement instructor slot count if booking has instructor
+		if booking.InstructorID.Valid {
+			if err := h.instructorSlotRepo.DecrementPeopleCount(booking.InstructorID.String, booking.StartsAt); err != nil {
+				log.Printf("Error decrementing instructor slot count: %v", err)
+			}
+		}
+
 		// Refund remaining access
 		if err := h.userRepo.IncrementRemainingAccesses(booking.UserID); err != nil {
 			log.Printf("Error refunding access for user %s: %v", booking.UserID, err)
@@ -691,18 +708,9 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	// Now disable the slot
-	slot, err := h.slotRepo.GetByTime(startsAt)
-	if err != nil {
-		log.Printf("Error getting slot: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
-	}
-
-	slot.Disabled = true
-	slot.State = models.SlotStateUnavailable
-	if err := h.slotRepo.Update(slot); err != nil {
-		log.Printf("Error updating slot: %v", err)
+	// Now disable all instructor slots at this time
+	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateUnavailable, true); err != nil {
+		log.Printf("Error updating instructor slots: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
@@ -726,7 +734,7 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-// EnableSlot allows admin to re-enable a disabled slot
+// EnableSlot allows admin to re-enable all instructor slots at a time
 func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -748,19 +756,9 @@ func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the slot
-	slot, err := h.slotRepo.GetByTime(startsAt)
-	if err != nil {
-		log.Printf("Error getting slot: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
-	}
-
-	// Re-enable the slot
-	slot.Disabled = false
-	slot.State = models.SlotStateFree
-	if err := h.slotRepo.Update(slot); err != nil {
-		log.Printf("Error updating slot: %v", err)
+	// Re-enable all instructor slots at this time
+	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateFree, false); err != nil {
+		log.Printf("Error updating instructor slots: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
@@ -784,7 +782,7 @@ func (h *BookingHandler) EnableSlot(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ReserveSlot allows admin to reserve a slot for a specific purpose (massage or appointment)
+// ReserveSlot allows admin to reserve all instructor slots at a time for a specific purpose (massage or appointment)
 func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -822,54 +820,29 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// Check if slot exists, if not create it
-	slot, err := h.slotRepo.GetByTime(startsAt)
+	// Check if there are any bookings at this time
+	bookings, err := h.bookingRepo.GetBySlotTime(startsAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			// Create the slot with specified state
-			slot = &models.Slot{
-				StartsAt:    startsAt,
-				PeopleCount: 0,
-				Disabled:    false,
-				State:       slotState,
-			}
-			if err := h.slotRepo.Create(slot); err != nil {
-				log.Printf("Error creating slot: %v", err)
-				sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-				return
-			}
-		} else {
-			log.Printf("Error getting slot: %v", err)
-			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-			return
-		}
-	} else {
-		// Check if slot has bookings
-		bookings, err := h.bookingRepo.GetBySlotTime(startsAt)
-		if err != nil {
-			log.Printf("Error getting bookings for slot: %v", err)
-			// Continue anyway, don't fail on this
-			bookings = []*models.Booking{}
-		}
-		
-		if len(bookings) > 0 {
-			// Return info about bookings that need confirmation
-			sendJSON(w, http.StatusOK, map[string]interface{}{
-				"hasBookings":  true,
-				"bookingCount": len(bookings),
-				"message":      "This slot has bookings. Please delete them first.",
-			})
-			return
-		}
-		
-		// Update slot to specified state
-		slot.State = slotState
-		slot.Disabled = false
-		if err := h.slotRepo.Update(slot); err != nil {
-			log.Printf("Error updating slot: %v", err)
-			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-			return
-		}
+		log.Printf("Error getting bookings for slot: %v", err)
+		// Continue anyway, don't fail on this
+		bookings = []*models.Booking{}
+	}
+	
+	if len(bookings) > 0 {
+		// Return info about bookings that need confirmation
+		sendJSON(w, http.StatusOK, map[string]interface{}{
+			"hasBookings":  true,
+			"bookingCount": len(bookings),
+			"message":      "This slot has bookings. Please delete them first.",
+		})
+		return
+	}
+	
+	// Update all instructor slots to specified state
+	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, slotState, false); err != nil {
+		log.Printf("Error updating instructor slots: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
 	}
 	
 	// Create event log
@@ -889,7 +862,7 @@ func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Slot reserved successfully"})
 }
 
-// UnreserveSlot allows admin to unreserve a slot (mark it as free)
+// UnreserveSlot allows admin to unreserve all instructor slots at a time (mark them as free)
 func (h *BookingHandler) UnreserveSlot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -911,19 +884,9 @@ func (h *BookingHandler) UnreserveSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// Get the slot
-	slot, err := h.slotRepo.GetByTime(startsAt)
-	if err != nil {
-		log.Printf("Error getting slot: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
-	}
-	
-	// Mark as FREE
-	slot.State = models.SlotStateFree
-	slot.Disabled = false
-	if err := h.slotRepo.Update(slot); err != nil {
-		log.Printf("Error updating slot: %v", err)
+	// Mark all instructor slots as FREE
+	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateFree, false); err != nil {
+		log.Printf("Error updating instructor slots: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
@@ -994,28 +957,6 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Check if slot exists and is not disabled
-	slot, err := h.slotRepo.GetByTime(startsAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot not found"})
-			return
-		}
-		log.Printf("Error getting slot: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
-	}
-	
-	// Admin can book on FREE, MASSAGE, or APPOINTMENT slots
-	if slot.State == models.SlotStateUnavailable {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is unavailable"})
-		return
-	}
-
-	// Check slot capacity - check if slot is at capacity based on people_count
-	// Note: The original code used slot.Capacity but our Slot struct doesn't have it
-	// We'll check against people_count which tracks current bookings
-
 	// Verify instructor exists
 	_, err = h.instructorRepo.GetByID(req.InstructorID)
 	if err != nil {
@@ -1038,6 +979,8 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 				StartsAt:     startsAt,
 				PeopleCount:  0,
 				MaxCapacity:  2,
+				State:        models.SlotStateFree,
+				Disabled:     false,
 			}
 			if err := h.instructorSlotRepo.Create(instructorSlot); err != nil {
 				log.Printf("Error creating instructor slot: %v", err)
@@ -1049,6 +992,12 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 			return
 		}
+	}
+
+	// Check instructor slot state and capacity
+	if instructorSlot.State == models.SlotStateUnavailable || instructorSlot.Disabled {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is unavailable"})
+		return
 	}
 
 	// Check if instructor slot is full
@@ -1069,11 +1018,6 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		log.Printf("Error creating booking: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
-	}
-
-	// Update slot people count
-	if err := h.slotRepo.IncrementPeopleCount(startsAt); err != nil {
-		log.Printf("Error updating slot: %v", err)
 	}
 
 	// Update instructor slot people count
