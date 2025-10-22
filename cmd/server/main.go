@@ -153,6 +153,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/admin/events", adminMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
 	mux.Handle("/admin/survey/questions", adminMiddleware(http.HandlerFunc(serveSurveyQuestions)))
 	mux.Handle("/admin/survey/results", adminMiddleware(http.HandlerFunc(serveSurveyResults)))
+	mux.Handle("/admin/user-view-simulation", adminMiddleware(http.HandlerFunc(serveUserViewSimulation)))
 	mux.Handle("/api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.GetAll)))
 	mux.Handle("/api/admin/users/create", adminMiddleware(http.HandlerFunc(userHandler.Create)))
 	mux.Handle("/api/admin/users/update", adminMiddleware(http.HandlerFunc(userHandler.Update)))
@@ -584,6 +585,78 @@ func serveSurveyResults(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tpl.ExecuteTemplate(w, "survey-results.html", nil); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func serveUserViewSimulation(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil || user.Role != models.RoleAdmin {
+		http.Redirect(w, r, "/signin", http.StatusSeeOther)
+		return
+	}
+
+	// Create a mock/simulated user for demonstration purposes
+	expiresAt := time.Now().AddDate(0, 3, 0) // 3 months from now
+	mockUser := &models.User{
+		ID:                "mock-user-123",
+		FirstName:         "Demo",
+		LastName:          "Utente",
+		Email:             "demo@example.com",
+		Role:              models.RoleUser,
+		SubType:           models.SubTypeShared,
+		MedOk:             true,
+		ExpiresAt:         expiresAt,
+		RemainingAccesses: 8,
+		Goals: sql.NullString{
+			Valid:  true,
+			String: "Migliorare il benessere generale e la forma fisica",
+		},
+	}
+
+	// Create mock bookings (upcoming appointments)
+	mockBookings := []struct {
+		ID                int64
+		StartsAt          string
+		StartsAtFormatted string
+		CreatedAt         string
+	}{
+		{
+			ID:                1,
+			StartsAt:          time.Now().AddDate(0, 0, 3).Add(10 * time.Hour).Format(time.RFC3339),
+			StartsAtFormatted: time.Now().AddDate(0, 0, 3).Add(10 * time.Hour).Format("02 Jan 2006, 15:04"),
+			CreatedAt:         time.Now().AddDate(0, 0, -5).Format(time.RFC3339),
+		},
+		{
+			ID:                2,
+			StartsAt:          time.Now().AddDate(0, 0, 10).Add(14 * time.Hour).Format(time.RFC3339),
+			StartsAtFormatted: time.Now().AddDate(0, 0, 10).Add(14 * time.Hour).Format("02 Jan 2006, 15:04"),
+			CreatedAt:         time.Now().AddDate(0, 0, -2).Format(time.RFC3339),
+		},
+		{
+			ID:                3,
+			StartsAt:          time.Now().AddDate(0, 0, 17).Add(9 * time.Hour).Format(time.RFC3339),
+			StartsAtFormatted: time.Now().AddDate(0, 0, 17).Add(9 * time.Hour).Format("02 Jan 2006, 15:04"),
+			CreatedAt:         time.Now().AddDate(0, 0, -1).Format(time.RFC3339),
+		},
+	}
+
+	data := map[string]interface{}{
+		"User":              mockUser,
+		"ExpiresAt":         mockUser.ExpiresAt.Format("02 Jan 2006"),
+		"RemainingAccesses": mockUser.RemainingAccesses,
+		"Bookings":          mockBookings,
+		"IsSimulation":      true,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "user-view-simulation.html", data); err != nil {
 		log.Print(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
