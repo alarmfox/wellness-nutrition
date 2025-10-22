@@ -579,6 +579,10 @@
                         <h3>➕ Crea Prenotazione</h3>
                         <p>Crea una prenotazione per un utente specifico</p>
                     </div>
+                    <div id="actionEnableSlot" class="action-card" style="display: none;" onclick="showEnableSlot()">
+                        <h3>✅ Abilita Slot</h3>
+                        <p>Rendi disponibile lo slot per un istruttore specifico</p>
+                    </div>
                 </div>
                 
                 <div id="unavailableForm" style="display: none;">
@@ -899,24 +903,16 @@
                         const slotDate = new Date(s.StartsAt);
                         return slotDate.getTime() === date.getTime();
                     });
-                    const slotState = slot ? slot.State : 'FREE';
-                    const isDisabled = slotState === 'UNAVAILABLE';
-                    const isMassage = slotState === 'MASSAGE';
-                    const isAppointment = slotState === 'APPOINTMENT';
                     
-                    let slotClass = 'time-slot';
-                    if (isDisabled) slotClass += ' disabled';
-                    if (isMassage) slotClass += ' massage';
-                    if (isAppointment) slotClass += ' appointment';
-                    
-                    html += `<div class="${slotClass}" onclick="handleSlotClick('${date.toISOString()}', '${slotState}')">`;
+                    // Always use basic time-slot class without state-specific classes
+                    html += `<div class="time-slot" onclick="handleSlotClick('${date.toISOString()}', event)">`;
                     
                     // Show instructor-specific slot states (filtered by selected instructor)
                     if (slot && slot.InstructorSlots) {
                         // Filter instructor slots based on current filter selection
                         let filteredInstructorSlots = slot.InstructorSlots;
                         if (selectedInstructorId) {
-                            filteredInstructorSlots = slot.InstructorSlots.filter(is => is.InstructorID === selectedInstructorId);
+                            filteredInstructorSlots = slot.InstructorSlots.filter(is => is.InstructorID === parseInt(selectedInstructorId));
                         }
                         
                         const disabledSlots = filteredInstructorSlots.filter(is => is.Disabled || is.State === 'UNAVAILABLE');
@@ -992,11 +988,19 @@
         }
         
         // Slot action functions
-        function handleSlotClick(slotTime, slotState) {
+        function handleSlotClick(slotTime, event) {
             // Allow all actions on any slot - admin can choose specific instructor
             // Even if slot is disabled for one instructor, admin may want to create booking for another
+            event.stopPropagation();
             selectedSlot = slotTime;
-            selectedSlotState = slotState;
+            
+            // Find the slot data to pass instructor states to modal
+            const date = new Date(slotTime);
+            const selectedSlotData = slots.find(s => {
+                const slotDate = new Date(s.StartsAt);
+                return slotDate.getTime() === date.getTime();
+            });
+            selectedSlotState = selectedSlotData;  // Store the full slot object
             openSlotModal();
         }
         
@@ -1030,22 +1034,64 @@
             document.getElementById('modalTitle').textContent = 'Gestione Slot';
             currentAction = null;
             
-            // Show/hide actions based on current slot state
-            if (selectedSlotState === 'MASSAGE' || selectedSlotState === 'APPOINTMENT') {
-                // For reserved slots, show unreserve and create booking options
-                document.getElementById('actionUnreserve').style.display = 'block';
-                document.getElementById('actionUnavailable').style.display = 'none';
-                document.getElementById('actionMassage').style.display = 'none';
-                document.getElementById('actionAppointment').style.display = 'none';
-                document.getElementById('actionCreateBooking').style.display = 'block';
-            } else {
-                // For FREE slots, show all reservation options
-                document.getElementById('actionUnreserve').style.display = 'none';
-                document.getElementById('actionUnavailable').style.display = 'block';
-                document.getElementById('actionMassage').style.display = 'block';
-                document.getElementById('actionAppointment').style.display = 'block';
-                document.getElementById('actionCreateBooking').style.display = 'block';
+            // Always show all actions - admin can manage any instructor state
+            document.getElementById('actionUnreserve').style.display = 'block';
+            document.getElementById('actionUnavailable').style.display = 'block';
+            document.getElementById('actionMassage').style.display = 'block';
+            document.getElementById('actionAppointment').style.display = 'block';
+            document.getElementById('actionCreateBooking').style.display = 'block';
+            document.getElementById('actionEnableSlot').style.display = 'block';
+            
+            // Display current state of all instructors in the modal
+            displayInstructorStates();
+        }
+        
+        function displayInstructorStates() {
+            const stateContainer = document.getElementById('instructorStatesDisplay');
+            if (!stateContainer) {
+                // Create container if it doesn't exist
+                const actionSelection = document.getElementById('actionSelection');
+                const newContainer = document.createElement('div');
+                newContainer.id = 'instructorStatesDisplay';
+                newContainer.style.marginTop = '15px';
+                newContainer.style.padding = '12px';
+                newContainer.style.border = '1px solid #e0e0e0';
+                newContainer.style.borderRadius = '4px';
+                newContainer.style.backgroundColor = '#f9f9f9';
+                actionSelection.insertBefore(newContainer, actionSelection.firstChild);
             }
+            
+            const container = document.getElementById('instructorStatesDisplay');
+            if (!container) return;
+            
+            let html = '<div style="margin-bottom: 10px;"><strong>Stato attuale per istruttore:</strong></div>';
+            
+            if (selectedSlotState && selectedSlotState.InstructorSlots && selectedSlotState.InstructorSlots.length > 0) {
+                selectedSlotState.InstructorSlots.forEach(is => {
+                    let stateText = 'Disponibile';
+                    let stateColor = '#4caf50';
+                    
+                    if (is.Disabled || is.State === 'UNAVAILABLE') {
+                        stateText = 'Non disponibile';
+                        stateColor = '#757575';
+                    } else if (is.State === 'MASSAGE') {
+                        stateText = '💆 Massaggio';
+                        stateColor = '#ff9800';
+                    } else if (is.State === 'APPOINTMENT') {
+                        stateText = '📅 Appuntamento';
+                        stateColor = '#2196f3';
+                    }
+                    
+                    html += `<div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
+                        <span style="font-weight: 500;">${is.InstructorName}</span>
+                        <span style="color: ${stateColor}; font-size: 13px;">${stateText} (${is.PeopleCount}/${is.MaxCapacity})</span>
+                    </div>`;
+                });
+            } else {
+                html += '<div style="color: #999; font-style: italic;">Nessun istruttore configurato per questo slot</div>';
+            }
+            
+            container.innerHTML = html;
         }
         
         function closeSlotModal() {
@@ -1242,14 +1288,43 @@
             document.getElementById('confirmBtn').style.display = 'block';
             document.getElementById('modalTitle').textContent = 'Rilascia Slot';
             
-            // Show confirmation message based on current state
-            const stateLabel = selectedSlotState === 'MASSAGE' ? 'massaggio' : 'appuntamento';
+            // Show which instructors have reservations
             const confirmDiv = document.createElement('div');
             confirmDiv.id = 'unreserveConfirm';
-            confirmDiv.innerHTML = `
-                <p style="margin-bottom: 16px; color: #666;">Slot riservato per: ${stateLabel}</p>
-                <p>Sei sicuro di voler rendere questo slot nuovamente disponibile per le prenotazioni?</p>
+            
+            let reservationsHtml = '<div style="margin-bottom: 16px;"><strong>Riservazioni attive:</strong></div>';
+            let hasReservations = false;
+            
+            if (selectedSlotState && selectedSlotState.InstructorSlots) {
+                selectedSlotState.InstructorSlots.forEach(is => {
+                    if (is.State === 'MASSAGE' || is.State === 'APPOINTMENT') {
+                        hasReservations = true;
+                        const stateLabel = is.State === 'MASSAGE' ? '💆 Massaggio' : '📅 Appuntamento';
+                        reservationsHtml += `<div style="padding: 8px; margin: 4px 0; border: 1px solid #e0e0e0; border-radius: 4px;">
+                            <strong>${is.InstructorName}</strong> - ${stateLabel}
+                        </div>`;
+                    }
+                });
+            }
+            
+            if (!hasReservations) {
+                reservationsHtml += '<div style="color: #999; font-style: italic;">Nessuna riservazione attiva</div>';
+            }
+            
+            reservationsHtml += `
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Seleziona Istruttore *</label>
+                    <select id="unreserveInstructorId" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">-- Seleziona istruttore --</option>
+                    </select>
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        Seleziona "Tutti" per rilasciare tutte le riservazioni
+                    </div>
+                </div>
+                <p style="margin-top: 16px;">Confermi di voler rilasciare questa riservazione?</p>
             `;
+            
+            confirmDiv.innerHTML = reservationsHtml;
             
             // Remove any existing unreserve confirm div
             const existing = document.getElementById('unreserveConfirm');
@@ -1260,6 +1335,70 @@
             // Insert into modal body
             const modalBody = document.querySelector('#slotModal .modal-body');
             modalBody.appendChild(confirmDiv);
+            
+            // Populate instructor dropdown with "Tutti" option
+            populateInstructorDropdown('unreserveInstructorId', true);
+        }
+        
+        function showEnableSlot() {
+            currentAction = 'enable';
+            document.getElementById('actionSelection').style.display = 'none';
+            document.getElementById('unavailableForm').style.display = 'none';
+            document.getElementById('reserveMassageForm').style.display = 'none';
+            document.getElementById('reserveAppointmentForm').style.display = 'none';
+            document.getElementById('bookingForm').style.display = 'none';
+            document.getElementById('confirmBtn').style.display = 'block';
+            document.getElementById('modalTitle').textContent = 'Abilita Slot';
+            
+            // Show which instructors are currently disabled
+            const confirmDiv = document.createElement('div');
+            confirmDiv.id = 'enableConfirm';
+            
+            let disabledHtml = '<div style="margin-bottom: 16px;"><strong>Istruttori non disponibili:</strong></div>';
+            let hasDisabled = false;
+            
+            if (selectedSlotState && selectedSlotState.InstructorSlots) {
+                selectedSlotState.InstructorSlots.forEach(is => {
+                    if (is.Disabled || is.State === 'UNAVAILABLE') {
+                        hasDisabled = true;
+                        disabledHtml += `<div style="padding: 8px; margin: 4px 0; border: 1px solid #e0e0e0; border-radius: 4px;">
+                            <strong>${is.InstructorName}</strong> - Non disponibile
+                        </div>`;
+                    }
+                });
+            }
+            
+            if (!hasDisabled) {
+                disabledHtml += '<div style="color: #999; font-style: italic;">Tutti gli istruttori sono disponibili</div>';
+            }
+            
+            disabledHtml += `
+                <div style="margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Seleziona Istruttore *</label>
+                    <select id="enableInstructorId" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">-- Seleziona istruttore --</option>
+                    </select>
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        Seleziona "Tutti" per abilitare tutti gli istruttori
+                    </div>
+                </div>
+                <p style="margin-top: 16px;">Confermi di voler abilitare questo slot?</p>
+            `;
+            
+            confirmDiv.innerHTML = disabledHtml;
+            
+            // Remove any existing confirm div
+            const existing = document.getElementById('enableConfirm');
+            if (existing) {
+                existing.remove();
+            }
+            
+            // Insert into modal body
+            const modalBody = document.querySelector('#slotModal .modal-body');
+            modalBody.appendChild(confirmDiv);
+            
+            // Populate instructor dropdown with "Tutti" option
+            populateInstructorDropdown('enableInstructorId', true);
         }
         
         async function showCreateBooking() {
@@ -1315,6 +1454,8 @@
                 await confirmUnreserveSlotFromModal();
             } else if (currentAction === 'booking') {
                 await createAdminBooking();
+            } else if (currentAction === 'enable') {
+                await enableSlotForInstructor();
             }
         }
         
@@ -1500,6 +1641,12 @@
                 return;
             }
             
+            const instructorId = document.getElementById('unreserveInstructorId').value;
+            if (!instructorId) {
+                showToast('Seleziona un istruttore', false);
+                return;
+            }
+            
             showLoading('Rilascio slot...');
             try {
                 const response = await fetch('/api/admin/slots/unreserve', {
@@ -1508,7 +1655,8 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        startsAt: selectedSlot
+                        startsAt: selectedSlot,
+                        instructorId: instructorId === 'all' ? null : instructorId
                     })
                 });
                 
@@ -1518,9 +1666,60 @@
                 if (data.error) {
                     showToast(data.error, false);
                 } else {
-                    showToast('Slot rilasciato con successo', true);
+                    const message = instructorId === 'all' ? 
+                        'Slot rilasciato per tutti gli istruttori' : 
+                        'Slot rilasciato con successo';
+                    showToast(message, true);
                     // Remove the unreserve confirm div
                     const confirmDiv = document.getElementById('unreserveConfirm');
+                    if (confirmDiv) confirmDiv.remove();
+                    closeSlotModal();
+                    loadBookings(); // Reload calendar
+                }
+            } catch (error) {
+                hideLoading();
+                showToast('Errore durante l\'operazione', false);
+                console.error(error);
+            }
+        }
+        
+        async function enableSlotForInstructor() {
+            if (!selectedSlot) {
+                showToast('Errore: slot non selezionato', false);
+                return;
+            }
+            
+            const instructorId = document.getElementById('enableInstructorId').value;
+            if (!instructorId) {
+                showToast('Seleziona un istruttore', false);
+                return;
+            }
+            
+            showLoading('Abilitazione slot...');
+            try {
+                const response = await fetch('/api/admin/slots/enable', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        startsAt: selectedSlot,
+                        instructorId: instructorId === 'all' ? null : instructorId
+                    })
+                });
+                
+                const data = await response.json();
+                hideLoading();
+                
+                if (data.error) {
+                    showToast(data.error, false);
+                } else {
+                    const message = instructorId === 'all' ? 
+                        'Slot abilitato per tutti gli istruttori' : 
+                        'Slot abilitato con successo';
+                    showToast(message, true);
+                    // Remove the enable confirm div
+                    const confirmDiv = document.getElementById('enableConfirm');
                     if (confirmDiv) confirmDiv.remove();
                     closeSlotModal();
                     loadBookings(); // Reload calendar
