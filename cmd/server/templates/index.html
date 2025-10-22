@@ -250,6 +250,121 @@
         const userSubType = '{{.User.SubType}}';
         let availableSlots = [];
 
+        // Browser Notification System
+        const NotificationManager = {
+            STORAGE_KEY: 'wellness_bookings_notifications',
+            CHECK_INTERVAL: 60000, // Check every minute
+            NOTIFICATION_ADVANCE_MS: 6 * 60 * 60 * 1000, // 6 hours in milliseconds
+
+            init: function() {
+                this.requestPermission();
+                this.syncBookings();
+                this.scheduleCheck();
+            },
+
+            requestPermission: function() {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            console.log('Notification permission granted');
+                        }
+                    });
+                }
+            },
+
+            syncBookings: function() {
+                // Store current bookings in localStorage for notification scheduling
+                const bookings = [
+                    {{range .Bookings}}
+                    {
+                        id: '{{.ID}}',
+                        startsAt: '{{.StartsAt}}',
+                        startsAtFormatted: '{{.StartsAtFormatted}}'
+                    },
+                    {{end}}
+                ];
+                
+                // Filter future bookings only
+                const futureBookings = bookings.filter(b => {
+                    const bookingTime = new Date(b.startsAt);
+                    return bookingTime > new Date();
+                });
+                
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(futureBookings));
+            },
+
+            scheduleCheck: function() {
+                // Check immediately
+                this.checkAndNotify();
+                
+                // Then check periodically
+                setInterval(() => {
+                    this.checkAndNotify();
+                }, this.CHECK_INTERVAL);
+            },
+
+            checkAndNotify: function() {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const bookingsJson = localStorage.getItem(this.STORAGE_KEY);
+                    if (!bookingsJson) return;
+
+                    const bookings = JSON.parse(bookingsJson);
+                    const now = new Date();
+                    const notifiedKey = 'wellness_notified_bookings';
+                    const notified = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
+
+                    bookings.forEach(booking => {
+                        const bookingTime = new Date(booking.startsAt);
+                        const timeDiff = bookingTime - now;
+                        
+                        // Check if notification should be sent (6 hours before, within 1 minute window)
+                        const shouldNotify = timeDiff > 0 && 
+                                           timeDiff <= this.NOTIFICATION_ADVANCE_MS && 
+                                           timeDiff > (this.NOTIFICATION_ADVANCE_MS - this.CHECK_INTERVAL);
+                        
+                        // Check if already notified for this booking
+                        const alreadyNotified = notified.includes(booking.id);
+                        
+                        if (shouldNotify && !alreadyNotified) {
+                            this.sendNotification(booking);
+                            notified.push(booking.id);
+                            localStorage.setItem(notifiedKey, JSON.stringify(notified));
+                        }
+                        
+                        // Clean up old notified bookings (past bookings)
+                        if (bookingTime < now && alreadyNotified) {
+                            const index = notified.indexOf(booking.id);
+                            if (index > -1) {
+                                notified.splice(index, 1);
+                                localStorage.setItem(notifiedKey, JSON.stringify(notified));
+                            }
+                        }
+                    });
+                }
+            },
+
+            sendNotification: function(booking) {
+                const notification = new Notification('Promemoria Prenotazione', {
+                    body: `La tua prenotazione è tra 6 ore: ${booking.startsAtFormatted}`,
+                    icon: 'https://fonts.gstatic.com/s/i/materialicons/event/v12/24px.svg',
+                    badge: 'https://fonts.gstatic.com/s/i/materialicons/event/v12/24px.svg',
+                    tag: 'booking-' + booking.id,
+                    requireInteraction: false,
+                    silent: false
+                });
+
+                notification.onclick = function() {
+                    window.focus();
+                    this.close();
+                };
+            }
+        };
+
+        // Initialize notification system on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            NotificationManager.init();
+        });
+
         function showLoading(text = 'Caricamento...') {
             const overlay = document.getElementById('loading-overlay');
             const loadingText = document.getElementById('loading-text');
@@ -428,6 +543,7 @@
                     showToast(data.error || 'Errore durante la creazione della prenotazione');
                 } else {
                     showToast('Prenotazione creata con successo', true);
+                    NotificationManager.syncBookings();
                     setTimeout(() => location.reload(), 1000);
                 }
             })
@@ -463,6 +579,7 @@
                     showToast(errorMessage);
                 } else {
                     showToast('Prenotazione cancellata con successo', true);
+                    NotificationManager.syncBookings();
                     setTimeout(() => location.reload(), 1000);
                 }
             })
