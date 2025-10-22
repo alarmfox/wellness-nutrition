@@ -451,19 +451,70 @@
         
         function showSlots() {
             const contentDiv = document.querySelector('.content');
-            contentDiv.innerHTML = '<h1>Caricamento slot disponibili...</h1>';
             
             // Update active nav item
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.nav-item')[1].classList.add('active');
             
+            // Show instructor selection first
+            contentDiv.innerHTML = '<h1>Seleziona Istruttore</h1><div class="empty-state">Caricamento...</div>';
+            
+            showLoading('Caricamento istruttori...');
+            
+            fetch('/api/admin/instructors')
+                .then(response => response.json())
+                .then(instructors => {
+                    hideLoading();
+                    
+                    if (!instructors || instructors.length === 0) {
+                        contentDiv.innerHTML = `
+                            <h1>Seleziona Istruttore</h1>
+                            <div class="empty-state">Nessun istruttore disponibile</div>
+                        `;
+                        return;
+                    }
+                    
+                    // Build instructor selection UI
+                    let html = '<h1>Seleziona Istruttore</h1>';
+                    html += '<div style="margin-bottom: 16px; color: rgba(0,0,0,0.6);">Prima scegli un istruttore, poi vedrai gli slot disponibili</div>';
+                    
+                    instructors.forEach(instructor => {
+                        const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
+                        html += `
+                            <div class="list-item" style="cursor: pointer;" onclick="showSlotsForInstructor('${instructor.ID}', '${instructor.FirstName}${lastName}')">
+                                <span class="material-icons list-icon" style="color: #1976d2;">person</span>
+                                <div class="list-text">
+                                    <div class="list-primary">${instructor.FirstName}${lastName}</div>
+                                </div>
+                                <span class="material-icons list-icon">arrow_forward</span>
+                            </div>
+                        `;
+                    });
+                    
+                    contentDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error(error);
+                    showToast('Errore di connessione. Riprova.');
+                    contentDiv.innerHTML = `
+                        <h1>Seleziona Istruttore</h1>
+                        <div class="empty-state">Errore di connessione</div>
+                    `;
+                });
+        }
+        
+        function showSlotsForInstructor(instructorId, instructorName) {
+            const contentDiv = document.querySelector('.content');
+            contentDiv.innerHTML = '<h1>Caricamento slot disponibili...</h1>';
+            
             // Show loading indicator
             showLoading('Caricamento slot disponibili...');
             
-            // Fetch available slots, sending client's current time for proper DST handling
+            // Fetch available slots for this instructor, sending client's current time for proper DST handling
             const start = new Date();
             start.setHours(start.getHours() + 3)
-            fetch(`/api/user/bookings/slots?now=${encodeURIComponent(start.toISOString())}`)
+            fetch(`/api/user/bookings/slots?instructorId=${encodeURIComponent(instructorId)}&now=${encodeURIComponent(start.toISOString())}`)
                 .then(response => response.json())
                 .then(data => {
                     hideLoading();
@@ -479,7 +530,7 @@
                         if (slot.Disabled) return false;
                         
                         if (userSubType === 'SHARED') {
-                            return slot.PeopleCount < 2;
+                            return slot.PeopleCount < slot.MaxCapacity;
                         } else {
                             return slot.PeopleCount === 0;
                         }
@@ -487,7 +538,13 @@
                     
                     if (filtered.length === 0) {
                         contentDiv.innerHTML = `
-                            <h1>Seleziona uno slot</h1>
+                            <h1>Slot per ${instructorName}</h1>
+                            <div style="margin-bottom: 16px;">
+                                <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
+                                    <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
+                                    Cambia istruttore
+                                </a>
+                            </div>
                             <div class="empty-state">Nessuno slot disponibile nel prossimo mese</div>
                         `;
                         return;
@@ -513,7 +570,15 @@
                     const sortedKeys = Object.keys(groupedSlots).sort();
 
                     // 3️⃣ Build HTML
-                    let html = '<h1>Seleziona uno slot</h1>';
+                    let html = `<h1>Slot per ${instructorName}</h1>`;
+                    html += `
+                        <div style="margin-bottom: 16px;">
+                            <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
+                                <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
+                                Cambia istruttore
+                            </a>
+                        </div>
+                    `;
                     sortedKeys.forEach(dateKey => {
                         // Parse the date key and use the first slot's date for the label
                         const firstSlot = groupedSlots[dateKey][0];
@@ -539,10 +604,10 @@
                                     hour: '2-digit',
                                     minute: '2-digit'
                                 });
-                                const availText = userSubType === 'SHARED' ? `(${2 - slot.PeopleCount} posti)` : '';
+                                const availText = userSubType === 'SHARED' ? `(${slot.MaxCapacity - slot.PeopleCount} posti)` : '';
 
                                 html += `
-                                    <div class="list-item" style="cursor: pointer;" onclick="createBooking('${slot.StartsAt}')">
+                                    <div class="list-item" style="cursor: pointer;" onclick="confirmBookingWithInstructor('${slot.StartsAt}', '${instructorId}')">
                                     <span class="material-icons list-icon" style="color: #4caf50;">event_available</span>
                                     <div class="list-text">
                                     <div class="list-primary">${timeStr} ${availText}</div>
@@ -560,59 +625,19 @@
                     console.error(error);
                     showToast('Errore di connessione. Riprova.');
                     contentDiv.innerHTML = `
-                        <h1>Seleziona uno slot</h1>
+                        <h1>Slot per ${instructorName}</h1>
+                        <div style="margin-bottom: 16px;">
+                            <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
+                                <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
+                                Cambia istruttore
+                            </a>
+                        </div>
                         <div class="empty-state">Errore di connessione</div>
                     `;
                 });
         }
         
-        function createBooking(startsAt) {
-            // First, load instructors and show selection
-            showLoading('Caricamento istruttori...');
-            
-            fetch('/api/admin/instructors')
-                .then(response => response.json())
-                .then(instructors => {
-                    hideLoading();
-                    
-                    if (!instructors || instructors.length === 0) {
-                        showToast('Nessun istruttore disponibile');
-                        return;
-                    }
-                    
-                    // If only one instructor, select it automatically
-                    if (instructors.length === 1) {
-                        confirmBooking(startsAt, instructors[0].ID);
-                        return;
-                    }
-                    
-                    // Show instructor selection
-                    let instructorHtml = '<h1>Seleziona Istruttore</h1>';
-                    instructorHtml += '<div style="margin-bottom: 16px; color: rgba(0,0,0,0.6);">Scegli un istruttore per la prenotazione</div>';
-                    
-                    instructors.forEach(instructor => {
-                        instructorHtml += `
-                            <div class="list-item" style="cursor: pointer;" onclick="confirmBooking('${startsAt}', '${instructor.ID}')">
-                                <span class="material-icons list-icon" style="color: #1976d2;">person</span>
-                                <div class="list-text">
-                                    <div class="list-primary">${instructor.FirstName} ${instructor.LastName}</div>
-                                    <div class="list-secondary">${instructor.Email}</div>
-                                </div>
-                                <span class="material-icons list-icon">arrow_forward</span>
-                            </div>
-                        `;
-                    });
-                    
-                    document.getElementById('content').innerHTML = instructorHtml;
-                })
-                .catch(error => {
-                    hideLoading();
-                    showToast('Errore durante il caricamento degli istruttori');
-                    console.error(error);
-                });
-        }
-        
-        function confirmBooking(startsAt, instructorId) {
+        function confirmBookingWithInstructor(startsAt, instructorId) {
             if (!confirm('Vuoi confermare questa prenotazione?')) {
                 return;
             }

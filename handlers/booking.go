@@ -113,46 +113,18 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if slot exists and is not disabled
-	// If slot doesn't exist, create it (lazy creation)
-	slot, err := h.slotRepo.GetByTime(startsAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// Lazy create slot
-			slot = &models.Slot{
-				StartsAt:    startsAt,
-				PeopleCount: 0,
-				Disabled:    false,
-				State:       models.SlotStateFree,
-			}
-			if err := h.slotRepo.Create(slot); err != nil {
-				log.Printf("Error creating slot: %v", err)
-				sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-				return
-			}
-		} else {
-			log.Printf("Error getting slot: %v", err)
-			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-			return
-		}
-	}
-	
-	// Only FREE slots can be booked by users
-	if slot.State != models.SlotStateFree {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is not available"})
-		return
-	}
-
 	// Check instructor slot capacity (max 2 people per instructor per slot)
 	instructorSlot, err := h.instructorSlotRepo.GetByInstructorAndTime(req.InstructorID, startsAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// Create instructor slot
+			// Create instructor slot with FREE state
 			instructorSlot = &models.InstructorSlot{
 				InstructorID: req.InstructorID,
 				StartsAt:     startsAt,
 				PeopleCount:  0,
 				MaxCapacity:  2,
+				State:        models.SlotStateFree,
+				Disabled:     false,
 			}
 			if err := h.instructorSlotRepo.Create(instructorSlot); err != nil {
 				log.Printf("Error creating instructor slot: %v", err)
@@ -164,6 +136,18 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 			return
 		}
+	}
+
+	// Only FREE slots can be booked by users
+	if instructorSlot.State != models.SlotStateFree {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is not available"})
+		return
+	}
+
+	// Check if instructor slot is disabled
+	if instructorSlot.Disabled {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot is disabled"})
+		return
 	}
 
 	// Check if instructor slot is full
@@ -184,11 +168,6 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error creating booking: %v", err)
 		sendJSON(w, http.StatusConflict, map[string]string{"error": "Booking already exists"})
 		return
-	}
-
-	// Update slot people count
-	if err := h.slotRepo.IncrementPeopleCount(startsAt); err != nil {
-		log.Printf("Error updating slot: %v", err)
 	}
 
 	// Update instructor slot people count
@@ -281,11 +260,6 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update slot people count
-	if err := h.slotRepo.DecrementPeopleCount(booking.StartsAt); err != nil {
-		log.Printf("Error updating slot: %v", err)
-	}
-
 	// Update instructor slot people count if instructor was assigned
 	if booking.InstructorID.Valid {
 		if err := h.instructorSlotRepo.DecrementPeopleCount(booking.InstructorID.String, booking.StartsAt); err != nil {
@@ -376,62 +350,37 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		to = user.ExpiresAt
 	}
 
-	// If instructor is specified, get instructor-specific available slots
-	if instructorID != "" {
-		instructorSlots, err := h.instructorSlotRepo.GetAvailableForInstructor(instructorID, from, to)
-		if err != nil {
-			log.Printf("Error getting instructor slots: %v", err)
-			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-			return
-		}
-
-		// Convert to response format
-		type SlotResponse struct {
-			StartsAt      string `json:"StartsAt"`
-			PeopleCount   int    `json:"PeopleCount"`
-			MaxCapacity   int    `json:"MaxCapacity"`
-			InstructorID  string `json:"InstructorId"`
-		}
-
-		response := make([]SlotResponse, 0, len(instructorSlots))
-		for _, slot := range instructorSlots {
-			response = append(response, SlotResponse{
-				StartsAt:     slot.StartsAt.Format(time.RFC3339),
-				PeopleCount:  slot.PeopleCount,
-				MaxCapacity:  slot.MaxCapacity,
-				InstructorID: slot.InstructorID,
-			})
-		}
-
-		sendJSON(w, http.StatusOK, map[string]interface{}{
-			"slots": response,
-		})
+	// Instructor selection is now mandatory
+	if instructorID == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Instructor selection is required"})
 		return
 	}
 
-	// Otherwise, get all available slots
-	slots, err := h.slotRepo.GetAvailableSlots(from, to)
+	// Get instructor-specific available slots
+	instructorSlots, err := h.instructorSlotRepo.GetAvailableForInstructor(instructorID, from, to)
 	if err != nil {
-		log.Printf("Error getting slots: %v", err)
+		log.Printf("Error getting instructor slots: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
 
-	// Convert to response format with slot details
+	// Convert to response format
 	type SlotResponse struct {
-		StartsAt    string `json:"StartsAt"`
-		PeopleCount int    `json:"PeopleCount"`
-		Disabled    bool   `json:"Disabled"`
-		State       string `json:"State"`
+		StartsAt      string `json:"StartsAt"`
+		PeopleCount   int    `json:"PeopleCount"`
+		MaxCapacity   int    `json:"MaxCapacity"`
+		InstructorID  string `json:"InstructorId"`
+		Disabled      bool   `json:"Disabled"`
 	}
 
-	response := make([]SlotResponse, 0, len(slots))
-	for _, slot := range slots {
+	response := make([]SlotResponse, 0, len(instructorSlots))
+	for _, slot := range instructorSlots {
 		response = append(response, SlotResponse{
-			StartsAt:    slot.StartsAt.Format(time.RFC3339),
-			PeopleCount: slot.PeopleCount,
-			Disabled:    slot.Disabled,
-			State:       string(slot.State),
+			StartsAt:     slot.StartsAt.Format(time.RFC3339),
+			PeopleCount:  slot.PeopleCount,
+			MaxCapacity:  slot.MaxCapacity,
+			InstructorID: slot.InstructorID,
+			Disabled:     slot.Disabled,
 		})
 	}
 
