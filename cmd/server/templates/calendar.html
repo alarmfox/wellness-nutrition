@@ -911,15 +911,22 @@
                     
                     html += `<div class="${slotClass}" onclick="handleSlotClick('${date.toISOString()}', '${slotState}')">`;
                     
-                    // Show instructor-specific slot states
+                    // Show instructor-specific slot states (filtered by selected instructor)
                     if (slot && slot.InstructorSlots) {
-                        const disabledSlots = slot.InstructorSlots.filter(is => is.Disabled || is.State === 'UNAVAILABLE');
-                        const massageSlots = slot.InstructorSlots.filter(is => is.State === 'MASSAGE');
-                        const appointmentSlots = slot.InstructorSlots.filter(is => is.State === 'APPOINTMENT');
+                        // Filter instructor slots based on current filter selection
+                        let filteredInstructorSlots = slot.InstructorSlots;
+                        if (selectedInstructorId) {
+                            filteredInstructorSlots = slot.InstructorSlots.filter(is => is.InstructorID === selectedInstructorId);
+                        }
+                        
+                        const disabledSlots = filteredInstructorSlots.filter(is => is.Disabled || is.State === 'UNAVAILABLE');
+                        const massageSlots = filteredInstructorSlots.filter(is => is.State === 'MASSAGE');
+                        const appointmentSlots = filteredInstructorSlots.filter(is => is.State === 'APPOINTMENT');
                         
                         // Show disabled slots
                         if (disabledSlots.length > 0) {
-                            if (disabledSlots.length === slot.InstructorSlots.length) {
+                            // Check if ALL instructors are disabled (only when no filter selected)
+                            if (!selectedInstructorId && disabledSlots.length === slot.InstructorSlots.length) {
                                 html += '<div class="disabled-text">Non disponibile (tutti)</div>';
                             } else {
                                 disabledSlots.forEach(ds => {
@@ -986,16 +993,8 @@
         
         // Slot action functions
         function handleSlotClick(slotTime, slotState) {
-            if (slotState === 'UNAVAILABLE') {
-                // Open enable slot modal
-                selectedSlot = slotTime;
-                selectedSlotState = slotState;
-                openEnableSlotModal();
-                return;
-            }
-            
-            // For all other states (FREE, MASSAGE, APPOINTMENT), show the full slot management modal
-            // This allows admin to create bookings even on MASSAGE/APPOINTMENT slots
+            // Allow all actions on any slot - admin can choose specific instructor
+            // Even if slot is disabled for one instructor, admin may want to create booking for another
             selectedSlot = slotTime;
             selectedSlotState = slotState;
             openSlotModal();

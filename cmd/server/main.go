@@ -162,6 +162,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/api/admin/users/update", adminMiddleware(http.HandlerFunc(userHandler.Update)))
 	mux.Handle("/api/admin/users/delete", adminMiddleware(http.HandlerFunc(userHandler.Delete)))
 	mux.Handle("/api/admin/users/resend-verification", adminMiddleware(http.HandlerFunc(userHandler.ResendVerification)))
+	// Instructors API - GetAll is accessible to all authenticated users (users need to see instructors for booking)
+	mux.Handle("/api/instructors", authMiddleware(http.HandlerFunc(instructorHandler.GetAll)))
 	mux.Handle("/api/admin/instructors", adminMiddleware(http.HandlerFunc(instructorHandler.GetAll)))
 	mux.Handle("/api/admin/instructors/create", adminMiddleware(http.HandlerFunc(instructorHandler.Create)))
 	mux.Handle("/api/admin/instructors/update", adminMiddleware(http.HandlerFunc(instructorHandler.Update)))

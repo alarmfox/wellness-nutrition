@@ -463,7 +463,7 @@
             
             showLoading('Caricamento istruttori...');
             
-            fetch('/api/admin/instructors')
+            fetch('/api/instructors')
                 .then(response => response.json())
                 .then(instructors => {
                     hideLoading();
