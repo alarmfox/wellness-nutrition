@@ -235,6 +235,7 @@ func seedTest(db *sql.DB) {
 	log.Println("    - giuseppe.verdi@test.local")
 	log.Println("    - anna.romano@test.local")
 	log.Println("    - francesco.ferrari@test.local")
+  
 	log.Println("  Instructors (tags only, no login):")
 	log.Println("    - Marco Bianchi")
 	log.Println("    - Giulia Ferrari")
