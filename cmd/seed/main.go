@@ -104,6 +104,36 @@ func seedTest(db *sql.DB) {
 		}
 	}
 
+	// Create instructors
+	instructors := []struct {
+		firstName string
+		lastName  string
+		email     string
+	}{
+		{"Marco", "Bianchi", "marco.bianchi@instructor.local"},
+		{"Giulia", "Ferrari", "giulia.ferrari@instructor.local"},
+		{"Alessandro", "Russo", "alessandro.russo@instructor.local"},
+	}
+
+	instructorPassword := hashPassword("instructor123")
+	instructorIDs := make([]string, len(instructors))
+
+	for i, instr := range instructors {
+		instructorID := generateID()
+		instructorIDs[i] = instructorID
+		_, err = db.Exec(`
+			INSERT INTO instructors 
+			(id, first_name, last_name, email, password, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			ON CONFLICT (email) DO NOTHING
+		`, instructorID, instr.firstName, instr.lastName, instr.email, instructorPassword, time.Now(), time.Now())
+		if err != nil {
+			log.Printf("Warning: Could not create instructor %s: %v", instr.email, err)
+		} else {
+			log.Printf("✓ Created instructor %s %s (email: %s, password: instructor123)", instr.firstName, instr.lastName, instr.email)
+		}
+	}
+
 	// Create time slots for the next 30 days
 	now := time.Now().UTC()
 	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
@@ -159,10 +189,13 @@ func seedTest(db *sql.DB) {
 				continue
 			}
 
+			// Assign random instructor
+			instructorID := instructorIDs[(i+j)%len(instructorIDs)]
+
 			_, err = db.Exec(`
-				INSERT INTO bookings (user_id, created_at, starts_at)
-				VALUES ($1, $2, $3)
-			`, userID, time.Now().Add(-time.Duration(j)*24*time.Hour), bookingTime)
+				INSERT INTO bookings (user_id, instructor_id, created_at, starts_at)
+				VALUES ($1, $2, $3, $4)
+			`, userID, instructorID, time.Now().Add(-time.Duration(j)*24*time.Hour), bookingTime)
 			if err != nil {
 				log.Printf("Warning: Could not create booking: %v", err)
 			} else {
@@ -174,6 +207,14 @@ func seedTest(db *sql.DB) {
 					SET people_count = people_count + 1
 					WHERE starts_at = $1
 				`, bookingTime)
+
+				// Create or update instructor slot
+				_, _ = db.Exec(`
+					INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity)
+					VALUES ($1, $2, 1, 2)
+					ON CONFLICT (instructor_id, starts_at) DO UPDATE
+					SET people_count = instructor_slots.people_count + 1
+				`, instructorID, bookingTime)
 			}
 		}
 	}
@@ -188,6 +229,10 @@ func seedTest(db *sql.DB) {
 	log.Println("    - giuseppe.verdi@test.local")
 	log.Println("    - anna.romano@test.local")
 	log.Println("    - francesco.ferrari@test.local")
+	log.Println("  Instructors: *.@instructor.local / instructor123")
+	log.Println("    - marco.bianchi@instructor.local")
+	log.Println("    - giulia.ferrari@instructor.local")
+	log.Println("    - alessandro.russo@instructor.local")
 }
 
 func seedSlot(db *sql.DB) {
