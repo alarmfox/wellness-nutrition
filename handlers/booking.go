@@ -214,7 +214,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// Send notification email
 	go func() {
-		if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName.String, startsAt); err != nil {
+		if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName, startsAt); err != nil {
 			log.Printf("Error sending notification: %v", err)
 		}
 	}()
@@ -223,8 +223,8 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if h.hub != nil {
 		h.hub.BroadcastJSON(
 			websocket.NotificationBookingCreated,
-			fmt.Sprintf("Nuova prenotazione: %s %s - %s", user.FirstName, user.LastName.String, startsAt.Format("02/01/2006 15:04")),
-			fmt.Sprintf("%s %s", user.FirstName, user.LastName.String),
+			fmt.Sprintf("Nuova prenotazione: %s %s - %s", user.FirstName, user.LastName, startsAt.Format("02/01/2006 15:04")),
+			fmt.Sprintf("%s %s", user.FirstName, user.LastName),
 			startsAt.Format("02/01/2006 15:04"),
 		)
 	}
@@ -269,8 +269,7 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user is admin or owns the booking
-	admin := middleware.GetAdminFromContext(r.Context())
-	if admin == nil && (user == nil || booking.UserID != user.ID) {
+	if user == nil || (user.Role != models.RoleAdmin && booking.UserID != user.ID) {
 		sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden"})
 		return
 	}
@@ -318,7 +317,7 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	// Send notification email
 	go func() {
-		if err := h.mailer.SendDeleteBookingNotification(user.FirstName, user.LastName.String, booking.StartsAt); err != nil {
+		if err := h.mailer.SendDeleteBookingNotification(user.FirstName, user.LastName, booking.StartsAt); err != nil {
 			log.Printf("Error sending notification: %v", err)
 		}
 	}()
@@ -516,7 +515,7 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 		result[i].CreatedAt = booking.CreatedAt
 		result[i].User.ID = user.ID
 		result[i].User.FirstName = user.FirstName
-		result[i].User.LastName = user.LastName.String
+		result[i].User.LastName = user.LastName
 		result[i].User.Email = user.Email
 		result[i].User.SubType = string(user.SubType)
 
@@ -736,7 +735,7 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 		bookingUser, err := h.userRepo.GetByID(booking.UserID)
 		if err == nil {
 			go func(u *models.User, t time.Time) {
-				if err := h.mailer.SendDeleteBookingNotification(u.FirstName, u.LastName.String, t); err != nil {
+				if err := h.mailer.SendDeleteBookingNotification(u.FirstName, u.LastName, t); err != nil {
 					log.Printf("Error sending notification: %v", err)
 				}
 			}(bookingUser, booking.StartsAt)
@@ -1151,7 +1150,7 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 	}
 
 	// Send notification email (synchronous)
-	if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName.String, startsAt); err != nil {
+	if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName, startsAt); err != nil {
 		log.Printf("Error sending notification: %v", err)
 	}
 

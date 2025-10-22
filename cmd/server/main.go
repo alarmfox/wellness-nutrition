@@ -77,7 +77,6 @@ func main() {
 func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS) error {
 	// Initialize repositories
 	userRepo := models.NewUserRepository(db)
-	adminRepo := models.NewAdminRepository(db)
 	bookingRepo := models.NewBookingRepository(db)
 	slotRepo := models.NewSlotRepository(db)
 	eventRepo := models.NewEventRepository(db)
@@ -109,7 +108,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	go hub.Run(ctx)
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(userRepo, adminRepo, sessionStore)
+	authHandler := handlers.NewAuthHandler(userRepo, sessionStore)
 	userHandler := handlers.NewUserHandler(userRepo, mailer)
 	bookingHandler := handlers.NewBookingHandler(bookingRepo, slotRepo, eventRepo, userRepo, instructorRepo, instructorSlotRepo, mailer, hub)
 	instructorHandler := handlers.NewInstructorHandler(instructorRepo)
@@ -139,7 +138,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.HandleFunc("/survey/submit", surveyHandler.SubmitSurvey)
 
 	// User routes - /user prefix
-	authMiddleware := middleware.Auth(sessionStore, userRepo, adminRepo)
+	authMiddleware := middleware.Auth(sessionStore, userRepo)
 	mux.Handle("/user", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo))))
 	mux.Handle("/user/", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo))))
 	mux.Handle("/api/user/current", authMiddleware(http.HandlerFunc(userHandler.GetCurrent)))
@@ -149,7 +148,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/api/user/bookings/slots", authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots)))
 
 	// Admin routes - /admin prefix
-	adminMiddleware := middleware.AdminAuth(sessionStore, adminRepo)
+	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
 	mux.Handle("/admin", authMiddleware(http.HandlerFunc(serveAdminHome)))
 	mux.Handle("/admin/", authMiddleware(http.HandlerFunc(serveAdminHome)))
 	mux.Handle("/admin/calendar", adminMiddleware(http.HandlerFunc(serveCalendar)))
@@ -237,7 +236,7 @@ func serveRoot() http.HandlerFunc {
 		}
 
 		// Redirect based on role
-		if middleware.GetAdminFromContext(r.Context()) != nil {
+		if user != nil && user.Role == models.RoleAdmin {
 			http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
 		} else {
 			http.Redirect(w, r, "/user", http.StatusSeeOther)
@@ -259,7 +258,7 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 		}
 
 		// Only regular users can access user dashboard
-		if middleware.GetAdminFromContext(r.Context()) != nil {
+		if user != nil && user.Role == models.RoleAdmin {
 			http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
 			return
 		}
@@ -306,7 +305,7 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 
 func serveAdminHome(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || middleware.GetAdminFromContext(r.Context()) == nil {
+	if user == nil || user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -322,7 +321,7 @@ func serveCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || middleware.GetAdminFromContext(r.Context()) == nil {
+	if user == nil || user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -394,7 +393,7 @@ func serveUsers(userRepo *models.UserRepository) http.HandlerFunc {
 		}
 
 		user := middleware.GetUserFromContext(r.Context())
-		if user == nil || middleware.GetAdminFromContext(r.Context()) == nil {
+		if user == nil || user == nil || user.Role != models.RoleAdmin {
 			http.Redirect(w, r, "/signin", http.StatusSeeOther)
 			return
 		}
@@ -436,7 +435,7 @@ func serveUsers(userRepo *models.UserRepository) http.HandlerFunc {
 			displayUsers = append(displayUsers, UserDisplay{
 				ID:                 u.ID,
 				FirstName:          u.FirstName,
-				LastName:           u.LastName.String,
+				LastName:           u.LastName,
 				Email:              u.Email,
 				Address:            u.Address,
 				Cellphone:          cellphone,
@@ -470,7 +469,7 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 		}
 
 		user := middleware.GetUserFromContext(r.Context())
-		if user == nil || middleware.GetAdminFromContext(r.Context()) == nil {
+		if user == nil || user == nil || user.Role != models.RoleAdmin {
 			http.Redirect(w, r, "/signin", http.StatusSeeOther)
 			return
 		}
@@ -497,7 +496,7 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 			u, err := userRepo.GetByID(e.UserID)
 			userName := "Unknown"
 			if err == nil {
-				userName = u.FirstName + " " + u.LastName.String
+				userName = u.FirstName + " " + u.LastName
 			}
 
 			displayEvents = append(displayEvents, EventDisplay{
@@ -567,7 +566,7 @@ func serveSurveyQuestions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || middleware.GetAdminFromContext(r.Context()) == nil {
+	if user == nil || user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -586,7 +585,7 @@ func serveSurveyResults(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || middleware.GetAdminFromContext(r.Context()) == nil {
+	if user == nil || user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -606,7 +605,7 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 		}
 
 		user := middleware.GetUserFromContext(r.Context())
-		if user == nil || middleware.GetAdminFromContext(r.Context()) == nil {
+		if user == nil || user == nil || user.Role != models.RoleAdmin {
 			http.Redirect(w, r, "/signin", http.StatusSeeOther)
 			return
 		}

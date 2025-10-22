@@ -49,19 +49,19 @@ func main() {
 func seedTest(db *sql.DB) {
 	var err error
 
-	// Create admin in separate admins table
+	// Create admin user with ADMIN role
 	adminPassword := hashPassword("admin123")
 	adminID := generateID()
 	_, err = db.Exec(`
-		INSERT INTO admins 
-		(id, first_name, last_name, email, password, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO users 
+		(id, first_name, last_name, address, password, role, med_ok, email, expires_at, remaining_accesses, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (email) DO NOTHING
-	`, adminID, "Admin", "User", "admin@wellness.local", adminPassword, time.Now(), time.Now())
+	`, adminID, "Admin", "User", "Admin Address", adminPassword, "ADMIN", true, "admin@wellness.local", time.Now().AddDate(1, 0, 0), 9999, time.Now(), time.Now())
 	if err != nil {
 		log.Printf("Warning: Could not create admin: %v", err)
 	} else {
-		log.Println("✓ Created admin (email: admin@wellness.local, password: admin123)")
+		log.Println("✓ Created admin user (email: admin@wellness.local, password: admin123, role: ADMIN)")
 	}
 
 	// Create test users
@@ -157,19 +157,22 @@ func seedTest(db *sql.DB) {
 			// Convert to UTC for storage (database stores as UTC TIMESTAMP)
 			slotTime := romeTime.UTC()
 
-			_, err = db.Exec(`
-				INSERT INTO slots (starts_at, people_count, disabled)
-				VALUES ($1, $2, $3)
-				ON CONFLICT (starts_at) DO NOTHING
-			`, slotTime, 0, false)
-			if err != nil {
-				log.Printf("Warning: Could not create slot at %v: %v", slotTime, err)
-			} else {
-				slotsCreated++
+			// Create instructor_slots for each instructor for this time slot
+			for _, instructorID := range instructorIDs {
+				_, err = db.Exec(`
+					INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity, state, disabled)
+					VALUES ($1, $2, $3, $4, $5, $6)
+					ON CONFLICT (instructor_id, starts_at) DO NOTHING
+				`, instructorID, slotTime, 0, 2, "FREE", false)
+				if err != nil {
+					log.Printf("Warning: Could not create instructor slot for %s at %v: %v", instructorID, slotTime, err)
+				} else {
+					slotsCreated++
+				}
 			}
 		}
 	}
-	log.Printf("✓ Created %d time slots for the next 30 days", slotsCreated)
+	log.Printf("✓ Created %d instructor time slots for the next 30 days", slotsCreated)
 
 	// Create some bookings for the test users
 	var bookingsCreated int
@@ -208,17 +211,10 @@ func seedTest(db *sql.DB) {
 			} else {
 				bookingsCreated++
 
-				// Update slot people count
+				// Update instructor slot people count
 				_, _ = db.Exec(`
-					UPDATE slots
-					SET people_count = people_count + 1
-					WHERE starts_at = $1
-				`, bookingTime)
-
-				// Create or update instructor slot
-				_, _ = db.Exec(`
-					INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity)
-					VALUES ($1, $2, 1, 2)
+					INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity, state, disabled)
+					VALUES ($1, $2, 1, 2, 'FREE', false)
 					ON CONFLICT (instructor_id, starts_at) DO UPDATE
 					SET people_count = instructor_slots.people_count + 1
 				`, instructorID, bookingTime)
@@ -283,11 +279,33 @@ func seedTest(db *sql.DB) {
 }
 
 func seedSlot(db *sql.DB) {
-	log.Print("Seeding slots for the next year... this may take some time")
+	log.Print("Seeding instructor slots for the next year... this may take some time")
 	var (
 		err          error
 		slotsCreated = 0
 	)
+
+	// First get all instructors
+	rows, err := db.Query(`SELECT id FROM instructors ORDER BY id`)
+	if err != nil {
+		log.Fatalf("Failed to get instructors: %v", err)
+	}
+	
+	var instructorIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			log.Fatalf("Failed to scan instructor: %v", err)
+		}
+		instructorIDs = append(instructorIDs, id)
+	}
+	rows.Close()
+	
+	if len(instructorIDs) == 0 {
+		log.Fatal("No instructors found. Please seed test data first.")
+	}
+	
+	log.Printf("Found %d instructors, creating slots for each", len(instructorIDs))
 
 	// Load Europe/Rome timezone to determine DST correctly
 	romeLocation, err := time.LoadLocation("Europe/Rome")
@@ -316,19 +334,22 @@ func seedSlot(db *sql.DB) {
 			// Convert to UTC for storage (database stores as UTC TIMESTAMP)
 			slotTime := romeTime.UTC()
 
-			_, err = db.Exec(`
-				INSERT INTO slots (starts_at, people_count, disabled)
-				VALUES ($1, $2, $3)
-				ON CONFLICT (starts_at) DO NOTHING
-			`, slotTime, 0, false)
-			if err != nil {
-				log.Printf("Warning: Could not create slot at %v: %v", slotTime, err)
-			} else {
-				slotsCreated++
+			// Create slot for each instructor
+			for _, instructorID := range instructorIDs {
+				_, err = db.Exec(`
+					INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity, state, disabled)
+					VALUES ($1, $2, $3, $4, $5, $6)
+					ON CONFLICT (instructor_id, starts_at) DO NOTHING
+				`, instructorID, slotTime, 0, 2, "FREE", false)
+				if err != nil {
+					log.Printf("Warning: Could not create instructor slot at %v: %v", slotTime, err)
+				} else {
+					slotsCreated++
+				}
 			}
 		}
 	}
-	log.Printf("created %d slots", slotsCreated)
+	log.Printf("created %d instructor slots", slotsCreated)
 }
 
 func hashPassword(password string) string {

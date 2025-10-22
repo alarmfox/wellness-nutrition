@@ -18,6 +18,8 @@ type InstructorSlot struct {
 	StartsAt     time.Time
 	PeopleCount  int
 	MaxCapacity  int
+	State        SlotState
+	Disabled     bool
 }
 
 type InstructorRepository struct {
@@ -134,7 +136,7 @@ func NewInstructorSlotRepository(db *sql.DB) *InstructorSlotRepository {
 
 func (r *InstructorSlotRepository) GetByInstructorAndTime(instructorID string, startsAt time.Time) (*InstructorSlot, error) {
 	query := `
-		SELECT instructor_id, starts_at, people_count, max_capacity
+		SELECT instructor_id, starts_at, people_count, max_capacity, state, disabled
 		FROM instructor_slots
 		WHERE instructor_id = $1 AND starts_at = $2
 	`
@@ -145,6 +147,8 @@ func (r *InstructorSlotRepository) GetByInstructorAndTime(instructorID string, s
 		&slot.StartsAt,
 		&slot.PeopleCount,
 		&slot.MaxCapacity,
+		&slot.State,
+		&slot.Disabled,
 	)
 	
 	if err != nil {
@@ -156,8 +160,8 @@ func (r *InstructorSlotRepository) GetByInstructorAndTime(instructorID string, s
 
 func (r *InstructorSlotRepository) Create(slot *InstructorSlot) error {
 	query := `
-		INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity, state, disabled)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (instructor_id, starts_at) DO NOTHING
 	`
 	
@@ -166,6 +170,8 @@ func (r *InstructorSlotRepository) Create(slot *InstructorSlot) error {
 		slot.StartsAt,
 		slot.PeopleCount,
 		slot.MaxCapacity,
+		slot.State,
+		slot.Disabled,
 	)
 	
 	return err
@@ -193,12 +199,14 @@ func (r *InstructorSlotRepository) DecrementPeopleCount(instructorID string, sta
 
 func (r *InstructorSlotRepository) GetAvailableForInstructor(instructorID string, from, to time.Time) ([]*InstructorSlot, error) {
 	query := `
-		SELECT instructor_id, starts_at, people_count, max_capacity
+		SELECT instructor_id, starts_at, people_count, max_capacity, state, disabled
 		FROM instructor_slots
 		WHERE instructor_id = $1 
 			AND starts_at >= $2 
 			AND starts_at < $3
 			AND people_count < max_capacity
+			AND state = 'FREE'
+			AND disabled = false
 		ORDER BY starts_at ASC
 	`
 	
@@ -216,6 +224,8 @@ func (r *InstructorSlotRepository) GetAvailableForInstructor(instructorID string
 			&slot.StartsAt,
 			&slot.PeopleCount,
 			&slot.MaxCapacity,
+			&slot.State,
+			&slot.Disabled,
 		)
 		if err != nil {
 			return nil, err
@@ -224,4 +234,20 @@ func (r *InstructorSlotRepository) GetAvailableForInstructor(instructorID string
 	}
 	
 	return slots, rows.Err()
+}
+
+func (r *InstructorSlotRepository) Update(slot *InstructorSlot) error {
+	query := `
+		UPDATE instructor_slots
+		SET people_count = $3, state = $4, disabled = $5
+		WHERE instructor_id = $1 AND starts_at = $2
+	`
+	_, err := r.db.Exec(query,
+		slot.InstructorID,
+		slot.StartsAt,
+		slot.PeopleCount,
+		slot.State,
+		slot.Disabled,
+	)
+	return err
 }
