@@ -54,10 +54,10 @@ func seedTest(db *sql.DB) {
 	adminID := generateID()
 	_, err = db.Exec(`
 		INSERT INTO users 
-		(id, first_name, last_name, address, password, role, med_ok, email, expires_at, remaining_accesses, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		(id, first_name, last_name, address, password, role, med_ok, email, email_verified, expires_at, remaining_accesses, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (email) DO NOTHING
-	`, adminID, "Admin", "User", "Admin Address", adminPassword, "ADMIN", true, "admin@wellness.local", time.Now().AddDate(1, 0, 0), 9999, time.Now(), time.Now())
+	`, adminID, "Admin", "User", "Admin Address", adminPassword, "ADMIN", true, "admin@wellness.local", time.Now(), time.Now().AddDate(1, 0, 0), 9999, time.Now(), time.Now())
 	if err != nil {
 		log.Printf("Warning: Could not create admin: %v", err)
 	} else {
@@ -231,7 +231,7 @@ func seedTest(db *sql.DB) {
 	log.Println("    - giuseppe.verdi@test.local")
 	log.Println("    - anna.romano@test.local")
 	log.Println("    - francesco.ferrari@test.local")
-  
+
 	log.Println("  Instructors (tags only, no login):")
 	log.Println("    - Marco Bianchi")
 	log.Println("    - Giulia Ferrari")
@@ -290,7 +290,7 @@ func seedSlot(db *sql.DB) {
 	if err != nil {
 		log.Fatalf("Failed to get instructors: %v", err)
 	}
-	
+
 	var instructorIDs []string
 	for rows.Next() {
 		var id string
@@ -300,11 +300,11 @@ func seedSlot(db *sql.DB) {
 		instructorIDs = append(instructorIDs, id)
 	}
 	rows.Close()
-	
+
 	if len(instructorIDs) == 0 {
 		log.Fatal("No instructors found. Please seed test data first.")
 	}
-	
+
 	log.Printf("Found %d instructors, creating slots for each", len(instructorIDs))
 
 	// Load Europe/Rome timezone to determine DST correctly
