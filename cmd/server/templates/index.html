@@ -460,8 +460,9 @@
             // Show loading indicator
             showLoading('Caricamento slot disponibili...');
             
-            // Fetch available slots
-            fetch('/api/user/bookings/slots')
+            // Fetch available slots, sending client's current time for proper DST handling
+            const now = new Date().toISOString();
+            fetch(`/api/user/bookings/slots?now=${encodeURIComponent(now)}`)
                 .then(response => response.json())
                 .then(data => {
                     hideLoading();

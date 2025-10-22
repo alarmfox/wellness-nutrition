@@ -279,8 +279,25 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Get client's current time from query parameter, fallback to server time
+	// This ensures DST transitions are handled correctly in the client's timezone
+	var from time.Time
+	clientNowStr := r.URL.Query().Get("now")
+	if clientNowStr != "" {
+		var err error
+		from, err = time.Parse(time.RFC3339, clientNowStr)
+		if err != nil {
+			log.Printf("Error parsing client time: %v, falling back to server time", err)
+			from = time.Now().UTC()
+		} else {
+			// Convert client time to UTC for server-side processing
+			from = from.UTC()
+		}
+	} else {
+		from = time.Now().UTC()
+	}
+
 	// Get slots for the next 30 days
-	from := time.Now()
 	to := from.AddDate(0, 1, 0)
 
 	if user.ExpiresAt.Before(to) {
