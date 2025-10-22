@@ -52,20 +52,19 @@ func main() {
 func seedTest(db *sql.DB) {
 	var err error
 
+	// Create admin in separate admins table
 	adminPassword := hashPassword("admin123")
 	adminID := generateID()
 	_, err = db.Exec(`
-		INSERT INTO users 
-		(id, first_name, last_name, address, password, role, med_ok, 
-		 sub_type, email, email_verified, expires_at, remaining_accesses)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO admins 
+		(id, first_name, last_name, email, password, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (email) DO NOTHING
-	`, adminID, "Admin", "User", "123 Admin St", adminPassword, "ADMIN", true,
-		"SINGLE", "admin@wellness.local", time.Now(), time.Now().AddDate(1, 0, 0), 999)
+	`, adminID, "Admin", "User", "admin@wellness.local", adminPassword, time.Now(), time.Now())
 	if err != nil {
-		log.Printf("Warning: Could not create admin user: %v", err)
+		log.Printf("Warning: Could not create admin: %v", err)
 	} else {
-		log.Println("✓ Created admin user (email: admin@wellness.local, password: admin123)")
+		log.Println("✓ Created admin (email: admin@wellness.local, password: admin123)")
 	}
 
 	// Create test users
@@ -91,11 +90,11 @@ func seedTest(db *sql.DB) {
 		userIDs[i] = userID
 		_, err = db.Exec(`
 			INSERT INTO users 
-			(id, first_name, last_name, address, password, role, med_ok, 
+			(id, first_name, last_name, address, password, med_ok, 
 			 sub_type, email, email_verified, expires_at, remaining_accesses)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			ON CONFLICT (email) DO NOTHING
-		`, userID, u.firstName, u.lastName, "Via Test "+u.lastName, userPassword, "USER", true,
+		`, userID, u.firstName, u.lastName, "Via Test "+u.lastName, userPassword, true,
 			u.subType, u.email, time.Now(), time.Now().AddDate(0, 6, 0), u.accesses)
 		if err != nil {
 			log.Printf("Warning: Could not create user %s: %v", u.email, err)
@@ -104,18 +103,16 @@ func seedTest(db *sql.DB) {
 		}
 	}
 
-	// Create instructors
+	// Create instructors (just tags, no email/password)
 	instructors := []struct {
 		firstName string
 		lastName  string
-		email     string
 	}{
-		{"Marco", "Bianchi", "marco.bianchi@instructor.local"},
-		{"Giulia", "Ferrari", "giulia.ferrari@instructor.local"},
-		{"Alessandro", "Russo", "alessandro.russo@instructor.local"},
+		{"Marco", "Bianchi"},
+		{"Giulia", "Ferrari"},
+		{"Alessandro", "Russo"},
 	}
 
-	instructorPassword := hashPassword("instructor123")
 	instructorIDs := make([]string, len(instructors))
 
 	for i, instr := range instructors {
@@ -123,14 +120,14 @@ func seedTest(db *sql.DB) {
 		instructorIDs[i] = instructorID
 		_, err = db.Exec(`
 			INSERT INTO instructors 
-			(id, first_name, last_name, email, password, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-			ON CONFLICT (email) DO NOTHING
-		`, instructorID, instr.firstName, instr.lastName, instr.email, instructorPassword, time.Now(), time.Now())
+			(id, first_name, last_name, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT DO NOTHING
+		`, instructorID, instr.firstName, instr.lastName, time.Now(), time.Now())
 		if err != nil {
-			log.Printf("Warning: Could not create instructor %s: %v", instr.email, err)
+			log.Printf("Warning: Could not create instructor %s %s: %v", instr.firstName, instr.lastName, err)
 		} else {
-			log.Printf("✓ Created instructor %s %s (email: %s, password: instructor123)", instr.firstName, instr.lastName, instr.email)
+			log.Printf("✓ Created instructor %s %s", instr.firstName, instr.lastName)
 		}
 	}
 
@@ -229,10 +226,10 @@ func seedTest(db *sql.DB) {
 	log.Println("    - giuseppe.verdi@test.local")
 	log.Println("    - anna.romano@test.local")
 	log.Println("    - francesco.ferrari@test.local")
-	log.Println("  Instructors: *.@instructor.local / instructor123")
-	log.Println("    - marco.bianchi@instructor.local")
-	log.Println("    - giulia.ferrari@instructor.local")
-	log.Println("    - alessandro.russo@instructor.local")
+	log.Println("  Instructors (tags only, no login):")
+	log.Println("    - Marco Bianchi")
+	log.Println("    - Giulia Ferrari")
+	log.Println("    - Alessandro Russo")
 }
 
 func seedSlot(db *sql.DB) {

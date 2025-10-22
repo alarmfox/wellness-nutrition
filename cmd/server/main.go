@@ -434,7 +434,7 @@ func serveUsers(userRepo *models.UserRepository) http.HandlerFunc {
 			displayUsers = append(displayUsers, UserDisplay{
 				ID:                 u.ID,
 				FirstName:          u.FirstName,
-				LastName:           u.LastName,
+				LastName:           u.LastName.String,
 				Email:              u.Email,
 				Address:            u.Address,
 				Cellphone:          cellphone,
@@ -495,7 +495,7 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 			u, err := userRepo.GetByID(e.UserID)
 			userName := "Unknown"
 			if err == nil {
-				userName = u.FirstName + " " + u.LastName
+				userName = u.FirstName + " " + u.LastName.String
 			}
 
 			displayEvents = append(displayEvents, EventDisplay{
@@ -621,7 +621,6 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 			ID        string
 			FirstName string
 			LastName  string
-			Email     string
 			CreatedAt string
 		}
 
@@ -630,8 +629,7 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 			displayInstructors = append(displayInstructors, InstructorDisplay{
 				ID:        i.ID,
 				FirstName: i.FirstName,
-				LastName:  i.LastName,
-				Email:     i.Email,
+				LastName:  i.LastName.String,
 				CreatedAt: i.CreatedAt.Format("02 Jan 2006"),
 			})
 		}

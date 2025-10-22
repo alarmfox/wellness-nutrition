@@ -255,7 +255,6 @@
                     <tr>
                         <th>Nome</th>
                         <th>Cognome</th>
-                        <th>Email</th>
                         <th>Data Creazione</th>
                         <th>Azioni</th>
                     </tr>
@@ -265,11 +264,10 @@
                     <tr data-id="{{.ID}}">
                         <td>{{.FirstName}}</td>
                         <td>{{.LastName}}</td>
-                        <td>{{.Email}}</td>
                         <td>{{.CreatedAt}}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-icon" onclick="openEditModal('{{.ID}}', '{{.FirstName}}', '{{.LastName}}', '{{.Email}}')" title="Modifica">
+                                <button class="btn-icon" onclick="openEditModal('{{.ID}}', '{{.FirstName}}', '{{.LastName}}')" title="Modifica">
                                     <span class="material-icons">edit</span>
                                 </button>
                                 <button class="btn-icon" onclick="deleteInstructor('{{.ID}}')" title="Elimina">
@@ -298,16 +296,8 @@
                         <input type="text" id="create-firstName" required>
                     </div>
                     <div class="form-group">
-                        <label for="create-lastName">Cognome *</label>
-                        <input type="text" id="create-lastName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="create-email">Email *</label>
-                        <input type="email" id="create-email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="create-password">Password (opzionale)</label>
-                        <input type="password" id="create-password">
+                        <label for="create-lastName">Cognome</label>
+                        <input type="text" id="create-lastName">
                     </div>
                 </form>
             </div>
@@ -333,16 +323,8 @@
                         <input type="text" id="edit-firstName" required>
                     </div>
                     <div class="form-group">
-                        <label for="edit-lastName">Cognome *</label>
-                        <input type="text" id="edit-lastName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-email">Email *</label>
-                        <input type="email" id="edit-email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-password">Nuova Password (lascia vuoto per non modificare)</label>
-                        <input type="password" id="edit-password">
+                        <label for="edit-lastName">Cognome</label>
+                        <input type="text" id="edit-lastName">
                     </div>
                 </form>
             </div>
@@ -365,11 +347,10 @@
             document.getElementById('createForm').reset();
         }
 
-        function openEditModal(id, firstName, lastName, email) {
+        function openEditModal(id, firstName, lastName) {
             document.getElementById('edit-id').value = id;
             document.getElementById('edit-firstName').value = firstName;
-            document.getElementById('edit-lastName').value = lastName;
-            document.getElementById('edit-email').value = email;
+            document.getElementById('edit-lastName').value = lastName || '';
             document.getElementById('editModal').style.display = 'block';
         }
 
@@ -391,11 +372,9 @@
         async function createInstructor() {
             const firstName = document.getElementById('create-firstName').value;
             const lastName = document.getElementById('create-lastName').value;
-            const email = document.getElementById('create-email').value;
-            const password = document.getElementById('create-password').value;
 
-            if (!firstName || !lastName || !email) {
-                showToast('Compila tutti i campi obbligatori');
+            if (!firstName) {
+                showToast('Il nome è obbligatorio');
                 return;
             }
 
@@ -408,8 +387,6 @@
                     body: JSON.stringify({
                         firstName,
                         lastName,
-                        email,
-                        password,
                     }),
                 });
 
@@ -431,32 +408,23 @@
             const id = document.getElementById('edit-id').value;
             const firstName = document.getElementById('edit-firstName').value;
             const lastName = document.getElementById('edit-lastName').value;
-            const email = document.getElementById('edit-email').value;
-            const password = document.getElementById('edit-password').value;
 
-            if (!firstName || !lastName || !email) {
-                showToast('Compila tutti i campi obbligatori');
+            if (!firstName) {
+                showToast('Il nome è obbligatorio');
                 return;
             }
 
             try {
-                const body = {
-                    id,
-                    firstName,
-                    lastName,
-                    email,
-                };
-                
-                if (password) {
-                    body.password = password;
-                }
-
                 const response = await fetch('/api/admin/instructors/update', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(body),
+                    body: JSON.stringify({
+                        id,
+                        firstName,
+                        lastName,
+                    }),
                 });
 
                 if (response.ok) {
