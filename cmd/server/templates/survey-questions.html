@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Sondaggio - Wellness & Nutrition</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: white;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            font-size: 20px;
+            margin: 0;
+            font-weight: 500;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .toolbar {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: #1565c0;
+        }
+        .btn-danger {
+            background-color: #d32f2f;
+        }
+        .btn-danger:hover {
+            background-color: #c62828;
+        }
+        .question-list {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .question-item {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .question-item:last-child {
+            border-bottom: none;
+        }
+        .question-text {
+            flex: 1;
+            margin-right: 20px;
+        }
+        .question-index {
+            font-weight: 500;
+            color: #1976d2;
+            margin-right: 10px;
+        }
+        .question-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 14px;
+        }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn-secondary {
+            background-color: #757575;
+        }
+        .btn-secondary:hover {
+            background-color: #616161;
+        }
+        .nav {
+            display: flex;
+            gap: 20px;
+        }
+        .nav a {
+            color: rgba(0, 0, 0, 0.7);
+            text-decoration: none;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+        }
+        .nav a:hover {
+            color: #1976d2;
+        }
+        .nav a.active {
+            color: #1976d2;
+            border-bottom-color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Wellness & Nutrition - Admin</h1>
+        <div class="nav">
+            <a href="/admin/calendar">Calendario</a>
+            <a href="/admin/users">Utenti</a>
+            <a href="/admin/events">Eventi</a>
+            <a href="/admin/survey/results" class="active">Sondaggio</a>
+            <a href="/api/auth/logout">Esci</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="toolbar">
+            <h2 style="margin: 0; font-size: 18px;">Domande del Sondaggio</h2>
+            <button class="btn" onclick="openCreateModal()">
+                <span class="material-icons" style="font-size: 18px;">add</span>
+                Aggiungi Domanda
+            </button>
+        </div>
+
+        <div class="question-list" id="questionList">
+            <!-- Questions will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div id="questionModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Aggiungi Domanda</h2>
+            <form id="questionForm">
+                <input type="hidden" id="questionId" name="id">
+                <input type="hidden" id="questionSku" name="sku">
+                
+                <div class="form-group">
+                    <label for="questionIndex">Posizione</label>
+                    <input type="number" id="questionIndex" name="index" min="1" required>
+                    <small style="color: #757575; font-size: 12px;">Specifica la posizione della domanda (1, 2, 3...)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="questionText">Testo della Domanda</label>
+                    <textarea id="questionText" name="question" required></textarea>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+                    <button type="submit" class="btn">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+        
+        // Load questions on page load
+        document.addEventListener('DOMContentLoaded', loadQuestions);
+        
+        async function loadQuestions() {
+            try {
+                const response = await fetch('/api/admin/survey/questions');
+                if (!response.ok) throw new Error('Failed to load questions');
+                questions = await response.json();
+                renderQuestions();
+            } catch (error) {
+                console.error('Error loading questions:', error);
+                alert('Errore nel caricamento delle domande');
+            }
+        }
+        
+        function renderQuestions() {
+            const list = document.getElementById('questionList');
+            if (!questions || questions.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #757575; padding: 40px;">Nessuna domanda presente. Aggiungi la prima domanda.</p>';
+                return;
+            }
+            
+            // Sort by index
+            questions.sort((a, b) => a.Index - b.Index);
+            
+            // Recalculate next/previous
+            for (let i = 0; i < questions.length; i++) {
+                questions[i].Previous = i > 0 ? questions[i-1].Index : 0;
+                questions[i].Next = i < questions.length - 1 ? questions[i+1].Index : 0;
+            }
+            
+            list.innerHTML = questions.map(q => `
+                <div class="question-item">
+                    <div class="question-text">
+                        <span class="question-index">#${q.Index}</span>
+                        <span>${q.Question}</span>
+                    </div>
+                    <div class="question-actions">
+                        <button class="btn" onclick="editQuestion(${q.ID})">
+                            <span class="material-icons" style="font-size: 18px;">edit</span>
+                            Modifica
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteQuestion(${q.ID})">
+                            <span class="material-icons" style="font-size: 18px;">delete</span>
+                            Elimina
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Aggiungi Domanda';
+            document.getElementById('questionForm').reset();
+            document.getElementById('questionId').value = '';
+            // Set next index
+            const maxIndex = questions.length > 0 ? Math.max(...questions.map(q => q.Index)) : 0;
+            document.getElementById('questionIndex').value = maxIndex + 1;
+            document.getElementById('questionModal').style.display = 'block';
+        }
+        
+        function editQuestion(id) {
+            const question = questions.find(q => q.ID === id);
+            if (!question) return;
+            
+            document.getElementById('modalTitle').textContent = 'Modifica Domanda';
+            document.getElementById('questionId').value = question.ID;
+            document.getElementById('questionSku').value = question.Sku;
+            document.getElementById('questionIndex').value = question.Index;
+            document.getElementById('questionText').value = question.Question;
+            document.getElementById('questionModal').style.display = 'block';
+        }
+        
+        function closeModal() {
+            document.getElementById('questionModal').style.display = 'none';
+        }
+        
+        document.getElementById('questionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const id = formData.get('id');
+            const index = parseInt(formData.get('index'));
+            
+            // Validate index
+            if (index < 1) {
+                alert('La posizione deve essere almeno 1');
+                return;
+            }
+            
+            // Check for duplicate index (unless editing the same question)
+            const duplicateIndex = questions.find(q => 
+                q.Index === index && (!id || q.ID !== parseInt(id))
+            );
+            if (duplicateIndex) {
+                alert(`La posizione ${index} è già utilizzata. Le posizioni verranno riordinate automaticamente.`);
+            }
+            
+            // Auto-generate SKU if not editing
+            let sku = formData.get('sku');
+            if (!id || !sku) {
+                sku = 'q' + Date.now(); // Generate unique SKU based on timestamp
+            }
+            
+            // Calculate next and previous based on index
+            const sortedQuestions = [...questions]
+                .filter(q => !id || q.ID !== parseInt(id)) // Exclude current question if editing
+                .sort((a, b) => a.Index - b.Index);
+            
+            let previous = 0;
+            let next = 0;
+            
+            for (let i = 0; i < sortedQuestions.length; i++) {
+                if (sortedQuestions[i].Index < index) {
+                    previous = sortedQuestions[i].Index;
+                } else if (sortedQuestions[i].Index > index && next === 0) {
+                    next = sortedQuestions[i].Index;
+                }
+            }
+            
+            const data = {
+                id: id ? parseInt(id) : 0,
+                sku: sku,
+                index: index,
+                next: next,
+                previous: previous,
+                question: formData.get('question')
+            };
+            
+            try {
+                const url = id ? '/api/admin/survey/questions/update' : '/api/admin/survey/questions/create';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) throw new Error('Failed to save question');
+                
+                closeModal();
+                await loadQuestions();
+            } catch (error) {
+                console.error('Error saving question:', error);
+                alert('Errore nel salvataggio della domanda');
+            }
+        });
+        
+        async function deleteQuestion(id) {
+            if (!confirm('Sei sicuro di voler eliminare questa domanda?')) return;
+            
+            try {
+                const response = await fetch('/api/admin/survey/questions/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete question');
+                
+                await loadQuestions();
+            } catch (error) {
+                console.error('Error deleting question:', error);
+                alert('Errore nell\'eliminazione della domanda');
+            }
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('questionModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

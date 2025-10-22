@@ -80,6 +80,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	bookingRepo := models.NewBookingRepository(db)
 	slotRepo := models.NewSlotRepository(db)
 	eventRepo := models.NewEventRepository(db)
+	questionRepo := models.NewQuestionRepository(db)
 
 	// Initialize session store
 	sessionStore := models.NewSessionStore(db)
@@ -108,6 +109,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	authHandler := handlers.NewAuthHandler(userRepo, sessionStore)
 	userHandler := handlers.NewUserHandler(userRepo, mailer)
 	bookingHandler := handlers.NewBookingHandler(bookingRepo, slotRepo, eventRepo, userRepo, mailer, hub)
+	surveyHandler := handlers.NewSurveyHandler(questionRepo)
 	_ = handlers.NewPageHandler(userRepo, bookingRepo, eventRepo) // Page handler logic moved to main.go serve functions
 
 	mux := http.NewServeMux()
@@ -120,12 +122,17 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.HandleFunc("/signin", serveSignIn)
 	mux.HandleFunc("/reset", serveReset)
 	mux.HandleFunc("/verify", serveVerify)
+	mux.HandleFunc("/survey", serveSurvey(questionRepo))
+	mux.HandleFunc("/survey/thanks", serveSurveyThanks)
 
 	// Auth API routes
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
 	mux.HandleFunc("/api/auth/reset", userHandler.ResetPassword)
 	mux.HandleFunc("/api/auth/verify", userHandler.VerifyAccount)
+
+	// Public survey API routes
+	mux.HandleFunc("/survey/submit", surveyHandler.SubmitSurvey)
 
 	// User routes - /user prefix
 	authMiddleware := middleware.Auth(sessionStore, userRepo)
@@ -144,6 +151,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/admin/calendar", adminMiddleware(http.HandlerFunc(serveCalendar)))
 	mux.Handle("/admin/users", adminMiddleware(http.HandlerFunc(serveUsers(userRepo))))
 	mux.Handle("/admin/events", adminMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
+	mux.Handle("/admin/survey/questions", adminMiddleware(http.HandlerFunc(serveSurveyQuestions)))
+	mux.Handle("/admin/survey/results", adminMiddleware(http.HandlerFunc(serveSurveyResults)))
 	mux.Handle("/api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.GetAll)))
 	mux.Handle("/api/admin/users/create", adminMiddleware(http.HandlerFunc(userHandler.Create)))
 	mux.Handle("/api/admin/users/update", adminMiddleware(http.HandlerFunc(userHandler.Update)))
@@ -155,6 +164,11 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/api/admin/slots/disable", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlot)))
 	mux.Handle("/api/admin/slots/disable-confirm", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlotConfirm)))
 	mux.Handle("/api/admin/slots/enable", adminMiddleware(http.HandlerFunc(bookingHandler.EnableSlot)))
+	mux.Handle("/api/admin/survey/questions", adminMiddleware(http.HandlerFunc(surveyHandler.GetAllQuestions)))
+	mux.Handle("/api/admin/survey/questions/create", adminMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion)))
+	mux.Handle("/api/admin/survey/questions/update", adminMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion)))
+	mux.Handle("/api/admin/survey/questions/delete", adminMiddleware(http.HandlerFunc(surveyHandler.DeleteQuestion)))
+	mux.Handle("/api/admin/survey/results", adminMiddleware(http.HandlerFunc(surveyHandler.GetResults)))
 
 	// WebSocket endpoint
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
@@ -248,19 +262,17 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 
 		// Format dates for display
 		type BookingDisplay struct {
-			ID                 int64
-			StartsAt           string
-			StartsAtFormatted  string
-			CreatedAtFormatted string
+			ID        int64
+			StartsAt  string
+			CreatedAt string
 		}
 
 		var displayBookings []BookingDisplay
 		for _, b := range bookings {
 			displayBookings = append(displayBookings, BookingDisplay{
-				ID:                 b.ID,
-				StartsAt:           b.StartsAt.Format(time.RFC3339),
-				StartsAtFormatted:  b.StartsAt.Format("02 Jan 2006 15:04"),
-				CreatedAtFormatted: b.CreatedAt.Format("02 Jan 2006"),
+				ID:        b.ID,
+				StartsAt:  b.StartsAt.Format(time.RFC3339),
+				CreatedAt: b.CreatedAt.Format(time.RFC3339),
 			})
 		}
 
@@ -459,11 +471,11 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 
 		// Format event data for display
 		type EventDisplay struct {
-			ID                  int
-			UserName            string
-			Type                string
-			OccurredAtFormatted string
-			StartsAtFormatted   string
+			ID         int
+			UserName   string
+			Type       string
+			OccurredAt string
+			StartsAt   string
 		}
 
 		var displayEvents []EventDisplay
@@ -476,11 +488,11 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 			}
 
 			displayEvents = append(displayEvents, EventDisplay{
-				ID:                  e.ID,
-				UserName:            userName,
-				Type:                string(e.Type),
-				OccurredAtFormatted: e.OccurredAt.Format("02 Jan 2006 15:04"),
-				StartsAtFormatted:   e.StartsAt.Format("02 Jan 2006 15:04"),
+				ID:         e.ID,
+				UserName:   userName,
+				Type:       string(e.Type),
+				OccurredAt: e.OccurredAt.Format(time.RFC3339),
+				StartsAt:   e.StartsAt.Format(time.RFC3339),
 			})
 		}
 
@@ -493,5 +505,82 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 			log.Print(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+	}
+}
+
+func serveSurvey(questionRepo *models.QuestionRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+
+		questions, err := questionRepo.GetAll()
+		if err != nil {
+			log.Printf("Error getting questions: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		data := map[string]interface{}{
+			"Questions": questions,
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tpl.ExecuteTemplate(w, "survey.html", data); err != nil {
+			log.Print(err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+}
+
+func serveSurveyThanks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "survey-thanks.html", nil); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func serveSurveyQuestions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil || user.Role != models.RoleAdmin {
+		http.Redirect(w, r, "/signin", http.StatusSeeOther)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "survey-questions.html", nil); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func serveSurveyResults(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil || user.Role != models.RoleAdmin {
+		http.Redirect(w, r, "/signin", http.StatusSeeOther)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "survey-results.html", nil); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
