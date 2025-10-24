@@ -608,7 +608,8 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		StartsAt string `json:"startsAt"`
+		StartsAt     string  `json:"startsAt"`
+		InstructorID *string `json:"instructorId"` // nullable: null means "all instructors"
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -630,6 +631,17 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		bookings = []*models.Booking{}
 	}
 
+	// Filter bookings by instructor if specified
+	if req.InstructorID != nil {
+		var filteredBookings []*models.Booking
+		for _, booking := range bookings {
+			if booking.InstructorID.Valid && booking.InstructorID.String == *req.InstructorID {
+				filteredBookings = append(filteredBookings, booking)
+			}
+		}
+		bookings = filteredBookings
+	}
+
 	if len(bookings) > 0 {
 		// Return info about bookings that need confirmation
 		sendJSON(w, http.StatusOK, map[string]interface{}{
@@ -640,11 +652,21 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// No bookings, proceed to disable all instructor slots at this time
-	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateUnavailable, true); err != nil {
-		log.Printf("Error updating instructor slots: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
+	// No bookings, proceed to disable
+	if req.InstructorID == nil {
+		// Disable all instructor slots at this time
+		if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateUnavailable, true); err != nil {
+			log.Printf("Error updating instructor slots: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
+	} else {
+		// Disable specific instructor slot
+		if err := h.instructorSlotRepo.SetStateForInstructorAtTime(*req.InstructorID, startsAt, models.SlotStateUnavailable, true); err != nil {
+			log.Printf("Error updating instructor slot: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
 	}
 
 	// Create event log
@@ -664,7 +686,7 @@ func (h *BookingHandler) DisableSlot(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Slot disabled successfully"})
 }
 
-// DisableSlotConfirm disables all instructor slots at a time and deletes all associated bookings
+// DisableSlotConfirm disables instructor slot(s) at a time and deletes associated bookings
 func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
@@ -672,8 +694,9 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req struct {
-		StartsAt  string `json:"startsAt"`
-		Confirmed bool   `json:"confirmed"`
+		StartsAt     string  `json:"startsAt"`
+		Confirmed    bool    `json:"confirmed"`
+		InstructorID *string `json:"instructorId"` // nullable: null means "all instructors"
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -700,7 +723,18 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Delete all bookings and refund accesses
+	// Filter bookings by instructor if specified
+	if req.InstructorID != nil {
+		var filteredBookings []*models.Booking
+		for _, booking := range bookings {
+			if booking.InstructorID.Valid && booking.InstructorID.String == *req.InstructorID {
+				filteredBookings = append(filteredBookings, booking)
+			}
+		}
+		bookings = filteredBookings
+	}
+
+	// Delete bookings and refund accesses
 	user := middleware.GetUserFromContext(r.Context())
 	for _, booking := range bookings {
 		// Delete booking
@@ -743,11 +777,21 @@ func (h *BookingHandler) DisableSlotConfirm(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	// Now disable all instructor slots at this time
-	if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateUnavailable, true); err != nil {
-		log.Printf("Error updating instructor slots: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
+	// Now disable instructor slot(s)
+	if req.InstructorID == nil {
+		// Disable all instructor slots at this time
+		if err := h.instructorSlotRepo.SetStateForAllAtTime(startsAt, models.SlotStateUnavailable, true); err != nil {
+			log.Printf("Error updating instructor slots: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
+	} else {
+		// Disable specific instructor slot
+		if err := h.instructorSlotRepo.SetStateForInstructorAtTime(*req.InstructorID, startsAt, models.SlotStateUnavailable, true); err != nil {
+			log.Printf("Error updating instructor slot: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+			return
+		}
 	}
 
 	// Create event log for slot disable

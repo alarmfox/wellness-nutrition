@@ -1160,6 +1160,7 @@
             const disabledInstructors = [];
             const massageInstructors = [];
             const appointmentInstructors = [];
+            const availableInstructors = [];
             
             selectedSlotState.InstructorSlots.forEach(is => {
                 if (is.Disabled || is.State === 'UNAVAILABLE') {
@@ -1168,8 +1169,26 @@
                     massageInstructors.push(is);
                 } else if (is.State === 'APPOINTMENT') {
                     appointmentInstructors.push(is);
+                } else {
+                    availableInstructors.push(is);
                 }
             });
+            
+            // Hide creation actions if ALL instructors are unavailable
+            const allUnavailable = disabledInstructors.length === selectedSlotState.InstructorSlots.length;
+            if (allUnavailable) {
+                // When completely unavailable, only show enable actions
+                document.getElementById('actionCreateBooking').style.display = 'none';
+                document.getElementById('actionUnavailable').style.display = 'none';
+                document.getElementById('actionMassage').style.display = 'none';
+                document.getElementById('actionAppointment').style.display = 'none';
+            } else {
+                // At least some instructors are available, show all creation actions
+                document.getElementById('actionCreateBooking').style.display = 'block';
+                document.getElementById('actionUnavailable').style.display = 'block';
+                document.getElementById('actionMassage').style.display = 'block';
+                document.getElementById('actionAppointment').style.display = 'block';
+            }
             
             // Create dynamic action container after state display
             let dynamicActionsDiv = document.getElementById('dynamicActions');
@@ -1185,8 +1204,7 @@
             
             // Add dynamic actions based on current state
             if (disabledInstructors.length > 0) {
-                const allDisabled = disabledInstructors.length === selectedSlotState.InstructorSlots.length;
-                if (allDisabled) {
+                if (allUnavailable) {
                     dynamicHtml += `<div class="action-card" onclick="enableAllInstructors()">
                         <h3>✅ Abilita per Tutti</h3>
                         <p>Rendi disponibile lo slot per tutti gli istruttori</p>
