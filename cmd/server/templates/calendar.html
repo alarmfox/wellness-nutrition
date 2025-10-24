@@ -785,25 +785,22 @@
             }
         }
         
-        function populateAvailableInstructorDropdown(selectId, excludeStates = []) {
+        function populateAvailableInstructorDropdown(selectId, excludeStates = [], checkBookings = false, allowAll = false) {
             const select = document.getElementById(selectId);
             if (!select) return;
             
             select.innerHTML = '';
             
-            // Add placeholder
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = '-- Seleziona istruttore --';
-            placeholderOption.disabled = true;
-            placeholderOption.selected = true;
-            select.appendChild(placeholderOption);
-            
-            // Get list of instructor IDs that are already occupied with excluded states
+            // Get list of instructor IDs that are already occupied with excluded states or have bookings
             const occupiedInstructorIds = new Set();
             if (selectedSlotState && selectedSlotState.InstructorSlots) {
                 selectedSlotState.InstructorSlots.forEach(is => {
+                    // Check state exclusions
                     if (excludeStates.includes(is.State) || (excludeStates.includes('UNAVAILABLE') && is.Disabled)) {
+                        occupiedInstructorIds.add(is.InstructorID);
+                    }
+                    // Check bookings if requested
+                    if (checkBookings && is.PeopleCount > 0) {
                         occupiedInstructorIds.add(is.InstructorID);
                     }
                 });
@@ -813,6 +810,27 @@
             const availableInstructors = instructors.filter(instructor => 
                 !occupiedInstructorIds.has(instructor.ID)
             );
+            
+            // If "all" option is allowed, check if ALL instructors are actually free
+            const allInstructorsFree = instructors.length === availableInstructors.length && 
+                                        availableInstructors.length > 0;
+            
+            // Add "Tutti" option only if explicitly allowed AND all instructors are free
+            if (allowAll && allInstructorsFree) {
+                const allOption = document.createElement('option');
+                allOption.value = 'all';
+                allOption.textContent = 'Tutti';
+                select.appendChild(allOption);
+                select.value = 'all'; // Default to "all"
+            } else {
+                // Add placeholder
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = '';
+                placeholderOption.textContent = '-- Seleziona istruttore --';
+                placeholderOption.disabled = true;
+                placeholderOption.selected = true;
+                select.appendChild(placeholderOption);
+            }
             
             if (availableInstructors.length === 0) {
                 const noOption = document.createElement('option');
@@ -831,8 +849,8 @@
                 select.appendChild(option);
             });
             
-            // Set default to current filter if it's available
-            if (selectedInstructorId && !occupiedInstructorIds.has(parseInt(selectedInstructorId))) {
+            // Set default to current filter if it's available (and "all" not shown)
+            if (!allInstructorsFree && selectedInstructorId && !occupiedInstructorIds.has(parseInt(selectedInstructorId))) {
                 select.value = selectedInstructorId;
             }
         }
@@ -1504,8 +1522,9 @@
             });
             document.getElementById('slotInfo').textContent = `Slot: ${formatted}`;
             
-            // Populate instructor dropdown (include "Tutti" option for disable)
-            populateInstructorDropdown('unavailableInstructorId', true);
+            // Populate instructor dropdown - exclude instructors with massage, appointment, unavailable, or bookings
+            // Only show "Tutti" if ALL instructors are completely free
+            populateAvailableInstructorDropdown('unavailableInstructorId', ['MASSAGE', 'APPOINTMENT', 'UNAVAILABLE'], true, true);
         }
         
         function showReserveMassage() {
