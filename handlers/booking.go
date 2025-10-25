@@ -452,14 +452,25 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 
 	// Get current time from query parameter (for proper timezone handling) or use server time
 	nowStr := r.URL.Query().Get("now")
+	offsetStr := r.URL.Query().Get("offset") // timezone offset in minutes from UTC
 	var now time.Time
 	if nowStr != "" {
 		now, err = time.Parse(time.RFC3339, nowStr)
 		if err != nil {
 			now = time.Now().UTC()
 		} else {
-			// Convert to UTC for consistent slot generation and database comparison
-			now = now.UTC()
+			// Parse the timezone offset and create a location
+			if offsetStr != "" {
+				offsetMinutes, err := strconv.Atoi(offsetStr)
+				if err == nil {
+					// JavaScript's getTimezoneOffset returns minutes AHEAD of UTC as negative
+					// So we need to negate it: offset -60 means UTC+1
+					offsetSeconds := -offsetMinutes * 60
+					loc := time.FixedZone("Client", offsetSeconds)
+					// Convert the UTC time to the client's timezone
+					now = now.In(loc)
+				}
+			}
 		}
 	} else {
 		now = time.Now().UTC()
@@ -486,9 +497,18 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	unavailableSlots := make(map[string]bool)
 	slotBookingCount := make(map[string]int)
 
+	// Get the timezone from the generated slots (they're in client timezone)
+	var slotLocation *time.Location
+	if len(slots) > 0 {
+		slotLocation = slots[0].Location()
+	} else {
+		slotLocation = time.UTC
+	}
+
 	for _, booking := range bookings {
-		// Both booking times and slots are in UTC, so direct comparison works
-		slotKey := booking.StartsAt.Format(time.RFC3339)
+		// Convert database booking time (UTC) to client timezone for comparison
+		bookingInClientTZ := booking.StartsAt.In(slotLocation)
+		slotKey := bookingInClientTZ.Format(time.RFC3339)
 
 		// Slot is unavailable if:
 		// 1. There's a DISABLE, APPOINTMENT, or MASSAGE booking
