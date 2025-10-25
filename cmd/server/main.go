@@ -145,7 +145,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("GET /api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent)))
 	mux.Handle("POST /api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
 	mux.Handle("DELETE /api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.Delete)))
-	// mux.Handle("GET /api/user/bookings/slots", authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots)))
+	mux.Handle("GET /api/user/bookings/slots", authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots)))
 
 	// Admin dashboard
 	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
@@ -166,6 +166,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("POST /api/admin/users/resend-verification", adminMiddleware(http.HandlerFunc(userHandler.ResendVerification)))
 
 	// Instructors API - GetAll is accessible to all authenticated users (users need to see instructors for booking)
+	mux.Handle("GET /api/instructors", authMiddleware(http.HandlerFunc(instructorHandler.GetAll)))
 	mux.Handle("GET /api/user/instructors", authMiddleware(http.HandlerFunc(instructorHandler.GetAll)))
 	mux.Handle("GET /api/admin/instructors", adminMiddleware(http.HandlerFunc(instructorHandler.GetAll)))
 	mux.Handle("POST /api/admin/instructors", adminMiddleware(http.HandlerFunc(instructorHandler.Create)))
