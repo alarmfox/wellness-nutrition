@@ -133,9 +133,18 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
-	id := r.PathValue("id")
+	
+	// Read request body
+	var req struct {
+		ID       string `json:"id"`
+		StartsAt string `json:"startsAt"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
 
-	idInt, err := strconv.ParseInt(id, 10, 32)
+	idInt, err := strconv.ParseInt(req.ID, 10, 64)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
 		return
@@ -406,4 +415,187 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		"message":   "Booking created successfully",
 		"bookingId": booking.ID,
 	})
+}
+
+// GetAvailableSlots returns available time slots for a specific instructor
+func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+
+	// Get instructor ID from query params
+	instructorIDStr := r.URL.Query().Get("instructorId")
+	if instructorIDStr == "" {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "instructorId is required"})
+		return
+	}
+
+	instructorID, err := strconv.ParseInt(instructorIDStr, 10, 64)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid instructorId"})
+		return
+	}
+
+	// Verify instructor exists
+	_, err = h.instructorRepo.GetByID(instructorID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJSON(w, http.StatusNotFound, map[string]string{"error": "Instructor not found"})
+			return
+		}
+		log.Printf("Error getting instructor: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+
+	// Get current time from query parameter (for proper timezone handling) or use server time
+	nowStr := r.URL.Query().Get("now")
+	offsetStr := r.URL.Query().Get("offset") // timezone offset in minutes from UTC
+	var now time.Time
+	if nowStr != "" {
+		now, err = time.Parse(time.RFC3339, nowStr)
+		if err != nil {
+			now = time.Now().UTC()
+		} else {
+			// Parse the timezone offset and create a location
+			if offsetStr != "" {
+				offsetMinutes, err := strconv.Atoi(offsetStr)
+				if err == nil {
+					// JavaScript's getTimezoneOffset returns minutes AHEAD of UTC as negative
+					// So we need to negate it: offset -60 means UTC+1
+					offsetSeconds := -offsetMinutes * 60
+					loc := time.FixedZone("Client", offsetSeconds)
+					// Convert the UTC time to the client's timezone
+					now = now.In(loc)
+				}
+			}
+		}
+	} else {
+		now = time.Now().UTC()
+	}
+
+	// Calculate end date: 1 month from now or user's plan expiration, whichever is earlier
+	endDate := now.AddDate(0, 1, 0)
+	if user.ExpiresAt.Before(endDate) {
+		endDate = user.ExpiresAt
+	}
+
+	// Generate all possible slots from 7am to 9pm, Monday-Saturday
+	slots := generateSlots(now, endDate)
+
+	// Get all bookings for this instructor in the date range
+	bookings, err := h.bookingRepo.GetByInstructorAndDateRange(instructorIDStr, now, endDate)
+	if err != nil {
+		log.Printf("Error getting bookings: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+
+	// Build map of unavailable slots
+	unavailableSlots := make(map[string]bool)
+	slotBookingCount := make(map[string]int)
+
+	// Get the timezone from the generated slots (they're in client timezone)
+	var slotLocation *time.Location
+	if len(slots) > 0 {
+		slotLocation = slots[0].Location()
+	} else {
+		slotLocation = time.UTC
+	}
+
+	for _, booking := range bookings {
+		// Convert database booking time (UTC) to client timezone for comparison
+		bookingInClientTZ := booking.StartsAt.In(slotLocation)
+		slotKey := bookingInClientTZ.Format(time.RFC3339)
+
+		// Slot is unavailable if:
+		// 1. There's a DISABLE, APPOINTMENT, or MASSAGE booking
+		if booking.Type == models.BookingTypeDisable ||
+			booking.Type == models.BookingTypeAppointment ||
+			booking.Type == models.BookingTypeMassage {
+			unavailableSlots[slotKey] = true
+			continue
+		}
+
+		// 2. Count SIMPLE bookings
+		if booking.Type == models.BookingTypeSimple {
+			slotBookingCount[slotKey]++
+		}
+	}
+
+	// Filter slots based on availability rules
+	var availableSlots []time.Time
+	for _, slot := range slots {
+		slotKey := slot.Format(time.RFC3339)
+
+		// Skip if explicitly unavailable (DISABLE, APPOINTMENT, MASSAGE)
+		if unavailableSlots[slotKey] {
+			continue
+		}
+
+		peopleCount := slotBookingCount[slotKey]
+
+		// 3. Slot is unavailable if there are 2 SIMPLE bookings
+		if peopleCount >= 2 {
+			continue
+		}
+
+		// 4. If user has SINGLE plan and there's already 1 SIMPLE booking, slot is unavailable
+		if user.SubType == models.SubTypeSingle && peopleCount >= 1 {
+			continue
+		}
+
+		// Slot is available
+		availableSlots = append(availableSlots, slot)
+	}
+
+	sendJSON(w, http.StatusOK, map[string]interface{}{
+		"slots": availableSlots,
+	})
+}
+
+// generateSlots creates time slots from 7am to 9pm, Monday-Saturday
+// Slots are hourly intervals
+func generateSlots(start, end time.Time) []time.Time {
+	var slots []time.Time
+
+	// Start from the current hour or the next hour
+	current := start.Truncate(time.Hour)
+	
+	// If we're exactly on the hour, use it; otherwise go to next hour
+	if current.Equal(start) {
+		// Start is exactly on the hour, use it
+	} else {
+		// Start is not on the hour, move to next hour
+		current = current.Add(time.Hour)
+	}
+
+	// Ensure we start from at least 7am on the current day
+	if current.Hour() < 7 {
+		current = time.Date(current.Year(), current.Month(), current.Day(), 7, 0, 0, 0, current.Location())
+	}
+
+	for current.Before(end) {
+		// Only include Monday (1) through Saturday (6)
+		weekday := current.Weekday()
+		if weekday >= time.Monday && weekday <= time.Saturday {
+			hour := current.Hour()
+			// Only include slots from 7am to 9pm (7-21)
+			if hour >= 7 && hour <= 21 {
+				slots = append(slots, current)
+			}
+		}
+
+		// Move to next hour
+		current = current.Add(time.Hour)
+
+		// If we've passed 9pm, skip to 7am next day
+		if current.Hour() > 21 || current.Hour() < 7 {
+			current = time.Date(current.Year(), current.Month(), current.Day()+1, 7, 0, 0, 0, current.Location())
+		}
+	}
+
+	return slots
 }
