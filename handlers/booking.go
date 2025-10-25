@@ -495,6 +495,8 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Filter slots based on availability rules
+	// Note: Using PascalCase for JSON field names to match existing frontend code in index.html
+	// which expects slot.Disabled, slot.PeopleCount, etc.
 	type SlotResponse struct {
 		StartsAt    time.Time `json:"StartsAt"`
 		PeopleCount int       `json:"PeopleCount"`
