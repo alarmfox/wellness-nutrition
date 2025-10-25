@@ -496,10 +496,10 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 
 	// Filter slots based on availability rules
 	type SlotResponse struct {
-		StartsAt    time.Time `json:"startsAt"`
-		PeopleCount int       `json:"peopleCount"`
-		MaxCapacity int       `json:"maxCapacity"`
-		Disabled    bool      `json:"disabled"`
+		StartsAt    time.Time `json:"StartsAt"`
+		PeopleCount int       `json:"PeopleCount"`
+		MaxCapacity int       `json:"MaxCapacity"`
+		Disabled    bool      `json:"Disabled"`
 	}
 
 	var availableSlots []SlotResponse
