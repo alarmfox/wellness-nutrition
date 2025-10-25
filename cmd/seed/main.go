@@ -4,20 +4,15 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
-	"flag"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/argon2"
 )
 
-var cmd = flag.String("seed", "", "What to seed")
-
 func main() {
-	flag.Parse()
 	dbConnString := os.Getenv("DATABASE_URL")
 
 	if dbConnString == "" {
@@ -34,16 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	switch strings.ToLower(*cmd) {
-	// Seeds test data
-	case "test":
-		seedTest(db)
-	// Pre-create slots
-	case "slot":
-		seedSlot(db)
-	default:
-		log.Fatalf("unknown command %q", *cmd)
-	}
+	seedTest(db)
 }
 
 func seedTest(db *sql.DB) {
@@ -110,22 +96,23 @@ func seedTest(db *sql.DB) {
 		{"Alessandro", "Russo"},
 	}
 
-	instructorIDs := make([]string, len(instructors))
+	instructorIDs := make([]int, len(instructors))
 
+	var id int
 	for i, instr := range instructors {
-		instructorID := generateID()
-		instructorIDs[i] = instructorID
-		_, err = db.Exec(`
+		err := db.QueryRow(`
 			INSERT INTO instructors 
-			(id, first_name, last_name, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5)
+			(first_name, last_name)
+			VALUES ($1, $2)
 			ON CONFLICT DO NOTHING
-		`, instructorID, instr.firstName, instr.lastName, time.Now(), time.Now())
+			RETURNING id
+		`, instr.firstName, instr.lastName).Scan(&id)
 		if err != nil {
 			log.Printf("Warning: Could not create instructor %s %s: %v", instr.firstName, instr.lastName, err)
 		} else {
 			log.Printf("✓ Created instructor %s %s", instr.firstName, instr.lastName)
 		}
+		instructorIDs[i] = id
 	}
 
 	// Create time slots for the next 30 days
@@ -137,42 +124,6 @@ func seedTest(db *sql.DB) {
 
 	now := time.Now().UTC()
 	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-
-	var slotsCreated int
-	for day := 0; day < 30; day++ {
-		currentDate := startDate.AddDate(0, 0, day)
-
-		// Skip Sundays (weekday 0)
-		if currentDate.Weekday() == time.Sunday {
-			continue
-		}
-
-		// Create slots from 07:00 to 21:00 in Rome local time
-		// We create the time in Rome timezone, then convert to UTC for storage
-		for hour := 7; hour <= 21; hour++ {
-			// Create time at this hour in Rome timezone
-			romeTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
-				hour, 0, 0, 0, romeLocation)
-
-			// Convert to UTC for storage (database stores as UTC TIMESTAMP)
-			slotTime := romeTime.UTC()
-
-			// Create instructor_slots for each instructor for this time slot
-			for _, instructorID := range instructorIDs {
-				_, err = db.Exec(`
-					INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity, state, disabled)
-					VALUES ($1, $2, $3, $4, $5, $6)
-					ON CONFLICT (instructor_id, starts_at) DO NOTHING
-				`, instructorID, slotTime, 0, 2, "FREE", false)
-				if err != nil {
-					log.Printf("Warning: Could not create instructor slot for %s at %v: %v", instructorID, slotTime, err)
-				} else {
-					slotsCreated++
-				}
-			}
-		}
-	}
-	log.Printf("✓ Created %d instructor time slots for the next 30 days", slotsCreated)
 
 	// Create some bookings for the test users
 	var bookingsCreated int
@@ -203,21 +154,13 @@ func seedTest(db *sql.DB) {
 			instructorID := instructorIDs[(i+j)%len(instructorIDs)]
 
 			_, err = db.Exec(`
-				INSERT INTO bookings (user_id, instructor_id, created_at, starts_at)
-				VALUES ($1, $2, $3, $4)
-			`, userID, instructorID, time.Now().Add(-time.Duration(j)*24*time.Hour), bookingTime)
+				INSERT INTO bookings (user_id, instructor_id, created_at, starts_at, type)
+				VALUES ($1, $2, $3, $4, $5)
+			`, userID, instructorID, time.Now().Add(-time.Duration(j)*24*time.Hour), bookingTime, "SIMPLE")
 			if err != nil {
 				log.Printf("Warning: Could not create booking: %v", err)
 			} else {
 				bookingsCreated++
-
-				// Update instructor slot people count
-				_, _ = db.Exec(`
-					INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity, state, disabled)
-					VALUES ($1, $2, 1, 2, 'FREE', false)
-					ON CONFLICT (instructor_id, starts_at) DO UPDATE
-					SET people_count = instructor_slots.people_count + 1
-				`, instructorID, bookingTime)
 			}
 		}
 	}
@@ -276,80 +219,6 @@ func seedTest(db *sql.DB) {
 
 	log.Println("Survey seeding completed!")
 	log.Println("\n\n=== Seeding Complete ===")
-}
-
-func seedSlot(db *sql.DB) {
-	log.Print("Seeding instructor slots for the next year... this may take some time")
-	var (
-		err          error
-		slotsCreated = 0
-	)
-
-	// First get all instructors
-	rows, err := db.Query(`SELECT id FROM instructors ORDER BY id`)
-	if err != nil {
-		log.Fatalf("Failed to get instructors: %v", err)
-	}
-
-	var instructorIDs []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			log.Fatalf("Failed to scan instructor: %v", err)
-		}
-		instructorIDs = append(instructorIDs, id)
-	}
-	rows.Close()
-
-	if len(instructorIDs) == 0 {
-		log.Fatal("No instructors found. Please seed test data first.")
-	}
-
-	log.Printf("Found %d instructors, creating slots for each", len(instructorIDs))
-
-	// Load Europe/Rome timezone to determine DST correctly
-	romeLocation, err := time.LoadLocation("Europe/Rome")
-	if err != nil {
-		log.Fatalf("Failed to load Europe/Rome timezone: %v", err)
-	}
-
-	now := time.Now().UTC()
-	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	totDays := 30 * 12
-	for day := 0; day < totDays; day++ {
-		currentDate := startDate.AddDate(0, 0, day)
-
-		// Skip Sundays (weekday 0)
-		if currentDate.Weekday() == time.Sunday {
-			continue
-		}
-
-		// Create slots from 7 AM to 9 PM (07:00-21:00) in Rome local time
-		// We create the time in Rome timezone, then convert to UTC for storage
-		for hour := 7; hour <= 21; hour++ {
-			// Create time at this hour in Rome timezone
-			romeTime := time.Date(currentDate.Year(), currentDate.Month(), currentDate.Day(),
-				hour, 0, 0, 0, romeLocation)
-
-			// Convert to UTC for storage (database stores as UTC TIMESTAMP)
-			slotTime := romeTime.UTC()
-
-			// Create slot for each instructor
-			for _, instructorID := range instructorIDs {
-				_, err = db.Exec(`
-					INSERT INTO instructor_slots (instructor_id, starts_at, people_count, max_capacity, state, disabled)
-					VALUES ($1, $2, $3, $4, $5, $6)
-					ON CONFLICT (instructor_id, starts_at) DO NOTHING
-				`, instructorID, slotTime, 0, 2, "FREE", false)
-				if err != nil {
-					log.Printf("Warning: Could not create instructor slot at %v: %v", slotTime, err)
-				} else {
-					slotsCreated++
-				}
-			}
-		}
-	}
-	log.Printf("created %d instructor slots", slotsCreated)
 }
 
 func hashPassword(password string) string {

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/alarmfox/wellness-nutrition/app/models"
-	"github.com/google/uuid"
 )
 
 type InstructorHandler struct {
@@ -57,7 +56,6 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// Create instructor
 	instructor := &models.Instructor{
-		ID:        uuid.New().String(),
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		CreatedAt: time.Now(),
@@ -74,7 +72,7 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateInstructorRequest struct {
-	ID        string `json:"id"`
+	ID        int64  `json:"id"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
 }

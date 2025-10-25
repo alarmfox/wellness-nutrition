@@ -286,8 +286,8 @@
             }
             
             showLoading('Eliminazione utenti...');
-            fetch('/api/admin/users/delete', {
-                method: 'POST',
+            fetch('/api/admin/users', {
+                method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -388,7 +388,7 @@
             };
             
             showLoading('Creazione utente...');
-            fetch('/api/admin/users/create', {
+            fetch('/api/admin/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -434,8 +434,8 @@
             };
             
             showLoading('Aggiornamento utente...');
-            fetch('/api/admin/users/update', {
-                method: 'POST',
+            fetch('/api/admin/users', {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },

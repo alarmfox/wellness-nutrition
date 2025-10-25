@@ -158,7 +158,7 @@
             }
 
             try {
-                const response = await fetch('/api/admin/instructors/create', {
+                const response = await fetch('/api/admin/instructors', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -194,8 +194,8 @@
             }
 
             try {
-                const response = await fetch('/api/admin/instructors/update', {
-                    method: 'POST',
+                const response = await fetch('/api/admin/instructors', {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -226,8 +226,8 @@
             }
 
             try {
-                const response = await fetch('/api/admin/instructors/delete', {
-                    method: 'POST',
+                const response = await fetch('/api/admin/instructors', {
+                    method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
                     },

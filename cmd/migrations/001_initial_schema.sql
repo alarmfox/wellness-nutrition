@@ -32,9 +32,9 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Instructors table (instructors are just tags, no email/password)
 CREATE TABLE IF NOT EXISTS instructors (
-    id VARCHAR(255) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     first_name VARCHAR(255) NOT NULL,
-    last_name VARCHAR(255) NOT NULL DEFAULT '',
+    last_name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -42,34 +42,18 @@ CREATE TABLE IF NOT EXISTS instructors (
 -- Bookings table
 CREATE TABLE IF NOT EXISTS bookings (
     id BIGSERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    instructor_id VARCHAR(255),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    user_id VARCHAR(255),
+    instructor_id INTEGER NOT NULL,
     starts_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    type VARCHAR(20) NOT NULL DEFAULT 'SIMPLE',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE SET NULL
 );
 
 -- Indexes for bookings
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_starts_at ON bookings(starts_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_instructor_id ON bookings(instructor_id);
-
--- Instructor slots table for per-instructor capacity tracking
-CREATE TABLE IF NOT EXISTS instructor_slots (
-    instructor_id VARCHAR(255) NOT NULL,
-    starts_at TIMESTAMP NOT NULL,
-    people_count INTEGER NOT NULL DEFAULT 0,
-    max_capacity INTEGER NOT NULL DEFAULT 2,
-    state VARCHAR(50) NOT NULL DEFAULT 'FREE',
-    disabled BOOLEAN NOT NULL DEFAULT false,
-    PRIMARY KEY (instructor_id, starts_at),
-    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE
-);
-
--- Indexes for instructor_slots
-CREATE INDEX IF NOT EXISTS idx_instructor_slots_instructor_id ON instructor_slots(instructor_id);
-CREATE INDEX IF NOT EXISTS idx_instructor_slots_starts_at ON instructor_slots(starts_at);
 
 -- Events table
 CREATE TABLE IF NOT EXISTS events (
