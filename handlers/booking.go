@@ -457,8 +457,10 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		now, err = time.Parse(time.RFC3339, nowStr)
 		if err != nil {
 			now = time.Now().UTC()
+		} else {
+			// Convert to UTC for consistent slot generation and database comparison
+			now = now.UTC()
 		}
-		// Keep the client's timezone instead of converting to UTC
 	} else {
 		now = time.Now().UTC()
 	}
@@ -484,18 +486,9 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	unavailableSlots := make(map[string]bool)
 	slotBookingCount := make(map[string]int)
 
-	// Get the timezone from the generated slots for proper comparison
-	var slotTimezone *time.Location
-	if len(slots) > 0 {
-		slotTimezone = slots[0].Location()
-	} else {
-		slotTimezone = time.UTC
-	}
-
 	for _, booking := range bookings {
-		// Convert booking time (UTC from database) to the slot timezone for comparison
-		bookingInSlotTZ := booking.StartsAt.In(slotTimezone)
-		slotKey := bookingInSlotTZ.Format(time.RFC3339)
+		// Both booking times and slots are in UTC, so direct comparison works
+		slotKey := booking.StartsAt.Format(time.RFC3339)
 
 		// Slot is unavailable if:
 		// 1. There's a DISABLE, APPOINTMENT, or MASSAGE booking
