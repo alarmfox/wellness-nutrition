@@ -542,10 +542,18 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 func generateSlots(start, end time.Time) []time.Time {
 	var slots []time.Time
 
-	// Start from the beginning of the next hour
-	current := start.Truncate(time.Hour).Add(time.Hour)
+	// Start from the current hour or the next hour
+	current := start.Truncate(time.Hour)
+	
+	// If we're exactly on the hour, use it; otherwise go to next hour
+	if current.Equal(start) {
+		// Start is exactly on the hour, use it
+	} else {
+		// Start is not on the hour, move to next hour
+		current = current.Add(time.Hour)
+	}
 
-	// Ensure we start from at least 7am
+	// Ensure we start from at least 7am on the current day
 	if current.Hour() < 7 {
 		current = time.Date(current.Year(), current.Month(), current.Day(), 7, 0, 0, 0, current.Location())
 	}

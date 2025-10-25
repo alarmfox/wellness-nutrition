@@ -1,1 +1,5 @@
-.envserver
+.env
+server
+*.exe
+*.out
+*.test
