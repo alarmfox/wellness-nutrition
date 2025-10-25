@@ -217,7 +217,9 @@
                         <span class="material-icons list-icon">event</span>
                         <div class="list-text">
                             <div class="list-primary" data-timestamp="{{.StartsAt}}"></div>
-                            <div class="list-secondary" data-created="{{.CreatedAt}}"></div>
+                            <div class="list-secondary">
+                                {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ {{.InstructorName}}</span> • {{end}}<span data-created="{{.CreatedAt}}"></span>
+                            </div>
                         </div>
                         <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
                     </div>
@@ -527,18 +529,7 @@
                     
                     availableSlots = data.slots || [];
                     
-                    // Filter slots based on user subscription type
-                    const filtered = availableSlots.filter(slot => {
-                        if (slot.Disabled) return false;
-                        
-                        if (userSubType === 'SHARED') {
-                            return slot.PeopleCount < slot.MaxCapacity;
-                        } else {
-                            return slot.PeopleCount === 0;
-                        }
-                    });
-                    
-                    if (filtered.length === 0) {
+                    if (availableSlots.length === 0) {
                         contentDiv.innerHTML = `
                             <h1>Slot per ${instructorName}</h1>
                             <div style="margin-bottom: 16px;">
@@ -555,8 +546,8 @@
                     // Group slots by date
                     // 1️⃣ Group slots by the LOCAL date (in browser timezone)
                     const groupedSlots = {};
-                    filtered.forEach(slot => {
-                        const date = new Date(slot.StartsAt);
+                    availableSlots.forEach(slotTime => {
+                        const date = new Date(slotTime);
                         // Use local date for grouping, not UTC
                         const year = date.getFullYear();
                         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -565,7 +556,7 @@
                         if (!groupedSlots[dateKey]) {
                             groupedSlots[dateKey] = [];
                         }
-                        groupedSlots[dateKey].push(slot);
+                        groupedSlots[dateKey].push(slotTime);
                     });
 
                     // 2️⃣ Sort the keys chronologically — works naturally with ISO format
@@ -584,7 +575,7 @@
                     sortedKeys.forEach(dateKey => {
                         // Parse the date key and use the first slot's date for the label
                         const firstSlot = groupedSlots[dateKey][0];
-                        const date = new Date(firstSlot.StartsAt);
+                        const date = new Date(firstSlot);
                         const dateLabel = date.toLocaleDateString('it-IT', { 
                             weekday: 'long', 
                             year: 'numeric', 
@@ -600,19 +591,18 @@
 
                         // Sort slots within each day by start time
                         groupedSlots[dateKey]
-                            .sort((a, b) => new Date(a.StartsAt) - new Date(b.StartsAt))
-                            .forEach(slot => {
-                                const timeStr = new Date(slot.StartsAt).toLocaleTimeString('it-IT', {
+                            .sort((a, b) => new Date(a) - new Date(b))
+                            .forEach(slotTime => {
+                                const timeStr = new Date(slotTime).toLocaleTimeString('it-IT', {
                                     hour: '2-digit',
                                     minute: '2-digit'
                                 });
-                                const availText = userSubType === 'SHARED' ? `(${slot.MaxCapacity - slot.PeopleCount} posti)` : '';
 
                                 html += `
-                                    <div class="list-item" style="cursor: pointer;" onclick="confirmBookingWithInstructor('${slot.StartsAt}', '${instructorId}')">
+                                    <div class="list-item" style="cursor: pointer;" onclick="confirmBookingWithInstructor('${slotTime}', ${instructorId})">
                                     <span class="material-icons list-icon" style="color: #4caf50;">event_available</span>
                                     <div class="list-text">
-                                    <div class="list-primary">${timeStr} ${availText}</div>
+                                    <div class="list-primary">${timeStr}</div>
                                     </div>
                                     <span class="material-icons list-icon">arrow_forward</span>
                                     </div>

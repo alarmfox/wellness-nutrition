@@ -15,33 +15,21 @@ Requires authenticated user session (cookie-based authentication)
 
 ## Response
 
-Returns a JSON object with available time slots:
+Returns a JSON object with available time slots as an array of RFC3339 timestamps:
 
 ```json
 {
   "slots": [
-    {
-      "StartsAt": "2024-01-15T07:00:00Z",
-      "PeopleCount": 0,
-      "MaxCapacity": 2,
-      "Disabled": false
-    },
-    {
-      "StartsAt": "2024-01-15T08:00:00Z",
-      "PeopleCount": 1,
-      "MaxCapacity": 2,
-      "Disabled": false
-    }
+    "2024-01-15T07:00:00Z",
+    "2024-01-15T08:00:00Z",
+    "2024-01-15T09:00:00Z"
   ]
 }
 ```
 
 ### Response Fields
 
-- `StartsAt` (string): RFC3339 timestamp of when the slot starts
-- `PeopleCount` (integer): Number of existing SIMPLE bookings in this slot
-- `MaxCapacity` (integer): Maximum number of people allowed (always 2)
-- `Disabled` (boolean): Whether the slot is disabled (always false in returned slots; disabled slots are filtered out)
+- `slots` (array of strings): Array of RFC3339 timestamp strings representing available time slots
 
 ## Business Logic
 
@@ -118,3 +106,4 @@ Status: 401 Unauthorized
 3. Slots are generated in memory (not stored in database)
 4. The endpoint queries all bookings for the instructor in the date range to determine availability
 5. Empty slots array is returned if no slots are available (not an error condition)
+6. Response is kept simple - just an array of time strings, no additional metadata

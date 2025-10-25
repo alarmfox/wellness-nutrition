@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"encoding/json"
-	"net/http"
 	"testing"
 	"time"
 )
@@ -10,35 +9,16 @@ import (
 // TestGetAvailableSlots_ResponseStructure verifies the response structure
 // This test doesn't require a database connection
 func TestGetAvailableSlots_ResponseStructure(t *testing.T) {
-	// This test demonstrates that the response structure matches what the frontend expects
-	// In a real scenario, this would be tested with a mock database
-
-	type SlotResponse struct {
-		StartsAt    time.Time `json:"StartsAt"`
-		PeopleCount int       `json:"PeopleCount"`
-		MaxCapacity int       `json:"MaxCapacity"`
-		Disabled    bool      `json:"Disabled"`
-	}
-
+	// Response is now a simple array of time.Time values
 	type Response struct {
-		Slots []SlotResponse `json:"slots"`
+		Slots []time.Time `json:"slots"`
 	}
 
 	// Example response structure
 	response := Response{
-		Slots: []SlotResponse{
-			{
-				StartsAt:    time.Date(2024, 1, 15, 7, 0, 0, 0, time.UTC),
-				PeopleCount: 0,
-				MaxCapacity: 2,
-				Disabled:    false,
-			},
-			{
-				StartsAt:    time.Date(2024, 1, 15, 8, 0, 0, 0, time.UTC),
-				PeopleCount: 1,
-				MaxCapacity: 2,
-				Disabled:    false,
-			},
+		Slots: []time.Time{
+			time.Date(2024, 1, 15, 7, 0, 0, 0, time.UTC),
+			time.Date(2024, 1, 15, 8, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -50,54 +30,19 @@ func TestGetAvailableSlots_ResponseStructure(t *testing.T) {
 
 	jsonStr := string(jsonData)
 
-	// Verify PascalCase field names are present
-	requiredFields := []string{
-		`"StartsAt"`,
-		`"PeopleCount"`,
-		`"MaxCapacity"`,
-		`"Disabled"`,
-		`"slots"`,
+	// Verify field name is present
+	if !contains(jsonStr, `"slots"`) {
+		t.Errorf("Response JSON missing expected field: slots\nGot: %s", jsonStr)
 	}
 
-	for _, field := range requiredFields {
-		if !contains(jsonStr, field) {
-			t.Errorf("Response JSON missing expected field: %s\nGot: %s", field, jsonStr)
-		}
-	}
-}
-
-// TestGetAvailableSlots_ValidationErrors tests error cases
-func TestGetAvailableSlots_ValidationErrors(t *testing.T) {
-	// Note: This test would require a full setup with database mocks
-	// For now, we document the expected error cases:
-
-	testCases := []struct {
-		name           string
-		instructorID   string
-		expectedStatus int
-		expectedError  string
-	}{
-		{
-			name:           "Missing instructor ID",
-			instructorID:   "",
-			expectedStatus: http.StatusBadRequest,
-			expectedError:  "instructorId is required",
-		},
-		{
-			name:           "Invalid instructor ID",
-			instructorID:   "invalid",
-			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Invalid instructorId",
-		},
+	// Verify slots are RFC3339 formatted timestamps
+	var decoded Response
+	if err := json.Unmarshal(jsonData, &decoded); err != nil {
+		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// This would require a full handler setup with mock dependencies
-			// For now, this documents the expected behavior
-			t.Logf("Test case: %s - expects %d status with error: %s",
-				tc.name, tc.expectedStatus, tc.expectedError)
-		})
+	if len(decoded.Slots) != 2 {
+		t.Errorf("Expected 2 slots, got %d", len(decoded.Slots))
 	}
 }
 

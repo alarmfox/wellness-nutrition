@@ -495,16 +495,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Filter slots based on availability rules
-	// Note: Using PascalCase for JSON field names to match existing frontend code in index.html
-	// which expects slot.Disabled, slot.PeopleCount, etc.
-	type SlotResponse struct {
-		StartsAt    time.Time `json:"StartsAt"`
-		PeopleCount int       `json:"PeopleCount"`
-		MaxCapacity int       `json:"MaxCapacity"`
-		Disabled    bool      `json:"Disabled"`
-	}
-
-	var availableSlots []SlotResponse
+	var availableSlots []time.Time
 	for _, slot := range slots {
 		slotKey := slot.Format(time.RFC3339)
 
@@ -526,12 +517,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		}
 
 		// Slot is available
-		availableSlots = append(availableSlots, SlotResponse{
-			StartsAt:    slot,
-			PeopleCount: peopleCount,
-			MaxCapacity: 2,
-			Disabled:    false,
-		})
+		availableSlots = append(availableSlots, slot)
 	}
 
 	sendJSON(w, http.StatusOK, map[string]interface{}{
