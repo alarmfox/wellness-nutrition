@@ -981,7 +981,7 @@
                     if (slot && slot.InstructorSlots) {
                         // Filter instructor slots based on current filter selection
                         let filteredInstructorSlots = slot.InstructorSlots;
-                        if (selectedInstructorId) {
+                        if (selectedInstructorId && selectedInstructorId !== '') {
                             filteredInstructorSlots = slot.InstructorSlots.filter(is => is.InstructorID === parseInt(selectedInstructorId));
                         }
                         
@@ -992,7 +992,7 @@
                         // Show disabled slots
                         if (disabledSlots.length > 0) {
                             // Check if ALL instructors are disabled (only when no filter selected)
-                            if (!selectedInstructorId && disabledSlots.length === slot.InstructorSlots.length) {
+                            if ((!selectedInstructorId || selectedInstructorId === '') && disabledSlots.length === slot.InstructorSlots.length) {
                                 html += '<div class="disabled-text">Non disponibile (tutti)</div>';
                             } else {
                                 disabledSlots.forEach(ds => {
