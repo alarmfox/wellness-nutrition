@@ -133,9 +133,18 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
-	id := r.PathValue("id")
+	
+	// Read request body
+	var req struct {
+		ID       string `json:"id"`
+		StartsAt string `json:"startsAt"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
 
-	idInt, err := strconv.ParseInt(id, 10, 32)
+	idInt, err := strconv.ParseInt(req.ID, 10, 64)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
 		return
@@ -448,9 +457,8 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		now, err = time.Parse(time.RFC3339, nowStr)
 		if err != nil {
 			now = time.Now().UTC()
-		} else {
-			now = now.UTC()
 		}
+		// Keep the client's timezone instead of converting to UTC
 	} else {
 		now = time.Now().UTC()
 	}
@@ -476,8 +484,18 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	unavailableSlots := make(map[string]bool)
 	slotBookingCount := make(map[string]int)
 
+	// Get the timezone from the generated slots for proper comparison
+	var slotTimezone *time.Location
+	if len(slots) > 0 {
+		slotTimezone = slots[0].Location()
+	} else {
+		slotTimezone = time.UTC
+	}
+
 	for _, booking := range bookings {
-		slotKey := booking.StartsAt.Format(time.RFC3339)
+		// Convert booking time (UTC from database) to the slot timezone for comparison
+		bookingInSlotTZ := booking.StartsAt.In(slotTimezone)
+		slotKey := bookingInSlotTZ.Format(time.RFC3339)
 
 		// Slot is unavailable if:
 		// 1. There's a DISABLE, APPOINTMENT, or MASSAGE booking
