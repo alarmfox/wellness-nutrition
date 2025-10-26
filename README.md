@@ -10,21 +10,67 @@ This is the Go-based server-side rendered application for Wellness & Nutrition, 
 - **Email Notifications**: Mail template system for user notifications (welcome emails, booking notifications)
 - **Material UI**: Frontend styling using Material UI CDN
 - **API Endpoints**: RESTful API for user management, bookings, and events
-- **Admin Calendar View**: Interactive calendar showing all bookings (month and week views)
+- **Admin Calendar View**: Interactive calendar showing all bookings (week view)
 - **User Dashboard**: Personalized view showing only user's own bookings
 - **Database Seeder**: Tool to populate database with test data
 
 ## Architecture
 
-### Packages
+Application has a centralized database:
+- `cmd/server`: main server application
+- `cmd/migrations`: database migrations
+- `cmd/cleanup`: application to be run periodically to delete old bookings and events
+- `cmd/remind`: application to send email day by day to users to remind their bookings. To be run periodically
+- `cmd/seed`: test application to populate database with test data
 
-- **`main.go`**: Entry point, HTTP server setup, and route configuration
-- **`models/`**: Database models and repositories (User, Booking, Slot, Event)
-- **`handlers/`**: HTTP request handlers for authentication, users, and bookings
-- **`middleware/`**: Authentication and authorization middleware
-- **`mail/`**: Email template system for sending notifications
-- **`templates/`**: HTML templates for server-side rendering
-- **`static/`**: Static assets (CSS, JavaScript)
+The application can be run with `docker compose`:
+
+```yaml
+services:
+  app:
+    build: .
+    environment:
+      - DATABASE_URL=
+      - EMAIL_SERVER_HOST=
+      - EMAIL_SERVER_PORT=
+      - EMAIL_SERVER_USER=
+      - EMAIL_SERVER_PASSWORD=
+      - EMAIL_SERVER_FROM=
+      - EMAIL_NOTIFY_ADDRESS=
+      - AUTH_URL=
+      - LISTEN_ADDR=
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+
+  db:
+    image: postgres:16.10-alpine
+    environment:
+      - POSTGRES_PASSWORD=
+      - EMAIL_SERVER_HOST=
+      - EMAIL_SERVER_PORT=
+      - EMAIL_SERVER_USER=
+      - EMAIL_SERVER_PASSWORD=
+      - EMAIL_SERVER_FROM=
+      - EMAIL_NOTIFY_ADDRESS=
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+ 
+  cron:
+    build: .
+    depends_on:
+        db:
+          condition: service_healthy
+    command: >
+      sh -c "echo '0 2 * * * /app/cleanup >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
+             echo '0 0 1/1 * * /app/reminder >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
+             crond -f -l 2"
+```
 
 ### Database
 
@@ -32,7 +78,6 @@ The application uses PostgreSQL with **lowercase snake_case table and column nam
 
 **Tables:**
 - `users` - User accounts and subscriptions
-- `slots` - Available time slots for bookings
 - `bookings` - User bookings linked to slots
 - `events` - Event log for booking actions
 - `sessions` - Session management for authentication
@@ -40,12 +85,12 @@ The application uses PostgreSQL with **lowercase snake_case table and column nam
 **Key Differences from Prisma:**
 - Prisma uses PascalCase table names (`User`, `Booking`) and camelCase columns (`firstName`, `startsAt`)
 - Go app uses lowercase snake_case (`users`, `bookings`, `first_name`, `starts_at`)
-- Both schemas are functionally equivalent
+- Go app removes the `slots` table
 
 **Running Migrations:**
 ```bash
 cd app/migrations
-go run . -db-uri="$DATABASE_URL"
+go run .
 ```
 
 See [`migrations/README.md`](migrations/README.md) for complete schema documentation.
@@ -115,6 +160,8 @@ EMAIL_NOTIFY_ADDRESS=admin@example.com
 
 # Application
 NEXTAUTH_URL=http://localhost:3000
+SECRET_KEY=secret
+LISTEN_ADDR=localhost:3000
 ```
 
 ## Building and Running
@@ -124,29 +171,17 @@ NEXTAUTH_URL=http://localhost:3000
 **First, run the migrations to create the database schema:**
 
 ```bash
-cd app/migrations
-go run . -db-uri="$DATABASE_URL"
-
-# Or build and run
-go build -o migrate
-./migrate -db-uri="$DATABASE_URL"
+go run cmd/migrations/migrate.go
 ```
 
 This creates all required tables using **lowercase snake_case naming** with idempotent `CREATE TABLE IF NOT EXISTS` statements. Safe to run multiple times.
-
-See [`migrations/README.md`](migrations/README.md) for details.
 
 ### Database Seeding (for Testing)
 
 After running migrations, seed the database with test data:
 
 ```bash
-cd app/cmd/seed
-go run . -db-uri="$DATABASE_URL"
-
-# Or build and run
-go build -o seed
-./seed -db-uri="$DATABASE_URL"
+go run cmd/seed/main.go
 ```
 
 This creates:
@@ -157,66 +192,17 @@ This creates:
 
 **Note**: Time slots are created in UTC. Browsers automatically display them in the user's local timezone.
 
-See [`cmd/seed/README.md`](cmd/seed/README.md) for details.
-
-### Development
-
-```bash
-cd app
-go run . -db-uri="postgresql://..." -listen-addr="localhost:3000"
-```
-
-### Production
-
-```bash
-cd app
-go build -o wellness-nutrition .
-./wellness-nutrition -db-uri="$DATABASE_URL" -listen-addr=":3000"
-```
-
 ### Docker
 
+Build a docker image:
 ```bash
-docker build -t wellness-nutrition -f Dockerfile.app .
-docker run -p 3000:3000 --env-file .env wellness-nutrition
+docker build -t wellness-nutrition .
 ```
 
-## API Endpoints
-
-### Authentication
-
-- `POST /api/auth/login` - Login with email and password
-- `POST /api/auth/logout` - Logout and clear session
-
-### User (Protected)
-
-- `GET /user` - User dashboard page
-- `GET /api/user/current` - Get current user information
-- `GET /api/user/bookings` - Get user's bookings
-- `POST /api/user/bookings/create` - Create a new booking
-- `POST /api/user/bookings/delete` - Delete a booking
-- `GET /api/user/bookings/slots` - Get available time slots
-
-### Admin (Admin Only)
-
-- `GET /admin` - Admin home (redirects to calendar)
-- `GET /admin/calendar` - Admin calendar view page
-- `GET /admin/users` - User management page
-- `GET /admin/events` - Event log page
-- `GET /api/admin/users` - Get all users
-- `POST /api/admin/users/create` - Create a new user
-- `POST /api/admin/users/update` - Update a user
-- `POST /api/admin/users/delete` - Delete users
-- `GET /api/admin/bookings` - Get all bookings (with date range filtering)
-
-## Email Templates
-
-The mail system sends HTML emails with a consistent design:
-
-- **Welcome Email**: Sent when a user is created with account verification link
-- **Reset Password Email**: Sent when a user requests password reset
-- **New Booking Notification**: Sent to admin when a user creates a booking
-- **Delete Booking Notification**: Sent to admin when a user deletes a booking
+Run the application with `docker compose`:
+```bash
+docker compose up -d
+```
 
 ## Security
 
@@ -225,6 +211,8 @@ The mail system sends HTML emails with a consistent design:
 - HTTP-only cookies prevent XSS attacks
 - Admin endpoints are protected by role-based middleware
 - SQL queries use parameterized statements to prevent SQL injection
+- CSRF token in all forms and API
+- Singed cookies with HMAC-SHA256
 
 ## Migration from Next.js
 
