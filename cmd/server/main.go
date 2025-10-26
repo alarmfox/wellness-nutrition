@@ -635,11 +635,6 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 }
 
 func serveUserView(w http.ResponseWriter, r *http.Request) {
-	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user.Role != models.RoleAdmin {
-		http.Redirect(w, r, "/signin", http.StatusSeeOther)
-		return
-	}
 
 	// Create mock user data for simulation
 	mockUser := &models.User{
