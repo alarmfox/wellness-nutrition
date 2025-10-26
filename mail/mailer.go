@@ -9,8 +9,24 @@ import (
 	"log"
 	"net/smtp"
 	"os"
+	"strings"
 	"time"
 )
+
+var itMonths = map[string]string{
+	"January":   "Gennaio",
+	"February":  "Febbraio",
+	"March":     "Marzo",
+	"April":     "Aprile",
+	"May":       "Maggio",
+	"June":      "Giugno",
+	"July":      "Luglio",
+	"August":    "Agosto",
+	"September": "Settembre",
+	"October":   "Ottobre",
+	"November":  "Novembre",
+	"December":  "Dicembre",
+}
 
 type Mailer struct {
 	host     string
@@ -302,11 +318,15 @@ func (m *Mailer) SendResetEmail(email, firstName, verificationURL string) error 
 
 func (m *Mailer) SendNewBookingNotification(firstName, lastName string, startsAt time.Time) error {
 	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
+	localTime, err := formatUserTime(startsAt, "Europe/Rome")
+	if err != nil {
+		return err
+	}
 
 	data := EmailData{
 		Name: "amministratore",
 		Intro: fmt.Sprintf("Una nuova prenotazione è stata inserita da %s %s per %s",
-			firstName, lastName, startsAt.Format("02 Jan 2006 15:04")),
+			firstName, lastName, localTime),
 		Title:     "Nuova prenotazione",
 		Signature: "Saluti,",
 	}
@@ -317,10 +337,15 @@ func (m *Mailer) SendNewBookingNotification(firstName, lastName string, startsAt
 func (m *Mailer) SendDeleteBookingNotification(firstName, lastName string, startsAt time.Time) error {
 	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
 
+	localTime, err := formatUserTime(startsAt, "Europe/Rome")
+	if err != nil {
+		return err
+	}
+
 	data := EmailData{
 		Name: "amministratore",
 		Intro: fmt.Sprintf("Una prenotazione è stata cancellata da %s %s per %s",
-			firstName, lastName, startsAt.Format("02 Jan 2006 15:04")),
+			firstName, lastName, localTime),
 		Title:     "Prenotazione cancellata",
 		Signature: "Saluti,",
 	}
@@ -329,14 +354,29 @@ func (m *Mailer) SendDeleteBookingNotification(firstName, lastName string, start
 }
 
 func (m *Mailer) SendReminderEmail(email, firstName string, startsAt time.Time) error {
+	localTime, err := formatUserTime(startsAt, "Europe/Rome")
+	if err != nil {
+		return err
+	}
+
 	data := EmailData{
 		Name:         firstName,
 		Intro:        "Questo è un promemoria per la tua prossima prenotazione.",
 		Title:        "Promemoria prenotazione",
-		Instructions: fmt.Sprintf("La tua prenotazione è prevista per %s", startsAt.Format("02 January 2006 alle 15:04")),
+		Instructions: fmt.Sprintf("La tua prenotazione è prevista per %s", localTime),
 		Outro:        "Ti aspettiamo!",
 		Signature:    "Grazie per averci scelto",
 	}
 
 	return m.SendEmail(email, "Promemoria prenotazione - Wellness & Nutrition", data)
+}
+
+func formatUserTime(t time.Time, tz string) (string, error) {
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return "", err
+	}
+	lt := t.In(loc)
+	english := lt.Format("02 January 2006 alle 15:04")
+	return strings.ReplaceAll(english, lt.Month().String(), itMonths[lt.Month().String()]), nil
 }
