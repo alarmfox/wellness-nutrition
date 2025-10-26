@@ -26,24 +26,17 @@ func main() {
 	db.SetMaxOpenConns(1)
 	defer db.Close()
 
-	if err := clearSlots(db); err != nil {
-		log.Print(err)
+	cleanupQueries := []string{
+		"DELETE FROM slots WHERE starts_at < now() - interval '3 months'",
+		"DELETE FROM events WHERE starts_at < now() - interval '1 months'",
 	}
-	if err := clearEvents(db); err != nil {
-		log.Print(err)
+
+	for _, query := range cleanupQueries {
+		_, err := db.Exec(query)
+		if err != nil {
+			log.Print(err)
+		}
 	}
 
 	log.Printf("cleanup executed on %s", time.Now())
-}
-
-func clearSlots(db *sql.DB) error {
-	query := "DELETE FROM \"Slot\" where \"startsAt\" < now() - interval '3 months'"
-	_, err := db.Exec(query)
-	return err
-}
-
-func clearEvents(db *sql.DB) error {
-	query := "DELETE FROM \"Event\" where \"startsAt\" < now() - interval '1 months'"
-	_, err := db.Exec(query)
-	return err
 }
