@@ -276,7 +276,7 @@
             <span class="material-icons">add</span>
             <span>Crea</span>
         </a>
-        <a href="/api/auth/logout" class="nav-item" onclick="return confirm('Sicuro di voler uscire dall\'applicazione?');">
+        <a href="#" class="nav-item" onclick="handleLogout(); return false;">
             <span class="material-icons" style="color: #d32f2f;">logout</span>
             <span>Esci</span>
         </a>
@@ -887,6 +887,41 @@
                 console.error(error);
             });
         }
+
+        function handleLogout() {
+            if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
+                return;
+            }
+            
+            // In simulation mode, redirect to admin panel
+            if (isSimulation) {
+                showToast('Logout simulato - ritorno alla vista admin...', true);
+                setTimeout(() => {
+                    window.location.href = '/admin/calendar';
+                }, 1000);
+                return;
+            }
+            
+            // Otherwise proceed with actual logout
+            window.location.href = '/api/auth/logout';
+        }
     </script>
+    
+    {{if .IsSimulation}}
+    <!-- Simulation Mode Hooks -->
+    <script>
+        // This script block contains simulation-specific overrides and hooks
+        // to prevent real API calls and provide mock data when in simulation mode.
+        
+        console.log('🎭 Simulation mode active - all actions are mocked');
+        
+        // Simulation mode is already handled inline in the functions above via isSimulation checks:
+        // - confirmBookingWithInstructor: checks isSimulation, shows toast instead of API call
+        // - deleteBooking: checks isSimulation, shows toast instead of API call  
+        // - showSlots: checks isSimulation, uses mockInstructors instead of API call
+        // - showSlotsForInstructor: checks isSimulation, uses mockSlots instead of API call
+        // - handleLogout: checks isSimulation, redirects to admin instead of logout API
+    </script>
+    {{end}}
 </body>
 </html>
