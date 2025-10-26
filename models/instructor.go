@@ -83,7 +83,6 @@ func (r *InstructorRepository) Create(instructor *Instructor) error {
 	`
 
 	err := r.db.QueryRow(query,
-		instructor.ID,
 		instructor.FirstName,
 		instructor.LastName,
 	).Scan(&instructor.ID, &instructor.CreatedAt, &instructor.UpdatedAt)
