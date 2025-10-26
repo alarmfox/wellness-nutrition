@@ -44,13 +44,12 @@ services:
  
    cron:
     image: wellness-app
-    container_name: wellness-cron
     depends_on:
       db:
         condition: service_healthy
     command: >
       sh -c "echo '0 2 * * * /app/cleanup >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
-             echo '0 6 * * * /app/seed --seed slot >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
+             echo '0 0 1/1 * * /app/remainder >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
              crond -f -l 2"
     networks:
       - default
