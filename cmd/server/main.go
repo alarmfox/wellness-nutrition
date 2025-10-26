@@ -584,6 +584,7 @@ func serveSurveyResults(w http.ResponseWriter, r *http.Request) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -632,6 +633,8 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 =======
+=======
+>>>>>>> refs/remotes/origin/copilot/add-user-view-simulation-again
 func serveUserViewSimulation(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -701,6 +704,9 @@ func serveUserViewSimulation(w http.ResponseWriter, r *http.Request) {
 	if err := tpl.ExecuteTemplate(w, "user-view-simulation.html", data); err != nil {
 		log.Print(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+<<<<<<< HEAD
 >>>>>>> 01977c3 (Add user view simulation feature for admin)
+=======
+>>>>>>> refs/remotes/origin/copilot/add-user-view-simulation-again
 	}
 }
