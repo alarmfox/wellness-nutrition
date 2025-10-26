@@ -327,7 +327,7 @@ func serveUserDashboard(bookingRepo *models.BookingRepository, instructorRepo *m
 
 func serveAdminHome(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user == nil || user.Role != models.RoleAdmin {
+	if user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -343,7 +343,7 @@ func serveCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user == nil || user.Role != models.RoleAdmin {
+	if user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -465,7 +465,7 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 		}
 
 		user := middleware.GetUserFromContext(r.Context())
-		if user == nil || user == nil || user.Role != models.RoleAdmin {
+		if user == nil || user.Role != models.RoleAdmin {
 			http.Redirect(w, r, "/signin", http.StatusSeeOther)
 			return
 		}
@@ -552,7 +552,7 @@ func serveSurveyThanks(w http.ResponseWriter, r *http.Request) {
 
 func serveSurveyQuestions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user == nil || user.Role != models.RoleAdmin {
+	if user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -571,7 +571,7 @@ func serveSurveyResults(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user == nil || user.Role != models.RoleAdmin {
+	if user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -591,7 +591,7 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 		}
 
 		user := middleware.GetUserFromContext(r.Context())
-		if user == nil || user == nil || user.Role != models.RoleAdmin {
+		if user == nil || user.Role != models.RoleAdmin {
 			http.Redirect(w, r, "/signin", http.StatusSeeOther)
 			return
 		}
