@@ -303,6 +303,13 @@
             }
         }
 
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
         {{if .Token}}
         // Password requirements validation
         const passwordInput = document.getElementById('password');
@@ -401,10 +408,12 @@
             submitBtn.textContent = 'Reimpostazione...';
             
             try {
+                const csrfToken = getCookie('csrf_token');
                 const response = await fetch('/api/auth/verify', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken,
                     },
                     body: JSON.stringify({ token, password }),
                 });
@@ -441,10 +450,12 @@
             submitBtn.textContent = 'Invio in corso...';
             
             try {
+                const csrfToken = getCookie('csrf_token');
                 const response = await fetch('/api/auth/reset', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken,
                     },
                     body: JSON.stringify({ email }),
                 });

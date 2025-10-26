@@ -259,6 +259,13 @@
             }
         }
 
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
         // Password requirements validation
         const passwordInput = document.getElementById('password');
         const confirmPasswordInput = document.getElementById('confirmPassword');
@@ -356,10 +363,12 @@
             submitBtn.textContent = 'Verifica in corso...';
             
             try {
+                const csrfToken = getCookie('csrf_token');
                 const response = await fetch('/api/auth/verify', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken,
                     },
                     body: JSON.stringify({ token, password }),
                 });
