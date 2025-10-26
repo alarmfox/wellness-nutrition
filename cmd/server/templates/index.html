@@ -521,6 +521,231 @@
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.nav-item')[0].classList.add('active');
         }
+    </script>
+    
+    <!-- Simulation vs Real Mode: Separate function implementations -->
+    {{if .IsSimulation}}
+    <!-- SIMULATION MODE -->
+    <script>
+        console.log('🎭 Simulation mode active - all actions are mocked');
+        
+        // Simulation-specific implementations
+        function handleLogout() {
+            if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
+                return;
+            }
+            showToast('Logout simulato - ritorno alla vista admin...', true);
+            setTimeout(() => {
+                window.location.href = '/admin/calendar';
+            }, 1000);
+        }
+        
+        function confirmBookingWithInstructor(startsAt, instructorId) {
+            if (!confirm('Vuoi confermare questa prenotazione?')) {
+                return;
+            }
+            showToast('✓ Prenotazione simulata! (Non salvata in modalità simulazione)', true);
+        }
+        
+        function deleteBooking(id, startsAt) {
+            if (!confirm('Sicuro di voler eliminare questa prenotazione?')) {
+                return;
+            }
+            showToast('✓ Cancellazione simulata! (Non salvata in modalità simulazione)', true);
+        }
+        
+        function showSlots() {
+            const contentDiv = document.querySelector('.content');
+            
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.nav-item')[1].classList.add('active');
+            
+            // Use mock data for simulation
+            let html = '<h1>Seleziona Istruttore</h1>';
+            html += '<div style="margin-bottom: 16px; color: rgba(0,0,0,0.6);">Prima scegli un istruttore, poi vedrai gli slot disponibili (simulati)</div>';
+            
+            mockInstructors.forEach(instructor => {
+                const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
+                html += `
+                    <div class="list-item" style="cursor: pointer;" onclick="showSlotsForInstructor('${instructor.ID}', '${instructor.FirstName}${lastName}')">
+                        <span class="material-icons list-icon" style="color: #1976d2;">person</span>
+                        <div class="list-text">
+                            <div class="list-primary">${instructor.FirstName}${lastName}</div>
+                        </div>
+                        <span class="material-icons list-icon">arrow_forward</span>
+                    </div>
+                `;
+            });
+            
+            contentDiv.innerHTML = html;
+        }
+        
+        function showSlotsForInstructor(instructorId, instructorName) {
+            const contentDiv = document.querySelector('.content');
+            availableSlots = mockSlots[instructorId] || [];
+            
+            if (availableSlots.length === 0) {
+                contentDiv.innerHTML = `
+                    <h1>Slot per ${instructorName}</h1>
+                    <div style="margin-bottom: 16px;">
+                        <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
+                            <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
+                            Cambia istruttore
+                        </a>
+                    </div>
+                    <div class="empty-state">Nessuno slot disponibile nel prossimo mese</div>
+                `;
+                return;
+            }
+            
+            // Build slots HTML
+            const groupedSlots = {};
+            availableSlots.forEach(slotTime => {
+                const date = new Date(slotTime);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const dateKey = `${year}-${month}-${day}`;
+                if (!groupedSlots[dateKey]) {
+                    groupedSlots[dateKey] = [];
+                }
+                groupedSlots[dateKey].push(slotTime);
+            });
+
+            const sortedKeys = Object.keys(groupedSlots).sort();
+
+            let html = `<h1>Slot per ${instructorName}</h1>`;
+            html += `
+                <div style="margin-bottom: 16px;">
+                    <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
+                        <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
+                        Cambia istruttore
+                    </a>
+                </div>
+            `;
+            sortedKeys.forEach(dateKey => {
+                const firstSlot = groupedSlots[dateKey][0];
+                const date = new Date(firstSlot);
+                const dateLabel = date.toLocaleDateString('it-IT', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+
+                html += `
+                    <div style="margin-top: 20px; margin-bottom: 10px; font-weight: 500; color: rgba(0,0,0,0.87); font-size: 14px; text-transform: capitalize;">
+                    ${dateLabel}
+                    </div>
+                `;
+
+                groupedSlots[dateKey]
+                    .sort((a, b) => new Date(a) - new Date(b))
+                    .forEach(slotTime => {
+                        const timeStr = new Date(slotTime).toLocaleTimeString('it-IT', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+
+                        html += `
+                            <div class="list-item" style="cursor: pointer;" onclick="confirmBookingWithInstructor('${slotTime}', ${instructorId})">
+                            <span class="material-icons list-icon" style="color: #4caf50;">event_available</span>
+                            <div class="list-text">
+                            <div class="list-primary">${timeStr}</div>
+                            </div>
+                            <span class="material-icons list-icon">arrow_forward</span>
+                            </div>
+                        `;
+                    });
+            });
+            
+            contentDiv.innerHTML = html;
+        }
+    </script>
+    {{else}}
+    <!-- REAL MODE -->
+    <script>
+        // Real-mode implementations
+        function handleLogout() {
+            if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
+                return;
+            }
+            window.location.href = '/api/auth/logout';
+        }
+        
+        function confirmBookingWithInstructor(startsAt, instructorId) {
+            if (!confirm('Vuoi confermare questa prenotazione?')) {
+                return;
+            }
+            
+            showLoading('Creazione prenotazione...');
+            
+            const csrfToken = getCookie('csrf_token');
+            fetch('/api/user/bookings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({ 
+                    startsAt,
+                    instructorId
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.error) {
+                    showToast(data.error || 'Errore durante la creazione della prenotazione');
+                } else {
+                    showToast('Prenotazione creata con successo', true);
+                    NotificationManager.syncBookings();
+                    setTimeout(() => location.reload(), 1000);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                showToast('Errore di connessione. Riprova.');
+                console.error(error);
+            });
+        }
+        
+        function deleteBooking(id, startsAt) {
+            if (!confirm('Sicuro di voler eliminare questa prenotazione?')) {
+                return;
+            }
+            
+            showLoading('Cancellazione prenotazione...');
+            
+            const csrfToken = getCookie('csrf_token');
+            fetch('/api/user/bookings/' + id, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken,
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.error) {
+                    let errorMessage = 'Errore durante la cancellazione';
+                    if (data.error.includes('Forbidden')) {
+                        errorMessage = 'Non sei autorizzato a cancellare questa prenotazione';
+                    }
+                    showToast(errorMessage);
+                } else {
+                    showToast('Prenotazione cancellata con successo', true);
+                    NotificationManager.syncBookings();
+                    setTimeout(() => location.reload(), 1000);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                showToast('Errore di connessione. Riprova.');
+                console.error(error);
+            });
+        }
         
         function showSlots() {
             const contentDiv = document.querySelector('.content');
@@ -531,29 +756,6 @@
             
             // Show instructor selection first
             contentDiv.innerHTML = '<h1>Seleziona Istruttore</h1><div class="empty-state">Caricamento...</div>';
-            
-            // In simulation mode, use mock data
-            if (isSimulation) {
-                hideLoading();
-                let html = '<h1>Seleziona Istruttore</h1>';
-                html += '<div style="margin-bottom: 16px; color: rgba(0,0,0,0.6);">Prima scegli un istruttore, poi vedrai gli slot disponibili (simulati)</div>';
-                
-                mockInstructors.forEach(instructor => {
-                    const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
-                    html += `
-                        <div class="list-item" style="cursor: pointer;" onclick="showSlotsForInstructor('${instructor.ID}', '${instructor.FirstName}${lastName}')">
-                            <span class="material-icons list-icon" style="color: #1976d2;">person</span>
-                            <div class="list-text">
-                                <div class="list-primary">${instructor.FirstName}${lastName}</div>
-                            </div>
-                            <span class="material-icons list-icon">arrow_forward</span>
-                        </div>
-                    `;
-                });
-                
-                contentDiv.innerHTML = html;
-                return;
-            }
             
             showLoading('Caricamento istruttori...');
             
@@ -604,94 +806,10 @@
             const contentDiv = document.querySelector('.content');
             contentDiv.innerHTML = '<h1>Caricamento slot disponibili...</h1>';
             
-            // In simulation mode, use mock data
-            if (isSimulation) {
-                hideLoading();
-                availableSlots = mockSlots[instructorId] || [];
-                
-                if (availableSlots.length === 0) {
-                    contentDiv.innerHTML = `
-                        <h1>Slot per ${instructorName}</h1>
-                        <div style="margin-bottom: 16px;">
-                            <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
-                                <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
-                                Cambia istruttore
-                            </a>
-                        </div>
-                        <div class="empty-state">Nessuno slot disponibile nel prossimo mese</div>
-                    `;
-                    return;
-                }
-                
-                // Build slots HTML (same logic as real mode)
-                const groupedSlots = {};
-                availableSlots.forEach(slotTime => {
-                    const date = new Date(slotTime);
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    const dateKey = `${year}-${month}-${day}`;
-                    if (!groupedSlots[dateKey]) {
-                        groupedSlots[dateKey] = [];
-                    }
-                    groupedSlots[dateKey].push(slotTime);
-                });
-
-                const sortedKeys = Object.keys(groupedSlots).sort();
-
-                let html = `<h1>Slot per ${instructorName}</h1>`;
-                html += `
-                    <div style="margin-bottom: 16px;">
-                        <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
-                            <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
-                            Cambia istruttore
-                        </a>
-                    </div>
-                `;
-                sortedKeys.forEach(dateKey => {
-                    const firstSlot = groupedSlots[dateKey][0];
-                    const date = new Date(firstSlot);
-                    const dateLabel = date.toLocaleDateString('it-IT', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    });
-
-                    html += `
-                        <div style="margin-top: 20px; margin-bottom: 10px; font-weight: 500; color: rgba(0,0,0,0.87); font-size: 14px; text-transform: capitalize;">
-                        ${dateLabel}
-                        </div>
-                        `;
-
-                    groupedSlots[dateKey]
-                        .sort((a, b) => new Date(a) - new Date(b))
-                        .forEach(slotTime => {
-                            const timeStr = new Date(slotTime).toLocaleTimeString('it-IT', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            });
-
-                            html += `
-                                <div class="list-item" style="cursor: pointer;" onclick="confirmBookingWithInstructor('${slotTime}', ${instructorId})">
-                                <span class="material-icons list-icon" style="color: #4caf50;">event_available</span>
-                                <div class="list-text">
-                                <div class="list-primary">${timeStr}</div>
-                                </div>
-                                <span class="material-icons list-icon">arrow_forward</span>
-                                </div>
-                                `;
-                        });
-                });
-                
-                contentDiv.innerHTML = html;
-                return;
-            }
-            
             // Show loading indicator
             showLoading('Caricamento slot disponibili...');
             
-            // Fetch available slots for this instructor, sending client's current time for proper DST handling
+            // Fetch available slots for this instructor
             fetch(`/api/user/bookings/slots?instructorId=${encodeURIComponent(instructorId)}`)
                 .then(response => response.json())
                 .then(data => {
@@ -718,25 +836,21 @@
                     }
                     
                     // Group slots by date
-                    // 1️⃣ Group slots by the LOCAL date (in browser timezone)
                     const groupedSlots = {};
                     availableSlots.forEach(slotTime => {
                         const date = new Date(slotTime);
-                        // Use local date for grouping, not UTC
                         const year = date.getFullYear();
                         const month = String(date.getMonth() + 1).padStart(2, '0');
                         const day = String(date.getDate()).padStart(2, '0');
-                        const dateKey = `${year}-${month}-${day}`; // e.g. "2025-10-21" in local timezone
+                        const dateKey = `${year}-${month}-${day}`;
                         if (!groupedSlots[dateKey]) {
                             groupedSlots[dateKey] = [];
                         }
                         groupedSlots[dateKey].push(slotTime);
                     });
 
-                    // 2️⃣ Sort the keys chronologically — works naturally with ISO format
                     const sortedKeys = Object.keys(groupedSlots).sort();
 
-                    // 3️⃣ Build HTML
                     let html = `<h1>Slot per ${instructorName}</h1>`;
                     html += `
                         <div style="margin-bottom: 16px;">
@@ -747,7 +861,6 @@
                         </div>
                     `;
                     sortedKeys.forEach(dateKey => {
-                        // Parse the date key and use the first slot's date for the label
                         const firstSlot = groupedSlots[dateKey][0];
                         const date = new Date(firstSlot);
                         const dateLabel = date.toLocaleDateString('it-IT', { 
@@ -761,9 +874,8 @@
                             <div style="margin-top: 20px; margin-bottom: 10px; font-weight: 500; color: rgba(0,0,0,0.87); font-size: 14px; text-transform: capitalize;">
                             ${dateLabel}
                             </div>
-                            `;
+                        `;
 
-                        // Sort slots within each day by start time
                         groupedSlots[dateKey]
                             .sort((a, b) => new Date(a) - new Date(b))
                             .forEach(slotTime => {
@@ -780,7 +892,7 @@
                                     </div>
                                     <span class="material-icons list-icon">arrow_forward</span>
                                     </div>
-                                    `;
+                                `;
                             });
                     });
                     
@@ -802,125 +914,6 @@
                     `;
                 });
         }
-        
-        function confirmBookingWithInstructor(startsAt, instructorId) {
-            if (!confirm('Vuoi confermare questa prenotazione?')) {
-                return;
-            }
-            
-            // In simulation mode, just show a message without making API call
-            if (isSimulation) {
-                showToast('✓ Prenotazione simulata! (Non salvata in modalità simulazione)', true);
-                return;
-            }
-            
-            showLoading('Creazione prenotazione...');
-            
-            const csrfToken = getCookie('csrf_token');
-            fetch('/api/user/bookings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken,
-                },
-                body: JSON.stringify({ 
-                    startsAt,
-                    instructorId
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                if (data.error) {
-                    showToast(data.error || 'Errore durante la creazione della prenotazione');
-                } else {
-                    showToast('Prenotazione creata con successo', true);
-                    NotificationManager.syncBookings();
-                    setTimeout(() => location.reload(), 1000);
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                showToast('Errore di connessione. Riprova.');
-                console.error(error);
-            });
-        }
-        
-        function deleteBooking(id, startsAt) {
-            if (!confirm('Sicuro di voler eliminare questa prenotazione?')) {
-                return;
-            }
-            
-            // In simulation mode, just show a message without making API call
-            if (isSimulation) {
-                showToast('✓ Cancellazione simulata! (Non salvata in modalità simulazione)', true);
-                return;
-            }
-            
-            showLoading('Cancellazione prenotazione...');
-            
-            const csrfToken = getCookie('csrf_token');
-            fetch('/api/user/bookings/' + id, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-Token': csrfToken,
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                if (data.error) {
-                    let errorMessage = 'Errore durante la cancellazione';
-                    if (data.error.includes('Forbidden')) {
-                        errorMessage = 'Non sei autorizzato a cancellare questa prenotazione';
-                    }
-                    showToast(errorMessage);
-                } else {
-                    showToast('Prenotazione cancellata con successo', true);
-                    NotificationManager.syncBookings();
-                    setTimeout(() => location.reload(), 1000);
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                showToast('Errore di connessione. Riprova.');
-                console.error(error);
-            });
-        }
-
-        function handleLogout() {
-            if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
-                return;
-            }
-            
-            // In simulation mode, redirect to admin panel
-            if (isSimulation) {
-                showToast('Logout simulato - ritorno alla vista admin...', true);
-                setTimeout(() => {
-                    window.location.href = '/admin/calendar';
-                }, 1000);
-                return;
-            }
-            
-            // Otherwise proceed with actual logout
-            window.location.href = '/api/auth/logout';
-        }
-    </script>
-    
-    {{if .IsSimulation}}
-    <!-- Simulation Mode Hooks -->
-    <script>
-        // This script block contains simulation-specific overrides and hooks
-        // to prevent real API calls and provide mock data when in simulation mode.
-        
-        console.log('🎭 Simulation mode active - all actions are mocked');
-        
-        // Simulation mode is already handled inline in the functions above via isSimulation checks:
-        // - confirmBookingWithInstructor: checks isSimulation, shows toast instead of API call
-        // - deleteBooking: checks isSimulation, shows toast instead of API call  
-        // - showSlots: checks isSimulation, uses mockInstructors instead of API call
-        // - showSlotsForInstructor: checks isSimulation, uses mockSlots instead of API call
-        // - handleLogout: checks isSimulation, redirects to admin instead of logout API
     </script>
     {{end}}
 </body>
