@@ -3,6 +3,10 @@ name: Docker Image CI
 on:
   push:
     branches: [ "master" ]
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '*.yml'
 jobs:
   build-push-scan:
     runs-on: ubuntu-latest
