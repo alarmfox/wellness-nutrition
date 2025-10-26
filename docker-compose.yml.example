@@ -33,6 +33,12 @@ services:
     image: postgres:16.10-alpine
     environment:
       - POSTGRES_PASSWORD=
+      - EMAIL_SERVER_HOST=
+      - EMAIL_SERVER_PORT=
+      - EMAIL_SERVER_USER=
+      - EMAIL_SERVER_PASSWORD=
+      - EMAIL_SERVER_FROM=
+      - EMAIL_NOTIFY_ADDRESS=
     networks:
       - default
     healthcheck:
