@@ -217,7 +217,9 @@
                         <span class="material-icons list-icon">event</span>
                         <div class="list-text">
                             <div class="list-primary" data-timestamp="{{.StartsAt}}"></div>
-                            <div class="list-secondary" data-created="{{.CreatedAt}}"></div>
+                            <div class="list-secondary">
+                                {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ {{.InstructorName}}</span> • {{end}}<span data-created="{{.CreatedAt}}"></span>
+                            </div>
                         </div>
                         <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
                     </div>
@@ -430,7 +432,9 @@
                             <span class="material-icons list-icon">event</span>
                             <div class="list-text">
                                 <div class="list-primary" data-timestamp="{{.StartsAt}}"></div>
-                                <div class="list-secondary" data-created="{{.CreatedAt}}"></div>
+                                <div class="list-secondary">
+                                    {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ {{.InstructorName}}</span> • {{end}}<span data-created="{{.CreatedAt}}"></span>
+                                </div>
                             </div>
                             <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
                         </div>
@@ -451,19 +455,68 @@
         
         function showSlots() {
             const contentDiv = document.querySelector('.content');
-            contentDiv.innerHTML = '<h1>Caricamento slot disponibili...</h1>';
             
             // Update active nav item
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.nav-item')[1].classList.add('active');
             
+            // Show instructor selection first
+            contentDiv.innerHTML = '<h1>Seleziona Istruttore</h1><div class="empty-state">Caricamento...</div>';
+            
+            showLoading('Caricamento istruttori...');
+            
+            fetch('/api/user/instructors')
+                .then(response => response.json())
+                .then(instructors => {
+                    hideLoading();
+                    
+                    if (!instructors || instructors.length === 0) {
+                        contentDiv.innerHTML = `
+                            <h1>Seleziona Istruttore</h1>
+                            <div class="empty-state">Nessun istruttore disponibile</div>
+                        `;
+                        return;
+                    }
+                    
+                    // Build instructor selection UI
+                    let html = '<h1>Seleziona Istruttore</h1>';
+                    html += '<div style="margin-bottom: 16px; color: rgba(0,0,0,0.6);">Prima scegli un istruttore, poi vedrai gli slot disponibili</div>';
+                    
+                    instructors.forEach(instructor => {
+                        const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
+                        html += `
+                            <div class="list-item" style="cursor: pointer;" onclick="showSlotsForInstructor('${instructor.ID}', '${instructor.FirstName}${lastName}')">
+                                <span class="material-icons list-icon" style="color: #1976d2;">person</span>
+                                <div class="list-text">
+                                    <div class="list-primary">${instructor.FirstName}${lastName}</div>
+                                </div>
+                                <span class="material-icons list-icon">arrow_forward</span>
+                            </div>
+                        `;
+                    });
+                    
+                    contentDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error(error);
+                    showToast('Errore di connessione. Riprova.');
+                    contentDiv.innerHTML = `
+                        <h1>Seleziona Istruttore</h1>
+                        <div class="empty-state">Errore di connessione</div>
+                    `;
+                });
+        }
+        
+        function showSlotsForInstructor(instructorId, instructorName) {
+            const contentDiv = document.querySelector('.content');
+            contentDiv.innerHTML = '<h1>Caricamento slot disponibili...</h1>';
+            
             // Show loading indicator
             showLoading('Caricamento slot disponibili...');
             
-            // Fetch available slots, sending client's current time for proper DST handling
-            const start = new Date();
-            start.setHours(start.getHours() + 3)
-            fetch(`/api/user/bookings/slots?now=${encodeURIComponent(start.toISOString())}`)
+            // Fetch available slots for this instructor, sending client's current time for proper DST handling
+            fetch(`/api/user/bookings/slots?instructorId=${encodeURIComponent(instructorId)}`)
                 .then(response => response.json())
                 .then(data => {
                     hideLoading();
@@ -474,20 +527,15 @@
                     
                     availableSlots = data.slots || [];
                     
-                    // Filter slots based on user subscription type
-                    const filtered = availableSlots.filter(slot => {
-                        if (slot.Disabled) return false;
-                        
-                        if (userSubType === 'SHARED') {
-                            return slot.PeopleCount < 2;
-                        } else {
-                            return slot.PeopleCount === 0;
-                        }
-                    });
-                    
-                    if (filtered.length === 0) {
+                    if (availableSlots.length === 0) {
                         contentDiv.innerHTML = `
-                            <h1>Seleziona uno slot</h1>
+                            <h1>Slot per ${instructorName}</h1>
+                            <div style="margin-bottom: 16px;">
+                                <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
+                                    <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
+                                    Cambia istruttore
+                                </a>
+                            </div>
                             <div class="empty-state">Nessuno slot disponibile nel prossimo mese</div>
                         `;
                         return;
@@ -496,8 +544,8 @@
                     // Group slots by date
                     // 1️⃣ Group slots by the LOCAL date (in browser timezone)
                     const groupedSlots = {};
-                    filtered.forEach(slot => {
-                        const date = new Date(slot.StartsAt);
+                    availableSlots.forEach(slotTime => {
+                        const date = new Date(slotTime);
                         // Use local date for grouping, not UTC
                         const year = date.getFullYear();
                         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -506,18 +554,26 @@
                         if (!groupedSlots[dateKey]) {
                             groupedSlots[dateKey] = [];
                         }
-                        groupedSlots[dateKey].push(slot);
+                        groupedSlots[dateKey].push(slotTime);
                     });
 
                     // 2️⃣ Sort the keys chronologically — works naturally with ISO format
                     const sortedKeys = Object.keys(groupedSlots).sort();
 
                     // 3️⃣ Build HTML
-                    let html = '<h1>Seleziona uno slot</h1>';
+                    let html = `<h1>Slot per ${instructorName}</h1>`;
+                    html += `
+                        <div style="margin-bottom: 16px;">
+                            <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
+                                <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
+                                Cambia istruttore
+                            </a>
+                        </div>
+                    `;
                     sortedKeys.forEach(dateKey => {
                         // Parse the date key and use the first slot's date for the label
                         const firstSlot = groupedSlots[dateKey][0];
-                        const date = new Date(firstSlot.StartsAt);
+                        const date = new Date(firstSlot);
                         const dateLabel = date.toLocaleDateString('it-IT', { 
                             weekday: 'long', 
                             year: 'numeric', 
@@ -533,19 +589,18 @@
 
                         // Sort slots within each day by start time
                         groupedSlots[dateKey]
-                            .sort((a, b) => new Date(a.StartsAt) - new Date(b.StartsAt))
-                            .forEach(slot => {
-                                const timeStr = new Date(slot.StartsAt).toLocaleTimeString('it-IT', {
+                            .sort((a, b) => new Date(a) - new Date(b))
+                            .forEach(slotTime => {
+                                const timeStr = new Date(slotTime).toLocaleTimeString('it-IT', {
                                     hour: '2-digit',
                                     minute: '2-digit'
                                 });
-                                const availText = userSubType === 'SHARED' ? `(${2 - slot.PeopleCount} posti)` : '';
 
                                 html += `
-                                    <div class="list-item" style="cursor: pointer;" onclick="createBooking('${slot.StartsAt}')">
+                                    <div class="list-item" style="cursor: pointer;" onclick="confirmBookingWithInstructor('${slotTime}', ${instructorId})">
                                     <span class="material-icons list-icon" style="color: #4caf50;">event_available</span>
                                     <div class="list-text">
-                                    <div class="list-primary">${timeStr} ${availText}</div>
+                                    <div class="list-primary">${timeStr}</div>
                                     </div>
                                     <span class="material-icons list-icon">arrow_forward</span>
                                     </div>
@@ -560,25 +615,34 @@
                     console.error(error);
                     showToast('Errore di connessione. Riprova.');
                     contentDiv.innerHTML = `
-                        <h1>Seleziona uno slot</h1>
+                        <h1>Slot per ${instructorName}</h1>
+                        <div style="margin-bottom: 16px;">
+                            <a href="#" onclick="showSlots(); return false;" style="color: #1976d2; text-decoration: none;">
+                                <span class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</span>
+                                Cambia istruttore
+                            </a>
+                        </div>
                         <div class="empty-state">Errore di connessione</div>
                     `;
                 });
         }
         
-        function createBooking(startsAt) {
+        function confirmBookingWithInstructor(startsAt, instructorId) {
             if (!confirm('Vuoi confermare questa prenotazione?')) {
                 return;
             }
             
             showLoading('Creazione prenotazione...');
             
-            fetch('/api/user/bookings/create', {
+            fetch('/api/user/bookings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ startsAt }),
+                body: JSON.stringify({ 
+                    startsAt,
+                    instructorId
+                }),
             })
             .then(response => response.json())
             .then(data => {
@@ -605,12 +669,8 @@
             
             showLoading('Cancellazione prenotazione...');
             
-            fetch('/api/user/bookings/delete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id, startsAt }),
+            fetch('/api/user/bookings/' + id, {
+                method: 'DELETE',
             })
             .then(response => response.json())
             .then(data => {

@@ -78,9 +78,9 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	// Initialize repositories
 	userRepo := models.NewUserRepository(db)
 	bookingRepo := models.NewBookingRepository(db)
-	slotRepo := models.NewSlotRepository(db)
 	eventRepo := models.NewEventRepository(db)
 	questionRepo := models.NewQuestionRepository(db)
+	instructorRepo := models.NewInstructorRepository(db)
 
 	// Initialize session store
 	sessionStore := models.NewSessionStore(db)
@@ -108,7 +108,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(userRepo, sessionStore)
 	userHandler := handlers.NewUserHandler(userRepo, mailer)
-	bookingHandler := handlers.NewBookingHandler(bookingRepo, slotRepo, eventRepo, userRepo, mailer, hub)
+	bookingHandler := handlers.NewBookingHandler(bookingRepo, eventRepo, userRepo, instructorRepo, mailer, hub)
+	instructorHandler := handlers.NewInstructorHandler(instructorRepo)
 	surveyHandler := handlers.NewSurveyHandler(questionRepo)
 	_ = handlers.NewPageHandler(userRepo, bookingRepo, eventRepo) // Page handler logic moved to main.go serve functions
 
@@ -119,58 +120,68 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Public routes
-	mux.HandleFunc("/signin", serveSignIn)
-	mux.HandleFunc("/reset", serveReset)
-	mux.HandleFunc("/verify", serveVerify)
-	mux.HandleFunc("/survey", serveSurvey(questionRepo))
-	mux.HandleFunc("/survey/thanks", serveSurveyThanks)
+	mux.HandleFunc("GET /signin", serveSignIn)
+	mux.HandleFunc("GET /reset", serveReset)
+	mux.HandleFunc("GET /verify", serveVerify)
+	mux.HandleFunc("GET /survey", serveSurvey(questionRepo))
+	mux.HandleFunc("GET /survey/thanks", serveSurveyThanks)
 
 	// Auth API routes
-	mux.HandleFunc("/api/auth/login", authHandler.Login)
-	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
-	mux.HandleFunc("/api/auth/reset", userHandler.ResetPassword)
-	mux.HandleFunc("/api/auth/verify", userHandler.VerifyAccount)
+	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
+	mux.HandleFunc("GET  /api/auth/logout", authHandler.Logout)
+	mux.HandleFunc("POST /api/auth/reset", userHandler.ResetPassword)
+	mux.HandleFunc("POST /api/auth/verify", userHandler.VerifyAccount)
 
 	// Public survey API routes
-	mux.HandleFunc("/survey/submit", surveyHandler.SubmitSurvey)
+	mux.HandleFunc("POST /survey/submit", surveyHandler.SubmitSurvey)
 
-	// User routes - /user prefix
+	// User dashboard
 	authMiddleware := middleware.Auth(sessionStore, userRepo)
-	mux.Handle("/user", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo))))
-	mux.Handle("/user/", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo))))
-	mux.Handle("/api/user/current", authMiddleware(http.HandlerFunc(userHandler.GetCurrent)))
-	mux.Handle("/api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent)))
-	mux.Handle("/api/user/bookings/create", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
-	mux.Handle("/api/user/bookings/delete", authMiddleware(http.HandlerFunc(bookingHandler.Delete)))
-	mux.Handle("/api/user/bookings/slots", authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots)))
+	mux.Handle("GET /user", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo, instructorRepo))))
+	mux.Handle("GET /user/", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo, instructorRepo))))
 
-	// Admin routes - /admin prefix
+	// User API
+	mux.Handle("GET /api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent)))
+	mux.Handle("POST /api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
+	mux.Handle("DELETE /api/user/bookings/{id}", authMiddleware(http.HandlerFunc(bookingHandler.Delete)))
+	mux.Handle("GET /api/user/bookings/slots", authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots)))
+
+	// Admin dashboard
 	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
-	mux.Handle("/admin", authMiddleware(http.HandlerFunc(serveAdminHome)))
-	mux.Handle("/admin/", authMiddleware(http.HandlerFunc(serveAdminHome)))
-	mux.Handle("/admin/calendar", adminMiddleware(http.HandlerFunc(serveCalendar)))
-	mux.Handle("/admin/users", adminMiddleware(http.HandlerFunc(serveUsers(userRepo))))
-	mux.Handle("/admin/events", adminMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
-	mux.Handle("/admin/survey/questions", adminMiddleware(http.HandlerFunc(serveSurveyQuestions)))
-	mux.Handle("/admin/survey/results", adminMiddleware(http.HandlerFunc(serveSurveyResults)))
-	mux.Handle("/api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.GetAll)))
-	mux.Handle("/api/admin/users/create", adminMiddleware(http.HandlerFunc(userHandler.Create)))
-	mux.Handle("/api/admin/users/update", adminMiddleware(http.HandlerFunc(userHandler.Update)))
-	mux.Handle("/api/admin/users/delete", adminMiddleware(http.HandlerFunc(userHandler.Delete)))
-	mux.Handle("/api/admin/users/resend-verification", adminMiddleware(http.HandlerFunc(userHandler.ResendVerification)))
-	mux.Handle("/api/admin/bookings", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings)))
-	mux.Handle("/api/admin/bookings/create", adminMiddleware(http.HandlerFunc(bookingHandler.CreateBookingForUser)))
-	mux.Handle("/api/admin/slots", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllSlots)))
-	mux.Handle("/api/admin/slots/disable", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlot)))
-	mux.Handle("/api/admin/slots/disable-confirm", adminMiddleware(http.HandlerFunc(bookingHandler.DisableSlotConfirm)))
-	mux.Handle("/api/admin/slots/enable", adminMiddleware(http.HandlerFunc(bookingHandler.EnableSlot)))
-	mux.Handle("/api/admin/slots/reserve", adminMiddleware(http.HandlerFunc(bookingHandler.ReserveSlot)))
-	mux.Handle("/api/admin/slots/unreserve", adminMiddleware(http.HandlerFunc(bookingHandler.UnreserveSlot)))
-	mux.Handle("/api/admin/survey/questions", adminMiddleware(http.HandlerFunc(surveyHandler.GetAllQuestions)))
-	mux.Handle("/api/admin/survey/questions/create", adminMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion)))
-	mux.Handle("/api/admin/survey/questions/update", adminMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion)))
-	mux.Handle("/api/admin/survey/questions/delete", adminMiddleware(http.HandlerFunc(surveyHandler.DeleteQuestion)))
-	mux.Handle("/api/admin/survey/results", adminMiddleware(http.HandlerFunc(surveyHandler.GetResults)))
+	mux.Handle("GET /admin", authMiddleware(http.HandlerFunc(serveAdminHome)))
+	mux.Handle("GET /admin/", authMiddleware(http.HandlerFunc(serveAdminHome)))
+	mux.Handle("GET /admin/calendar", adminMiddleware(http.HandlerFunc(serveCalendar)))
+	mux.Handle("GET /admin/users", adminMiddleware(http.HandlerFunc(serveUsers(userRepo))))
+	mux.Handle("GET /admin/instructors", adminMiddleware(http.HandlerFunc(serveInstructors(instructorRepo))))
+	mux.Handle("GET /admin/events", adminMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo))))
+	mux.Handle("GET /admin/survey/questions", adminMiddleware(http.HandlerFunc(serveSurveyQuestions)))
+	mux.Handle("GET /admin/survey/results", adminMiddleware(http.HandlerFunc(serveSurveyResults)))
+
+	// Admin user API
+	mux.Handle("GET /api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.GetAll)))
+	mux.Handle("POST /api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.Create)))
+	mux.Handle("PUT /api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.Update)))
+	mux.Handle("DELETE /api/admin/users", adminMiddleware(http.HandlerFunc(userHandler.Delete)))
+	mux.Handle("POST /api/admin/users/resend-verification", adminMiddleware(http.HandlerFunc(userHandler.ResendVerification)))
+
+	// Instructors API - GetAll is accessible to all authenticated users (users need to see instructors for booking)
+	mux.Handle("GET /api/user/instructors", authMiddleware(http.HandlerFunc(instructorHandler.GetAll)))
+	mux.Handle("GET /api/admin/instructors", adminMiddleware(http.HandlerFunc(instructorHandler.GetAll)))
+	mux.Handle("POST /api/admin/instructors", adminMiddleware(http.HandlerFunc(instructorHandler.Create)))
+	mux.Handle("PUT /api/admin/instructors/{id}", adminMiddleware(http.HandlerFunc(instructorHandler.Update)))
+	mux.Handle("DELETE /api/admin/instructors/{id}", adminMiddleware(http.HandlerFunc(instructorHandler.Delete)))
+
+	// Bookings API
+	mux.Handle("GET /api/admin/bookings", adminMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings)))
+	mux.Handle("POST /api/admin/bookings", adminMiddleware(http.HandlerFunc(bookingHandler.CreateBookingForUser)))
+	mux.Handle("DELETE /api/admin/bookings/{id}", adminMiddleware(http.HandlerFunc(bookingHandler.DeleteAdmin)))
+
+	// Survey API
+	mux.Handle("GET /api/admin/survey/questions", adminMiddleware(http.HandlerFunc(surveyHandler.GetAllQuestions)))
+	mux.Handle("POST /api/admin/survey/questions", adminMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion)))
+	mux.Handle("PUT /api/admin/survey/questions", adminMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion)))
+	mux.Handle("DELETE /api/admin/survey/questions", adminMiddleware(http.HandlerFunc(surveyHandler.DeleteQuestion)))
+	mux.Handle("GET /api/admin/survey/results", adminMiddleware(http.HandlerFunc(surveyHandler.GetResults)))
 
 	// WebSocket endpoint
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
@@ -228,7 +239,7 @@ func serveRoot() http.HandlerFunc {
 		}
 
 		// Redirect based on role
-		if user.Role == models.RoleAdmin {
+		if user != nil && user.Role == models.RoleAdmin {
 			http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
 		} else {
 			http.Redirect(w, r, "/user", http.StatusSeeOther)
@@ -236,13 +247,8 @@ func serveRoot() http.HandlerFunc {
 	}
 }
 
-func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc {
+func serveUserDashboard(bookingRepo *models.BookingRepository, instructorRepo *models.InstructorRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			return
-		}
-
 		user := middleware.GetUserFromContext(r.Context())
 		if user == nil {
 			http.Redirect(w, r, "/signin", http.StatusSeeOther)
@@ -250,7 +256,7 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 		}
 
 		// Only regular users can access user dashboard
-		if user.Role == models.RoleAdmin {
+		if user != nil && user.Role == models.RoleAdmin {
 			http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
 			return
 		}
@@ -268,15 +274,26 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 			StartsAt          string
 			StartsAtFormatted string
 			CreatedAt         string
+			InstructorName    string
 		}
 
 		var displayBookings []BookingDisplay
 		for _, b := range bookings {
+			instructorName := ""
+			instructor, err := instructorRepo.GetByID(b.InstructorID)
+			if err == nil {
+				instructorName = instructor.FirstName
+				if instructor.LastName != "" {
+					instructorName += " " + instructor.LastName
+				}
+			}
+
 			displayBookings = append(displayBookings, BookingDisplay{
 				ID:                b.ID,
 				StartsAt:          b.StartsAt.Format(time.RFC3339),
 				StartsAtFormatted: b.StartsAt.Format("02 Jan 2006, 15:04"),
 				CreatedAt:         b.CreatedAt.Format(time.RFC3339),
+				InstructorName:    instructorName,
 			})
 		}
 
@@ -297,7 +314,7 @@ func serveUserDashboard(bookingRepo *models.BookingRepository) http.HandlerFunc 
 
 func serveAdminHome(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user.Role != models.RoleAdmin {
+	if user == nil || user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -313,7 +330,7 @@ func serveCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user.Role != models.RoleAdmin {
+	if user == nil || user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -326,70 +343,44 @@ func serveCalendar(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveSignIn(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		data := map[string]interface{}{
-			"Error": r.URL.Query().Get("error"),
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := tpl.ExecuteTemplate(w, "signin.html", data); err != nil {
-			log.Print(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-		return
+	data := map[string]interface{}{
+		"Error": r.URL.Query().Get("error"),
 	}
-
-	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "signin.html", data); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 func serveReset(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		data := map[string]interface{}{
-			"Token":   r.URL.Query().Get("token"),
-			"Success": r.URL.Query().Get("success"),
-			"Error":   r.URL.Query().Get("error"),
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := tpl.ExecuteTemplate(w, "reset.html", data); err != nil {
-			log.Print(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-		return
+	data := map[string]interface{}{
+		"Token":   r.URL.Query().Get("token"),
+		"Success": r.URL.Query().Get("success"),
+		"Error":   r.URL.Query().Get("error"),
 	}
-
-	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "reset.html", data); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 func serveVerify(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		token := r.URL.Query().Get("token")
-		data := map[string]interface{}{
-			"Token": token,
-			"Error": r.URL.Query().Get("error"),
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := tpl.ExecuteTemplate(w, "verify.html", data); err != nil {
-			log.Print(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-		return
+	token := r.URL.Query().Get("token")
+	data := map[string]interface{}{
+		"Token": token,
+		"Error": r.URL.Query().Get("error"),
 	}
-
-	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "verify.html", data); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 func serveUsers(userRepo *models.UserRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			return
-		}
-
-		user := middleware.GetUserFromContext(r.Context())
-		if user == nil || user.Role != models.RoleAdmin {
-			http.Redirect(w, r, "/signin", http.StatusSeeOther)
-			return
-		}
-
 		users, err := userRepo.GetAll()
 		if err != nil {
 			log.Printf("Error getting users: %v", err)
@@ -461,7 +452,7 @@ func serveEvents(userRepo *models.UserRepository, eventRepo *models.EventReposit
 		}
 
 		user := middleware.GetUserFromContext(r.Context())
-		if user == nil || user.Role != models.RoleAdmin {
+		if user == nil || user == nil || user.Role != models.RoleAdmin {
 			http.Redirect(w, r, "/signin", http.StatusSeeOther)
 			return
 		}
@@ -539,11 +530,6 @@ func serveSurvey(questionRepo *models.QuestionRepository) http.HandlerFunc {
 }
 
 func serveSurveyThanks(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tpl.ExecuteTemplate(w, "survey-thanks.html", nil); err != nil {
 		log.Print(err)
@@ -552,13 +538,8 @@ func serveSurveyThanks(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveSurveyQuestions(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user.Role != models.RoleAdmin {
+	if user == nil || user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -577,7 +558,7 @@ func serveSurveyResults(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := middleware.GetUserFromContext(r.Context())
-	if user == nil || user.Role != models.RoleAdmin {
+	if user == nil || user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
 		return
 	}
@@ -586,5 +567,55 @@ func serveSurveyResults(w http.ResponseWriter, r *http.Request) {
 	if err := tpl.ExecuteTemplate(w, "survey-results.html", nil); err != nil {
 		log.Print(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+
+		user := middleware.GetUserFromContext(r.Context())
+		if user == nil || user == nil || user.Role != models.RoleAdmin {
+			http.Redirect(w, r, "/signin", http.StatusSeeOther)
+			return
+		}
+
+		instructors, err := instructorRepo.GetAll()
+		if err != nil {
+			log.Printf("Error getting instructors: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// Format instructor data for display
+		type InstructorDisplay struct {
+			ID        int64
+			FirstName string
+			LastName  string
+			CreatedAt string
+		}
+
+		var displayInstructors []InstructorDisplay
+		for _, i := range instructors {
+			displayInstructors = append(displayInstructors, InstructorDisplay{
+				ID:        i.ID,
+				FirstName: i.FirstName,
+				LastName:  i.LastName,
+				CreatedAt: i.CreatedAt.Format("02 Jan 2006"),
+			})
+		}
+
+		data := map[string]interface{}{
+			"Instructors": displayInstructors,
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tpl.ExecuteTemplate(w, "instructors.html", data); err != nil {
+			log.Print(err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	}
 }

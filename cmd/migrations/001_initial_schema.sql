@@ -2,11 +2,11 @@
 -- This migration creates all tables required for the application
 -- All statements are idempotent (CREATE TABLE IF NOT EXISTS)
 
--- Users table
+-- Users table (with role column for admin/user distinction)
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(255) PRIMARY KEY,
     first_name VARCHAR(255) NOT NULL,
-    last_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255),
     address VARCHAR(255) NOT NULL,
     password TEXT,
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
@@ -30,26 +30,30 @@ CREATE INDEX IF NOT EXISTS idx_users_verification_token ON users(verification_to
 -- Index on email for faster lookups
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
--- Slots table
-CREATE TABLE IF NOT EXISTS slots (
-    starts_at TIMESTAMP PRIMARY KEY,
-    people_count INTEGER NOT NULL DEFAULT 0,
-    disabled BOOLEAN NOT NULL DEFAULT false
+-- Instructors table (instructors are just tags, no email/password)
+CREATE TABLE IF NOT EXISTS instructors (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Bookings table
 CREATE TABLE IF NOT EXISTS bookings (
     id BIGSERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    user_id VARCHAR(255),
+    instructor_id INTEGER NOT NULL,
     starts_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    type VARCHAR(20) NOT NULL DEFAULT 'SIMPLE',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (starts_at) REFERENCES slots(starts_at) ON DELETE CASCADE
+    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE
 );
 
 -- Indexes for bookings
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_starts_at ON bookings(starts_at);
+CREATE INDEX IF NOT EXISTS idx_bookings_instructor_id ON bookings(instructor_id);
 
 -- Events table
 CREATE TABLE IF NOT EXISTS events (
@@ -64,11 +68,12 @@ CREATE TABLE IF NOT EXISTS events (
 -- Index for events
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 
--- Sessions table
+-- Sessions table (stores user sessions)
 CREATE TABLE IF NOT EXISTS sessions (
     token VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP NOT NULL
+    expires_at TIMESTAMP NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Index on user_id for faster session lookups
@@ -76,13 +81,6 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 
 -- Index on expires_at for cleanup queries
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
-
--- Sessions table
-CREATE TABLE IF NOT EXISTS sessions (
-    token VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP NOT NULL
-);
 
 -- Questions table for survey
 CREATE TABLE IF NOT EXISTS questions (
