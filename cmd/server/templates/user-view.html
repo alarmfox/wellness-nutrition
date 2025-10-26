@@ -207,36 +207,7 @@
         <div class="content">
             <h1>Lista prenotazioni</h1>
             <div id="bookings-list">
-                <div class="list-item">
-                    <span class="material-icons list-icon">event</span>
-                    <div class="list-text">
-                        <div class="list-primary" data-timestamp="2025-11-02T09:00:00Z"></div>
-                        <div class="list-secondary">
-                            <span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ Luca Bianchi</span> • <span data-created="2025-10-20T10:30:00Z"></span>
-                        </div>
-                    </div>
-                    <span class="material-icons list-icon" style="cursor: pointer;" onclick="simulateDelete('Luca Bianchi', '02 Nov 2025, 09:00')">delete</span>
-                </div>
-                <div class="list-item">
-                    <span class="material-icons list-icon">event</span>
-                    <div class="list-text">
-                        <div class="list-primary" data-timestamp="2025-11-05T14:30:00Z"></div>
-                        <div class="list-secondary">
-                            <span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ Anna Verdi</span> • <span data-created="2025-10-21T15:00:00Z"></span>
-                        </div>
-                    </div>
-                    <span class="material-icons list-icon" style="cursor: pointer;" onclick="simulateDelete('Anna Verdi', '05 Nov 2025, 14:30')">delete</span>
-                </div>
-                <div class="list-item">
-                    <span class="material-icons list-icon">event</span>
-                    <div class="list-text">
-                        <div class="list-primary" data-timestamp="2025-11-10T11:00:00Z"></div>
-                        <div class="list-secondary">
-                            <span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ Luca Bianchi</span> • <span data-created="2025-10-22T09:15:00Z"></span>
-                        </div>
-                    </div>
-                    <span class="material-icons list-icon" style="cursor: pointer;" onclick="simulateDelete('Luca Bianchi', '10 Nov 2025, 11:00')">delete</span>
-                </div>
+                <!-- Will be populated by JavaScript -->
             </div>
         </div>
         
@@ -259,13 +230,35 @@
     </div>
     
     <script>
-        // Mock data for available slots
+        // Mock data for bookings and slots
+        const mockBookings = [
+            { timestamp: '2025-11-02T09:00:00Z', instructor: 'Luca Bianchi', created: '2025-10-20T10:30:00Z' },
+            { timestamp: '2025-11-05T14:30:00Z', instructor: 'Anna Verdi', created: '2025-10-21T15:00:00Z' },
+            { timestamp: '2025-11-10T11:00:00Z', instructor: 'Luca Bianchi', created: '2025-10-22T09:15:00Z' }
+        ];
+
         const mockSlots = [
             { instructor: 'Luca Bianchi', date: '2025-11-12', times: ['09:00', '10:30', '14:00', '16:00'] },
             { instructor: 'Anna Verdi', date: '2025-11-12', times: ['11:00', '15:30', '17:00'] },
             { instructor: 'Luca Bianchi', date: '2025-11-13', times: ['09:00', '11:30', '14:30'] },
             { instructor: 'Anna Verdi', date: '2025-11-13', times: ['10:00', '13:00', '16:00'] },
         ];
+
+        // Generate bookings list HTML
+        function generateBookingsHTML() {
+            return mockBookings.map(booking => `
+                <div class="list-item">
+                    <span class="material-icons list-icon">event</span>
+                    <div class="list-text">
+                        <div class="list-primary" data-timestamp="${booking.timestamp}"></div>
+                        <div class="list-secondary">
+                            <span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ ${booking.instructor}</span> • <span data-created="${booking.created}"></span>
+                        </div>
+                    </div>
+                    <span class="material-icons list-icon" style="cursor: pointer;" onclick="simulateDelete('${booking.instructor}', '${booking.timestamp}')">delete</span>
+                </div>
+            `).join('');
+        }
 
         // Format all timestamps on the page to local time
         function formatTimestamps() {
@@ -297,7 +290,11 @@
         }
 
         // Format timestamps when page loads
-        document.addEventListener('DOMContentLoaded', formatTimestamps);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize bookings list
+            document.getElementById('bookings-list').innerHTML = generateBookingsHTML();
+            formatTimestamps();
+        });
 
         function showToast(message, isSuccess = false) {
             const toast = document.getElementById('toast');
@@ -313,36 +310,7 @@
             contentDiv.innerHTML = `
                 <h1>Lista prenotazioni</h1>
                 <div id="bookings-list">
-                    <div class="list-item">
-                        <span class="material-icons list-icon">event</span>
-                        <div class="list-text">
-                            <div class="list-primary" data-timestamp="2025-11-02T09:00:00Z"></div>
-                            <div class="list-secondary">
-                                <span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ Luca Bianchi</span> • <span data-created="2025-10-20T10:30:00Z"></span>
-                            </div>
-                        </div>
-                        <span class="material-icons list-icon" style="cursor: pointer;" onclick="simulateDelete('Luca Bianchi', '02 Nov 2025, 09:00')">delete</span>
-                    </div>
-                    <div class="list-item">
-                        <span class="material-icons list-icon">event</span>
-                        <div class="list-text">
-                            <div class="list-primary" data-timestamp="2025-11-05T14:30:00Z"></div>
-                            <div class="list-secondary">
-                                <span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ Anna Verdi</span> • <span data-created="2025-10-21T15:00:00Z"></span>
-                            </div>
-                        </div>
-                        <span class="material-icons list-icon" style="cursor: pointer;" onclick="simulateDelete('Anna Verdi', '05 Nov 2025, 14:30')">delete</span>
-                    </div>
-                    <div class="list-item">
-                        <span class="material-icons list-icon">event</span>
-                        <div class="list-text">
-                            <div class="list-primary" data-timestamp="2025-11-10T11:00:00Z"></div>
-                            <div class="list-secondary">
-                                <span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ Luca Bianchi</span> • <span data-created="2025-10-22T09:15:00Z"></span>
-                            </div>
-                        </div>
-                        <span class="material-icons list-icon" style="cursor: pointer;" onclick="simulateDelete('Luca Bianchi', '10 Nov 2025, 11:00')">delete</span>
-                    </div>
+                    ${generateBookingsHTML()}
                 </div>
             `;
             
