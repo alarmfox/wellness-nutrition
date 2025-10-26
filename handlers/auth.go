@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alarmfox/wellness-nutrition/app/crypto"
 	"github.com/alarmfox/wellness-nutrition/app/mail"
 	"github.com/alarmfox/wellness-nutrition/app/middleware"
 	"github.com/alarmfox/wellness-nutrition/app/models"
@@ -221,7 +222,8 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// Generate user ID and verification token
 	userID := generateID()
-	verificationToken, err := generateToken()
+	tokenExpiresAt := time.Now().Add(7 * 24 * time.Hour)
+	verificationToken, err := generateSignedToken(tokenExpiresAt)
 	if err != nil {
 		log.Printf("Error generating token: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
@@ -248,7 +250,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		RemainingAccesses:          req.RemainingAccesses,
 		Role:                       models.RoleUser,
 		VerificationToken:          sql.NullString{String: verificationToken, Valid: true},
-		VerificationTokenExpiresIn: sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true},
+		VerificationTokenExpiresIn: sql.NullTime{Time: tokenExpiresAt, Valid: true},
 		Goals:                      sql.NullString{String: goals, Valid: goals != ""},
 	}
 
@@ -330,7 +332,8 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	// If email changed, reset verification and generate new token
 	if emailChanged {
-		verificationToken, err := generateToken()
+		expiresAt := time.Now().Add(7 * 24 * time.Hour)
+		verificationToken, err := generateSignedToken(expiresAt)
 		if err != nil {
 			log.Printf("Error generating token: %v", err)
 			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
@@ -338,7 +341,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		user.EmailVerified = sql.NullTime{Valid: false}
 		user.VerificationToken = sql.NullString{String: verificationToken, Valid: true}
-		user.VerificationTokenExpiresIn = sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true}
+		user.VerificationTokenExpiresIn = sql.NullTime{Time: expiresAt, Valid: true}
 
 		// Send new verification email
 		verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
@@ -400,14 +403,15 @@ func (h *UserHandler) ResendVerification(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Generate new verification token
-	verificationToken, err := generateToken()
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
+	verificationToken, err := generateSignedToken(expiresAt)
 	if err != nil {
 		log.Printf("Error generating token: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
 		return
 	}
 	user.VerificationToken = sql.NullString{String: verificationToken, Valid: true}
-	user.VerificationTokenExpiresIn = sql.NullTime{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true}
+	user.VerificationTokenExpiresIn = sql.NullTime{Time: expiresAt, Valid: true}
 
 	if err := h.userRepo.Update(user); err != nil {
 		log.Printf("Error updating user: %v", err)
@@ -436,7 +440,21 @@ func generateToken() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return base64.URLEncoding.EncodeToString(b), nil
+	token := base64.URLEncoding.EncodeToString(b)
+	// Sign the token with expiration (7 days for verification, 1 hour for reset)
+	// We'll handle expiration in the calling code
+	return token, nil
+}
+
+func generateSignedToken(expiresAt time.Time) (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	token := base64.URLEncoding.EncodeToString(b)
+	// Sign the token with the expiration time
+	signedToken := crypto.CreateTimedToken(token, expiresAt)
+	return signedToken, nil
 }
 
 func getBaseURL(r *http.Request) string {
@@ -549,7 +567,8 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate reset token
-	resetToken, err := generateToken()
+	expiresAt := time.Now().Add(1 * time.Hour)
+	resetToken, err := generateSignedToken(expiresAt)
 	if err != nil {
 		log.Printf("Error generating reset token: %v", err)
 		sendJSON(w, http.StatusOK, map[string]string{"message": "If the email exists, a reset link has been sent"})
@@ -558,7 +577,7 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	// Update user with reset token
 	user.VerificationToken = sql.NullString{String: resetToken, Valid: true}
-	user.VerificationTokenExpiresIn = sql.NullTime{Time: time.Now().Add(1 * time.Hour), Valid: true}
+	user.VerificationTokenExpiresIn = sql.NullTime{Time: expiresAt, Valid: true}
 
 	if err := h.userRepo.Update(user); err != nil {
 		log.Printf("Error updating user with reset token: %v", err)
@@ -612,16 +631,21 @@ func (h *UserHandler) VerifyAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find user by verification token
-	user, err := h.userRepo.GetByVerificationToken(req.Token)
+	// Verify the signed token and extract the unsigned token
+	unsignedToken, err := crypto.VerifyTimedToken(req.Token)
 	if err != nil {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid or expired verification token"})
+		if err == crypto.ErrExpiredToken {
+			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Verification token has expired"})
+			return
+		}
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid verification token"})
 		return
 	}
 
-	// Check token expiry
-	if !user.VerificationTokenExpiresIn.Valid || time.Now().After(user.VerificationTokenExpiresIn.Time) {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Verification token has expired"})
+	// Find user by the unsigned verification token
+	user, err := h.userRepo.GetByVerificationToken(unsignedToken)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid or expired verification token"})
 		return
 	}
 

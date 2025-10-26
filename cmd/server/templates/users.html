@@ -251,6 +251,14 @@
     </div>
     
     <script>
+        // Helper function to get cookie value
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
         function showLoading(text = 'Caricamento...') {
             const overlay = document.getElementById('loading-overlay');
             const loadingText = document.getElementById('loading-text');
@@ -286,10 +294,12 @@
             }
             
             showLoading('Eliminazione utenti...');
+            const csrfToken = getCookie('csrf_token');
             fetch('/api/admin/users', {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
                 },
                 body: JSON.stringify({ ids }),
             })
@@ -388,10 +398,12 @@
             };
             
             showLoading('Creazione utente...');
+            const csrfToken = getCookie('csrf_token');
             fetch('/api/admin/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
                 },
                 body: JSON.stringify(data),
             })
@@ -434,10 +446,12 @@
             };
             
             showLoading('Aggiornamento utente...');
+            const csrfToken = getCookie('csrf_token');
             fetch('/api/admin/users', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
                 },
                 body: JSON.stringify(data),
             })
@@ -467,10 +481,12 @@
             const userId = document.getElementById('editUserId').value;
             
             showLoading('Invio email di verifica...');
+            const csrfToken = getCookie('csrf_token');
             fetch('/api/admin/users/resend-verification', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
                 },
                 body: JSON.stringify({ userId }),
             })

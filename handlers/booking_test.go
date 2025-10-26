@@ -7,7 +7,7 @@ import (
 
 func TestGenerateSlots(t *testing.T) {
 	// Test case 1: Generate slots for a week starting at 7am
-	start := time.Date(2024, 1, 1, 7, 0, 0, 0, time.UTC) // Monday 7am
+	start := time.Date(2024, 1, 1, 6, 0, 0, 0, time.UTC) // Monday 7am
 	end := time.Date(2024, 1, 8, 0, 0, 0, 0, time.UTC)   // Next Monday
 
 	slots := generateSlots(start, end)
@@ -31,11 +31,11 @@ func TestGenerateSlots(t *testing.T) {
 		t.Error("Found Sunday slot, but Sundays should be excluded")
 	}
 
-	// Test case 3: Verify all slots are within 7am-9pm
+	// Test case 3: Verify all slots are within 6am-8pm
 	for _, slot := range slots {
 		hour := slot.Hour()
-		if hour < 7 || hour > 21 {
-			t.Errorf("Slot at %v is outside 7am-9pm range", slot)
+		if hour < 6 || hour > 20 {
+			t.Errorf("Slot at %v is outside 6am-8pm range", slot)
 		}
 	}
 
@@ -69,7 +69,7 @@ func TestGenerateSlotsStartBeforeSeven(t *testing.T) {
 	slots := generateSlots(start, end)
 
 	// First slot should be at 7am or later
-	if len(slots) > 0 && slots[0].Hour() < 7 {
-		t.Errorf("First slot at %v is before 7am", slots[0])
+	if len(slots) > 0 && slots[0].Hour() < 6 {
+		t.Errorf("First slot at %v is before 6am", slots[0])
 	}
 }

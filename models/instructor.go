@@ -79,7 +79,7 @@ func (r *InstructorRepository) Create(instructor *Instructor) error {
 	query := `
 		INSERT INTO instructors (first_name, last_name)
 		VALUES ($1, $2)
-		RETURNING (id, created_at, updated_at)
+		RETURNING id, created_at, updated_at
 	`
 
 	err := r.db.QueryRow(query,

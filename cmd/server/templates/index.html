@@ -252,6 +252,14 @@
         const userSubType = '{{.User.SubType}}';
         let availableSlots = [];
 
+        // Helper function to get cookie value
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
         // Browser Notification System
         const NotificationManager = {
             STORAGE_KEY: 'wellness_bookings_notifications',
@@ -634,10 +642,12 @@
             
             showLoading('Creazione prenotazione...');
             
+            const csrfToken = getCookie('csrf_token');
             fetch('/api/user/bookings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
                 },
                 body: JSON.stringify({ 
                     startsAt,
@@ -669,8 +679,12 @@
             
             showLoading('Cancellazione prenotazione...');
             
+            const csrfToken = getCookie('csrf_token');
             fetch('/api/user/bookings/' + id, {
                 method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken,
+                },
             })
             .then(response => response.json())
             .then(data => {

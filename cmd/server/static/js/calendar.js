@@ -11,6 +11,16 @@ const BookingType = {
 };
 
 // ============================================================================
+// UTILITIES
+// ============================================================================
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// ============================================================================
 // STATE MANAGEMENT
 // ============================================================================
 const CalendarState = {
@@ -134,17 +144,25 @@ const API = {
     },
  
     async createBooking(type, payload) {
+        const csrfToken = getCookie('csrf_token');
         const response = await fetch('/api/admin/bookings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
             body: JSON.stringify({ type, ...payload })
         });
         return response.json();
     },
  
     async deleteBooking(bookingId, refund = false) {
+        const csrfToken = getCookie('csrf_token');
         const response = await fetch(`/api/admin/bookings/${bookingId}?refund=${encodeURIComponent(refund)}`, {
             method: 'DELETE',
+            headers: {
+                'X-CSRF-Token': csrfToken
+            }
         });
         return response.status == 204;
     }

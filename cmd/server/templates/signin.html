@@ -160,6 +160,13 @@
             }, 4000);
         }
 
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.querySelector('form');
             form.addEventListener('submit', async function(e) {
@@ -178,10 +185,12 @@
                 button.innerHTML = '<span class="spinner"></span>Accesso in corso...';
                 
                 try {
+                    const csrfToken = getCookie('csrf_token');
                     const response = await fetch('/api/auth/login', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken,
                         },
                         body: JSON.stringify({ email, password }),
                     });
