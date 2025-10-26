@@ -284,9 +284,9 @@
     
     <script>
         const userSubType = '{{.User.SubType}}';
-        const isSimulation = {{if .IsSimulation}}true{{else}}false{{end}};
         let availableSlots = [];
 
+        {{if .IsSimulation}}
         // Mock data for simulation mode
         const mockInstructors = [
             { ID: 1, FirstName: 'Luca', LastName: 'Bianchi' },
@@ -312,6 +312,7 @@
                 '2025-11-13T16:00:00Z'
             ]
         };
+        {{end}}
 
         // Helper function to get cookie value
         function getCookie(name) {
