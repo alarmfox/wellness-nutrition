@@ -152,11 +152,11 @@ func TestGenerateCSRFTokenUniqueness(t *testing.T) {
 		t.Fatalf("Failed to initialize secret key: %v", err)
 	}
 
-	// Generate multiple tokens and ensure they're unique
+	// Generate multiple signed tokens and ensure they're unique
+	// Note: This tests the signing mechanism, not CSRF token generation
+	// which is in the middleware package
 	tokens := make(map[string]bool)
 	for i := 0; i < 100; i++ {
-		// Note: GenerateCSRFToken doesn't exist in crypto package
-		// It's in middleware. We need to test SignToken instead
 		token := SignToken(time.Now().String())
 		if tokens[token] {
 			t.Errorf("Generated duplicate token: %s", token)
