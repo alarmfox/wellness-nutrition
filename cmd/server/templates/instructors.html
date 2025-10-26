@@ -225,12 +225,8 @@
             }
 
             try {
-                const response = await fetch('/api/admin/instructors', {
+                const response = await fetch('/api/admin/instructors/' + id, {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id }),
                 });
 
                 if (response.ok) {
