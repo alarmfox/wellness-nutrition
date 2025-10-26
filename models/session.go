@@ -63,8 +63,8 @@ func (s *SessionStore) DeleteSession(signedToken string) error {
 	// Verify and extract the session ID
 	sessionID, err := crypto.VerifyTimedToken(signedToken)
 	if err != nil {
-		// If token is invalid, still try to delete it as-is for cleanup
-		sessionID = signedToken
+		// If token is invalid, do not attempt deletion
+		return err
 	}
 
 	query := `DELETE FROM sessions WHERE token = $1`
