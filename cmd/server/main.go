@@ -169,6 +169,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("GET /admin/events", csrfMiddleware(adminMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo)))))
 	mux.Handle("GET /admin/survey/questions", csrfMiddleware(adminMiddleware(http.HandlerFunc(serveSurveyQuestions))))
 	mux.Handle("GET /admin/survey/results", csrfMiddleware(adminMiddleware(http.HandlerFunc(serveSurveyResults))))
+	mux.Handle("GET /admin/user-view", csrfMiddleware(adminMiddleware(http.HandlerFunc(serveUserView))))
 
 	// Admin user API - apply CSRF
 	mux.Handle("GET /api/admin/users", csrfMiddleware(adminMiddleware(http.HandlerFunc(userHandler.GetAll))))
@@ -630,5 +631,24 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 			log.Print(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+	}
+}
+
+func serveUserView(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil || user.Role != models.RoleAdmin {
+		http.Redirect(w, r, "/signin", http.StatusSeeOther)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "user-view.html", nil); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
