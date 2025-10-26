@@ -50,7 +50,7 @@ func NewMailer(host, port, username, password, from string) (*Mailer, error) {
 
 // Run starts the mail sending loop. Should be called in a goroutine.
 func (m *Mailer) Run(ctx context.Context) {
-	ticker := time.Tick(time.Minute * 10)
+	ticker := time.Tick(time.Second * 10)
 	defer close(m.mailCh)
 	for {
 		select {
@@ -86,8 +86,6 @@ func (m *Mailer) Run(ctx context.Context) {
 			// If there was an error, close connection so it reconnects next time
 			if err != nil {
 				log.Printf("smtp client error: %v", err)
-				m.client.Close()
-				m.client = nil
 			}
 		}
 	}

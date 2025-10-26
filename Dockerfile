@@ -17,6 +17,8 @@ FROM alpine
 
 WORKDIR /app
 
+RUN apk add --no-cache tz
+
 COPY --from=build /app/server /app/seed /app/migrate /app/cleanup .
 
 CMD ["/app/server"]

@@ -141,12 +141,9 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("GET /user/", authMiddleware(http.HandlerFunc(serveUserDashboard(bookingRepo, instructorRepo))))
 
 	// User API
-	mux.Handle("GET /api/user/current", authMiddleware(http.HandlerFunc(userHandler.GetCurrent)))
 	mux.Handle("GET /api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent)))
 	mux.Handle("POST /api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
-	mux.Handle("POST /api/user/bookings/create", authMiddleware(http.HandlerFunc(bookingHandler.Create)))
-	mux.Handle("DELETE /api/user/bookings", authMiddleware(http.HandlerFunc(bookingHandler.Delete)))
-	mux.Handle("POST /api/user/bookings/delete", authMiddleware(http.HandlerFunc(bookingHandler.Delete)))
+	mux.Handle("DELETE /api/user/bookings/{id}", authMiddleware(http.HandlerFunc(bookingHandler.Delete)))
 	mux.Handle("GET /api/user/bookings/slots", authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots)))
 
 	// Admin dashboard

@@ -634,7 +634,7 @@
             
             showLoading('Creazione prenotazione...');
             
-            fetch('/api/user/bookings/create', {
+            fetch('/api/user/bookings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -669,12 +669,8 @@
             
             showLoading('Cancellazione prenotazione...');
             
-            fetch('/api/user/bookings/delete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id, startsAt }),
+            fetch('/api/user/bookings/' + id, {
+                method: 'DELETE',
             })
             .then(response => response.json())
             .then(data => {

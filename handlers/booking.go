@@ -135,16 +135,9 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
 
 	// Read request body
-	var req struct {
-		ID       string `json:"id"`
-		StartsAt string `json:"startsAt"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
-		return
-	}
+	id := r.PathValue("id")
 
-	idInt, err := strconv.ParseInt(req.ID, 10, 64)
+	idInt, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
 		return

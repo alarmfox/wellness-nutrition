@@ -1,5 +1,4 @@
 .env
-server
 *.exe
 *.out
 *.test
