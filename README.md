@@ -87,12 +87,6 @@ The application uses PostgreSQL with **lowercase snake_case table and column nam
 - Go app uses lowercase snake_case (`users`, `bookings`, `first_name`, `starts_at`)
 - Go app removes the `slots` table
 
-**Running Migrations:**
-```bash
-cd app/migrations
-go run .
-```
-
 ### Authentication
 
 - Sessions are stored in a `sessions` table
