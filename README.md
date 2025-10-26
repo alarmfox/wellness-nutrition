@@ -20,7 +20,7 @@ Application has a centralized database:
 - `cmd/server`: main server application
 - `cmd/migrations`: database migrations
 - `cmd/cleanup`: application to be run periodically to delete old bookings and events
-- `cmd/remind`: application to send email day by day to users to remind their bookings. To be run periodically
+- `cmd/reminder`: application to send email day by day to users to remind their bookings. To be run periodically
 - `cmd/seed`: test application to populate database with test data
 
 The application can be run with `docker compose`:
