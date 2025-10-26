@@ -169,6 +169,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("GET /admin/events", csrfMiddleware(adminMiddleware(http.HandlerFunc(serveEvents(userRepo, eventRepo)))))
 	mux.Handle("GET /admin/survey/questions", csrfMiddleware(adminMiddleware(http.HandlerFunc(serveSurveyQuestions))))
 	mux.Handle("GET /admin/survey/results", csrfMiddleware(adminMiddleware(http.HandlerFunc(serveSurveyResults))))
+	mux.Handle("GET /admin/user-view", csrfMiddleware(adminMiddleware(http.HandlerFunc(serveUserView))))
 
 	// Admin user API - apply CSRF
 	mux.Handle("GET /api/admin/users", csrfMiddleware(adminMiddleware(http.HandlerFunc(userHandler.GetAll))))
@@ -630,5 +631,67 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 			log.Print(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+	}
+}
+
+func serveUserView(w http.ResponseWriter, r *http.Request) {
+
+	// Create mock user data for simulation
+	mockUser := &models.User{
+		ID:                "mock-user-id",
+		FirstName:         "Mario",
+		LastName:          "Rossi",
+		Email:             "mario.rossi@example.com",
+		SubType:           models.SubTypeShared,
+		RemainingAccesses: 8,
+		ExpiresAt:         time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		Goals:             sql.NullString{String: "Migliorare forma fisica e benessere generale", Valid: true},
+	}
+
+	// Create mock bookings
+	type BookingDisplay struct {
+		ID                int64
+		StartsAt          string
+		StartsAtFormatted string
+		CreatedAt         string
+		InstructorName    string
+	}
+
+	mockBookings := []BookingDisplay{
+		{
+			ID:                1,
+			StartsAt:          time.Date(2025, 11, 2, 9, 0, 0, 0, time.UTC).Format(time.RFC3339),
+			StartsAtFormatted: "02 Nov 2025, 09:00",
+			CreatedAt:         time.Date(2025, 10, 20, 10, 30, 0, 0, time.UTC).Format(time.RFC3339),
+			InstructorName:    "Luca Bianchi",
+		},
+		{
+			ID:                2,
+			StartsAt:          time.Date(2025, 11, 5, 14, 30, 0, 0, time.UTC).Format(time.RFC3339),
+			StartsAtFormatted: "05 Nov 2025, 14:30",
+			CreatedAt:         time.Date(2025, 10, 21, 15, 0, 0, 0, time.UTC).Format(time.RFC3339),
+			InstructorName:    "Anna Verdi",
+		},
+		{
+			ID:                3,
+			StartsAt:          time.Date(2025, 11, 10, 11, 0, 0, 0, time.UTC).Format(time.RFC3339),
+			StartsAtFormatted: "10 Nov 2025, 11:00",
+			CreatedAt:         time.Date(2025, 10, 22, 9, 15, 0, 0, time.UTC).Format(time.RFC3339),
+			InstructorName:    "Luca Bianchi",
+		},
+	}
+
+	data := map[string]interface{}{
+		"User":              mockUser,
+		"ExpiresAt":         mockUser.ExpiresAt.Format("02 Jan 2006"),
+		"RemainingAccesses": mockUser.RemainingAccesses,
+		"Bookings":          mockBookings,
+		"IsSimulation":      true,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, "index.html", data); err != nil {
+		log.Print(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
