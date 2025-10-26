@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/alarmfox/wellness-nutrition/app/models"
@@ -37,11 +38,6 @@ type CreateInstructorRequest struct {
 }
 
 func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
 	var req CreateInstructorRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
@@ -72,25 +68,26 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateInstructorRequest struct {
-	ID        int64  `json:"id"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
 }
 
 func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
 	var req UpdateInstructorRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
+	id := r.PathValue("id")
+
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
+		return
+	}
 
 	// Get existing instructor
-	instructor, err := h.instructorRepo.GetByID(req.ID)
+	instructor, err := h.instructorRepo.GetByID(idInt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJSON(w, http.StatusNotFound, map[string]string{"error": "Instructor not found"})
@@ -114,23 +111,16 @@ func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, http.StatusOK, instructor)
 }
 
-type DeleteInstructorRequest struct {
-	ID string `json:"id"`
-}
-
 func (h *InstructorHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+	id := r.PathValue("id")
+
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
 		return
 	}
 
-	var req DeleteInstructorRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
-		return
-	}
-
-	if err := h.instructorRepo.Delete(req.ID); err != nil {
+	if err := h.instructorRepo.Delete(idInt); err != nil {
 		log.Printf("Error deleting instructor: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return

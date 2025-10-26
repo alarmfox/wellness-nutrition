@@ -108,7 +108,7 @@ func (r *InstructorRepository) Update(instructor *Instructor) error {
 	return err
 }
 
-func (r *InstructorRepository) Delete(id string) error {
+func (r *InstructorRepository) Delete(id int64) error {
 	query := `DELETE FROM instructors WHERE id = $1`
 	_, err := r.db.Exec(query, id)
 	return err
