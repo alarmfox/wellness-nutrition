@@ -444,7 +444,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	now := time.Now().Add(time.Hour * 3)
+	now := time.Now().Add(time.Hour * 3).UTC()
 	// Calculate end date: 1 month from now or user's plan expiration, whichever is earlier
 	endDate := now.AddDate(0, 1, 0)
 	if user.ExpiresAt.Before(endDate) {
@@ -463,12 +463,12 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Build map of unavailable slots
-	unavailableSlots := make(map[string]bool)
-	slotBookingCount := make(map[string]int)
+	unavailableSlots := make(map[int64]bool)
+	slotBookingCount := make(map[int64]int)
 
 	for _, booking := range bookings {
 		// Both booking times and slots are in UTC, so direct comparison works
-		slotKey := booking.StartsAt.Format(time.RFC3339)
+		slotKey := booking.StartsAt.Unix()
 
 		// Slot is unavailable if:
 		// 1. There's a DISABLE, APPOINTMENT, or MASSAGE booking
@@ -488,7 +488,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	// Filter slots based on availability rules
 	var availableSlots []time.Time
 	for _, slot := range slots {
-		slotKey := slot.Format(time.RFC3339)
+		slotKey := slot.Unix()
 
 		// Skip if explicitly unavailable (DISABLE, APPOINTMENT, MASSAGE)
 		if unavailableSlots[slotKey] {
@@ -508,7 +508,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		}
 
 		// Slot is available
-		availableSlots = append(availableSlots, slot.UTC())
+		availableSlots = append(availableSlots, slot)
 	}
 
 	sendJSON(w, http.StatusOK, map[string]interface{}{
@@ -525,8 +525,8 @@ func generateSlots(start, end time.Time) []time.Time {
 	current := start.Truncate(time.Hour)
 
 	// Ensure we start from at least 7am on the current day
-	if current.Hour() < 7 {
-		current = time.Date(current.Year(), current.Month(), current.Day(), 7, 0, 0, 0, current.Location())
+	if current.Hour() < 6 {
+		current = time.Date(current.Year(), current.Month(), current.Day(), 6, 0, 0, 0, current.Location())
 	}
 
 	for current.Before(end) {
@@ -534,8 +534,8 @@ func generateSlots(start, end time.Time) []time.Time {
 		weekday := current.Weekday()
 		if weekday >= time.Monday && weekday <= time.Saturday {
 			hour := current.Hour()
-			// Only include slots from 7am to 9pm (7-21)
-			if hour >= 7 && hour <= 21 {
+			// Only include slots from 6am to 10pm (6-20)
+			if hour >= 6 && hour <= 20 {
 				slots = append(slots, current)
 			}
 		}
@@ -543,9 +543,9 @@ func generateSlots(start, end time.Time) []time.Time {
 		// Move to next hour
 		current = current.Add(time.Hour)
 
-		// If we've passed 9pm, skip to 7am next day
-		if current.Hour() > 21 || current.Hour() < 7 {
-			current = time.Date(current.Year(), current.Month(), current.Day()+1, 7, 0, 0, 0, current.Location())
+		// If we've passed 8pm, skip to 6am next day
+		if current.Hour() > 20 || current.Hour() < 6 {
+			current = time.Date(current.Year(), current.Month(), current.Day()+1, 6, 0, 0, 0, current.Location())
 		}
 	}
 
