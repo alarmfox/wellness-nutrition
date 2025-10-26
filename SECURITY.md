@@ -82,6 +82,11 @@ fetch('/api/endpoint', {
 });
 ```
 
+**Note**: The CSRF token cookie is NOT HttpOnly so JavaScript can read it for AJAX requests. This is safe because:
+- CSRF tokens don't grant authentication privileges
+- The cookie is protected by SameSite=Strict
+- The token itself is cryptographically signed to prevent tampering
+
 ## Configuration
 
 ### Required Environment Variables
