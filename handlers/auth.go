@@ -36,11 +36,6 @@ type LoginRequest struct {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
 	var req LoginRequest
 
 	// Check Content-Type to determine if it's JSON or form data
@@ -535,11 +530,6 @@ type ResetPasswordRequest struct {
 }
 
 func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
-
 	if err := r.ParseForm(); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return

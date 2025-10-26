@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Istruttori - Wellness & Nutrition</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <link rel="stylesheet" href="/static/css/admin.css" />
+</head>
+<body>
+    <div class="header">
+        <h1>Wellness & Nutrition</h1>
+        <div class="nav">
+            <a href="/admin/calendar">Calendario</a>
+            <a href="/admin/users">Utenti</a>
+            <a href="/admin/instructors" class="active">Istruttori</a>
+            <a href="/admin/events">Eventi</a>
+            <a href="/admin/survey-questions">Sondaggio</a>
+            <a href="/api/auth/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="toolbar">
+            <h2 style="margin: 0; font-size: 18px;">Gestione Istruttori</h2>
+            <button class="btn" onclick="openCreateModal()">
+                <span class="material-icons" style="font-size: 18px;">add</span>
+                Nuovo Istruttore
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Cognome</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="instructors-table-body">
+                    {{range .Instructors}}
+                    <tr data-id="{{.ID}}">
+                        <td>{{.FirstName}}</td>
+                        <td>{{.LastName}}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-icon" onclick="openEditModal('{{.ID}}', '{{.FirstName}}', '{{.LastName}}')" title="Modifica">
+                                    <span class="material-icons">edit</span>
+                                </button>
+                                <button class="btn-icon" onclick="deleteInstructor('{{.ID}}')" title="Elimina">
+                                    <span class="material-icons">delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuovo Istruttore</h2>
+                <span class="close" onclick="closeCreateModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="form-group">
+                        <label for="create-firstName">Nome *</label>
+                        <input type="text" id="create-firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="create-lastName">Cognome</label>
+                        <input type="text" id="create-lastName">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeCreateModal()">Annulla</button>
+                <button class="btn" onclick="createInstructor()">Crea</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Modifica Istruttore</h2>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="edit-id">
+                    <div class="form-group">
+                        <label for="edit-firstName">Nome *</label>
+                        <input type="text" id="edit-firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-lastName">Cognome</label>
+                        <input type="text" id="edit-lastName">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeEditModal()">Annulla</button>
+                <button class="btn" onclick="updateInstructor()">Salva</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        function openCreateModal() {
+            document.getElementById('createModal').style.display = 'block';
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').style.display = 'none';
+            document.getElementById('createForm').reset();
+        }
+
+        function openEditModal(id, firstName, lastName) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-firstName').value = firstName;
+            document.getElementById('edit-lastName').value = lastName || '';
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editForm').reset();
+        }
+
+        function showToast(message, success = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (success ? ' success' : '');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        async function createInstructor() {
+            const firstName = document.getElementById('create-firstName').value;
+            const lastName = document.getElementById('create-lastName').value;
+
+            if (!firstName) {
+                showToast('Il nome è obbligatorio');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/instructors', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        firstName,
+                        lastName,
+                    }),
+                });
+
+                if (response.ok) {
+                    showToast('Istruttore creato con successo', true);
+                    closeCreateModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Errore durante la creazione');
+                }
+            } catch (error) {
+                showToast('Errore di connessione');
+                console.error('Error:', error);
+            }
+        }
+
+        async function updateInstructor() {
+            const id = document.getElementById('edit-id').value;
+            const firstName = document.getElementById('edit-firstName').value;
+            const lastName = document.getElementById('edit-lastName').value;
+
+            if (!firstName) {
+                showToast('Il nome è obbligatorio');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/instructors/' + id, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        firstName,
+                        lastName,
+                    }),
+                });
+
+                if (response.ok) {
+                    showToast('Istruttore aggiornato con successo', true);
+                    closeEditModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Errore durante l\'aggiornamento');
+                }
+            } catch (error) {
+                showToast('Errore di connessione');
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteInstructor(id) {
+            if (!confirm('Sei sicuro di voler eliminare questo istruttore?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/instructors/' + id, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    showToast('Istruttore eliminato con successo', true);
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    showToast(error.error || 'Errore durante l\'eliminazione');
+                }
+            } catch (error) {
+                showToast('Errore di connessione');
+                console.error('Error:', error);
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const createModal = document.getElementById('createModal');
+            const editModal = document.getElementById('editModal');
+            if (event.target == createModal) {
+                closeCreateModal();
+            } else if (event.target == editModal) {
+                closeEditModal();
+            }
+        }
+    </script>
+</body>
+</html>

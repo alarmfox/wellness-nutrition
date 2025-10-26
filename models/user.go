@@ -75,7 +75,6 @@ func (r *UserRepository) GetByEmail(email string) (*User, error) {
 		&user.VerificationTokenExpiresIn,
 		&user.Goals,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +110,6 @@ func (r *UserRepository) GetByID(id string) (*User, error) {
 		&user.VerificationTokenExpiresIn,
 		&user.Goals,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +145,6 @@ func (r *UserRepository) GetByVerificationToken(token string) (*User, error) {
 		&user.VerificationTokenExpiresIn,
 		&user.Goals,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +154,7 @@ func (r *UserRepository) GetByVerificationToken(token string) (*User, error) {
 
 func (r *UserRepository) GetAll() ([]*User, error) {
 	query := `
-		SELECT id, first_name, last_name, address, password, role, med_ok, 
+		SELECT id, first_name, last_name, address, role, med_ok, 
 			   cellphone, sub_type, email, email_verified, expires_at, 
 			   remaining_accesses, verification_token, verification_token_expires_in, goals
 		FROM users
@@ -179,7 +176,6 @@ func (r *UserRepository) GetAll() ([]*User, error) {
 			&user.FirstName,
 			&user.LastName,
 			&user.Address,
-			&user.Password,
 			&user.Role,
 			&user.MedOk,
 			&user.Cellphone,
@@ -299,11 +295,5 @@ func (r *UserRepository) Delete(ids []string) error {
 	}
 
 	_, err := r.db.Exec(query, args...)
-	return err
-}
-
-func (r *UserRepository) IncrementRemainingAccesses(userID string) error {
-	query := `UPDATE users SET remaining_accesses = remaining_accesses + 1 WHERE id = $1`
-	_, err := r.db.Exec(query, userID)
 	return err
 }

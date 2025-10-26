@@ -6,418 +6,8 @@
     <title>Calendario - Wellness & Nutrition</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Roboto', sans-serif;
-            background-color: #f5f5f5;
-        }
-        .header {
-            background: white;
-            padding: 16px 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        h1 {
-            font-size: 20px;
-            margin: 0;
-            font-weight: 500;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-        .nav {
-            display: flex;
-            gap: 20px;
-        }
-        .nav a {
-            color: rgba(0, 0, 0, 0.7);
-            text-decoration: none;
-            padding: 8px 0;
-            border-bottom: 2px solid transparent;
-        }
-        .nav a:hover {
-            color: #1976d2;
-        }
-        .nav a.active {
-            color: #1976d2;
-            border-bottom-color: #1976d2;
-        }
-        .calendar-container {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 20px;
-        }
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .calendar-nav {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .btn {
-            padding: 8px 16px;
-            background-color: #1976d2;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .btn:hover {
-            background-color: #1565c0;
-        }
-        .btn-secondary {
-            background-color: #757575;
-        }
-        .btn-secondary:hover {
-            background-color: #616161;
-        }
-        .calendar {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .calendar th {
-            background-color: #f5f5f5;
-            padding: 12px;
-            text-align: center;
-            font-weight: 500;
-            border: 1px solid #e0e0e0;
-        }
-        .calendar td {
-            border: 1px solid #e0e0e0;
-            padding: 8px;
-            vertical-align: top;
-            height: 100px;
-            width: 14.28%;
-        }
-        .day-number {
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 5px;
-            color: rgba(0, 0, 0, 0.87);
-        }
-        .today {
-            background-color: #e3f2fd;
-        }
-        .other-month {
-            background-color: #fafafa;
-            color: rgba(0, 0, 0, 0.38);
-        }
-        .booking {
-            background-color: #1976d2;
-            color: white;
-            padding: 4px 6px;
-            margin: 2px 0;
-            border-radius: 3px;
-            font-size: 11px;
-            cursor: pointer;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .booking:hover {
-            background-color: #1565c0;
-        }
-        .booking.shared {
-            background-color: #7b1fa2;
-        }
-        .booking.shared:hover {
-            background-color: #6a1b9a;
-        }
-        .legend {
-            display: flex;
-            gap: 20px;
-            margin-top: 20px;
-            font-size: 12px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .legend-box {
-            width: 20px;
-            height: 12px;
-            border-radius: 3px;
-        }
-        .legend-box.single {
-            background-color: #1976d2;
-        }
-        .legend-box.shared {
-            background-color: #7b1fa2;
-        }
-        .legend-box.massage {
-            background-color: #ff9800;
-        }
-        .legend-box.appointment {
-            background-color: #4caf50;
-        }
-        .week-view {
-            display: grid;
-            grid-template-columns: 80px repeat(6, 1fr);
-            gap: 1px;
-            background-color: #e0e0e0;
-        }
-        .time-slot {
-            background: white;
-            padding: 8px;
-            min-height: 60px;
-        }
-        .time-label {
-            background: #f5f5f5;
-            padding: 8px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        .day-header {
-            background: #f5f5f5;
-            padding: 12px;
-            text-align: center;
-            font-weight: 500;
-        }
-        .time-slot {
-            cursor: pointer;
-            position: relative;
-        }
-        .time-slot:hover:not(.disabled) {
-            background-color: #f5f5f5;
-        }
-        .time-slot.disabled {
-            background-color: #e0e0e0;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        .time-slot.massage {
-            background-color: #fff3e0;
-            cursor: pointer;
-            border: 2px solid #ff9800;
-        }
-        .time-slot.massage:hover {
-            background-color: #ffe0b2;
-        }
-        .time-slot.appointment {
-            background-color: #e8f5e9;
-            cursor: pointer;
-            border: 2px solid #4caf50;
-        }
-        .time-slot.appointment:hover {
-            background-color: #c8e6c9;
-        }
-        .disabled-text {
-            color: #999;
-            font-size: 11px;
-            text-align: center;
-            padding: 5px;
-            font-style: italic;
-        }
-        .reserved-text {
-            color: #f57c00;
-            font-size: 11px;
-            text-align: center;
-            padding: 5px;
-            font-weight: 500;
-            font-style: italic;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 9999;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            overflow-y: auto;
-        }
-        .modal-content {
-            background-color: white;
-            margin: 100px auto;
-            padding: 0;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .modal-header h2 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 500;
-        }
-        .close {
-            font-size: 28px;
-            font-weight: bold;
-            color: #999;
-            cursor: pointer;
-            background: none;
-            border: none;
-            padding: 0;
-        }
-        .close:hover {
-            color: #333;
-        }
-        .modal-body {
-            padding: 20px;
-        }
-        .modal-footer {
-            padding: 16px 20px;
-            border-top: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .action-card {
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .action-card:hover {
-            border-color: #1976d2;
-            background-color: #f5f9ff;
-        }
-        .action-card h3 {
-            margin: 0 0 8px 0;
-            font-size: 16px;
-            font-weight: 500;
-            color: #1976d2;
-        }
-        .action-card p {
-            margin: 0;
-            font-size: 14px;
-            color: #666;
-        }
-        .form-group {
-            margin-bottom: 16px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            font-family: 'Roboto', sans-serif;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        .btn-outline {
-            background-color: white;
-            color: #1976d2;
-            border: 1px solid #1976d2;
-        }
-        .btn-outline:hover {
-            background-color: #f5f5f5;
-        }
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #d32f2f;
-            color: white;
-            padding: 16px 24px;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 2000;
-            display: none;
-            animation: slideIn 0.3s ease-out;
-        }
-        .toast.success {
-            background-color: #388e3c;
-        }
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        @keyframes slideInLeft {
-            from {
-                transform: translateX(-400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        @keyframes slideOutLeft {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(-400px);
-                opacity: 0;
-            }
-        }
-        
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-        .loading-overlay.show {
-            display: flex;
-        }
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .loading-text {
-            color: white;
-            margin-top: 16px;
-            font-size: 16px;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/admin.css" />
+    <link rel="stylesheet" href="/static/css/calendar.css" />
 </head>
 <body>
     <div id="loading-overlay" class="loading-overlay">
@@ -426,43 +16,43 @@
             <div class="loading-text" id="loading-text">Caricamento...</div>
         </div>
     </div>
-    
+
     <div class="header">
         <h1>Wellness & Nutrition - Admin</h1>
         <div class="nav">
             <a href="/admin/calendar" class="active">Calendario</a>
             <a href="/admin/users">Utenti</a>
+            <a href="/admin/instructors">Istruttori</a>
             <a href="/admin/events">Eventi</a>
             <a href="/admin/survey/results">Sondaggio</a>
             <a href="/api/auth/logout">Esci</a>
         </div>
     </div>
-    
     <div class="container">
         <div class="calendar-container">
             <div class="calendar-header">
                 <h2 id="currentMonth" style="margin: 0; font-size: 24px; font-weight: 400;"></h2>
-                <div class="calendar-nav">
-                    <button class="btn btn-secondary" onclick="changeView('week')">
-                        <span class="material-icons" style="font-size: 18px;">view_week</span>
-                        Settimana
-                    </button>
-                    <button class="btn btn-secondary" onclick="changeView('month')" style="display: none;">
-                        <span class="material-icons" style="font-size: 18px;">calendar_month</span>
-                        Mese
-                    </button>
-                    <button class="btn" onclick="previousPeriod()">
-                        <span class="material-icons" style="font-size: 18px;">chevron_left</span>
-                    </button>
-                    <button class="btn" onclick="today()">Oggi</button>
-                    <button class="btn" onclick="nextPeriod()">
-                        <span class="material-icons" style="font-size: 18px;">chevron_right</span>
-                    </button>
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="instructorFilter" style="font-size: 14px; font-weight: 500;">Istruttore:</label>
+                        <select id="instructorFilter" onchange="onInstructorFilterChange()" style="padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-family: 'Roboto', sans-serif;">
+                            <option value="">Tutti</option>
+                        </select>
+                    </div>
+                    <div class="calendar-nav">
+                        <button class="btn" onclick="previousPeriod()">
+                            <span class="material-icons" style="font-size: 18px;">chevron_left</span>
+                        </button>
+                        <button class="btn" onclick="today()">Oggi</button>
+                        <button class="btn" onclick="nextPeriod()">
+                            <span class="material-icons" style="font-size: 18px;">chevron_right</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-            
+
             <div id="calendarView"></div>
-            
+
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-box single"></div>
@@ -483,10 +73,9 @@
             </div>
         </div>
     </div>
-    
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
-    
+
     <!-- Delete Booking Modal -->
     <div id="deleteBookingModal" class="modal">
         <div class="modal-content">
@@ -497,6 +86,8 @@
             <div class="modal-body">
                 <p>Vuoi eliminare la prenotazione di <strong id="deleteBookingUserName"></strong>?</p>
                 <p id="deleteBookingSlotInfo" style="color: #666; margin-top: 10px;"></p>
+                <input type="checkbox" name="refund" id="refund-checkbox" value="true" onchange="toggleRefund(this)">
+                <label for="refund-checkbox">Rimborsa accesso</label>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeDeleteBookingModal()">Annulla</button>
@@ -504,7 +95,6 @@
             </div>
         </div>
     </div>
-    
     <!-- Unreserve Slot Modal -->
     <div id="unreserveSlotModal" class="modal">
         <div class="modal-content">
@@ -522,7 +112,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Enable Slot Modal -->
     <div id="enableSlotModal" class="modal">
         <div class="modal-content">
@@ -540,7 +130,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Slot Action Modal -->
     <div id="slotModal" class="modal">
         <div class="modal-content">
@@ -570,25 +160,53 @@
                         <h3>➕ Crea Prenotazione</h3>
                         <p>Crea una prenotazione per un utente specifico</p>
                     </div>
+                    <div id="actionEnableSlot" class="action-card" style="display: none;" onclick="showEnableSlot()">
+                        <h3>✅ Abilita Slot</h3>
+                        <p>Rendi disponibile lo slot per un istruttore specifico</p>
+                    </div>
                 </div>
-                
+
                 <div id="unavailableForm" style="display: none;">
                     <p id="slotInfo" style="margin-bottom: 16px; color: #666;"></p>
-                    <p>Sei sicuro di voler segnare questo slot come non disponibile?</p>
+                    <div class="form-group">
+                        <label>Seleziona Istruttore *</label>
+                        <select id="unavailableInstructorId" required>
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
+                    <p style="margin-top: 12px;">Sei sicuro di voler segnare questo slot come non disponibile?</p>
                 </div>
-                
+
                 <div id="reserveMassageForm" style="display: none;">
                     <p id="slotInfoReserveMassage" style="margin-bottom: 16px; color: #666;"></p>
-                    <p>Sei sicuro di voler riservare questo slot per un massaggio? Gli utenti non potranno prenotarlo.</p>
+                    <div class="form-group">
+                        <label>Seleziona Istruttore *</label>
+                        <select id="massageInstructorId" required>
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
+                    <p style="margin-top: 12px;">Sei sicuro di voler riservare questo slot per un massaggio? Gli utenti non potranno prenotarlo.</p>
                 </div>
-                
+
                 <div id="reserveAppointmentForm" style="display: none;">
                     <p id="slotInfoReserveAppointment" style="margin-bottom: 16px; color: #666;"></p>
-                    <p>Sei sicuro di voler riservare questo slot per un appuntamento? Gli utenti non potranno prenotarlo.</p>
+                    <div class="form-group">
+                        <label>Seleziona Istruttore *</label>
+                        <select id="appointmentInstructorId" required>
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
+                    <p style="margin-top: 12px;">Sei sicuro di voler riservare questo slot per un appuntamento? Gli utenti non potranno prenotarlo.</p>
                 </div>
-                
+
                 <div id="bookingForm" style="display: none;">
                     <p id="slotInfoBooking" style="margin-bottom: 16px; color: #666;"></p>
+                    <div class="form-group">
+                        <label>Seleziona Istruttore *</label>
+                        <select id="bookingInstructorId" required>
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Seleziona Utente *</label>
                         <select id="bookingUserId" required>
@@ -603,894 +221,7 @@
             </div>
         </div>
     </div>
-    
-    <script>
-        let currentDate = new Date();
-        let viewMode = 'week'; // 'month' or 'week' - default to week view
-        let bookings = [];
-        let slots = [];
-        let users = [];
-        let selectedSlot = null;
-        let currentAction = null;
-        let selectedSlotState = null; // Track the state of the selected slot
-        
-        function showLoading(text = 'Caricamento...') {
-            const overlay = document.getElementById('loading-overlay');
-            const loadingText = document.getElementById('loading-text');
-            loadingText.textContent = text;
-            overlay.classList.add('show');
-        }
+    <script src="/static/js/calendar.js"></script>
 
-        function hideLoading() {
-            const overlay = document.getElementById('loading-overlay');
-            overlay.classList.remove('show');
-        }
-        
-        async function loadBookings() {
-            showLoading('Caricamento calendario...');
-            const from = new Date(currentDate);
-            const to = new Date(currentDate);
-            
-            if (viewMode === 'month') {
-                from.setDate(1);
-                from.setHours(0, 0, 0, 0);
-                to.setMonth(to.getMonth() + 1, 0);
-                to.setHours(23, 59, 59, 999);
-            } else {
-                // Week view
-                const day = from.getDay();
-                const diff = from.getDate() - day + (day === 0 ? -6 : 1);
-                from.setDate(diff);
-                from.setHours(0, 0, 0, 0);
-                to.setDate(from.getDate() + 6);
-                to.setHours(23, 59, 59, 999);
-            }
-            
-            try {
-                // Load both bookings and slots
-                const [bookingsResponse, slotsResponse] = await Promise.all([
-                    fetch(`/api/admin/bookings?from=${from.toISOString()}&to=${to.toISOString()}`),
-                    fetch(`/api/admin/slots?from=${from.toISOString()}&to=${to.toISOString()}`)
-                ]);
-                
-                bookings = await bookingsResponse.json();
-                slots = await slotsResponse.json();
-                renderCalendar();
-                hideLoading();
-            } catch (error) {
-                console.error('Error loading data:', error);
-                hideLoading();
-            }
-        }
-        
-        async function loadUsers() {
-            try {
-                const response = await fetch('/api/admin/users');
-                const data = await response.json();
-                users = data || [];
-            } catch (error) {
-                console.error('Error loading users:', error);
-            }
-        }
-        
-        function renderCalendar() {
-            if (viewMode === 'month') {
-                renderMonthView();
-            } else {
-                renderWeekView();
-            }
-        }
-        
-        function renderMonthView() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            
-            document.getElementById('currentMonth').textContent = 
-                new Date(year, month).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-            
-            const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
-            const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-            const daysInMonth = lastDay.getDate();
-            
-            let html = '<table class="calendar"><thead><tr>';
-            const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-            dayNames.forEach(day => html += `<th>${day}</th>`);
-            html += '</tr></thead><tbody><tr>';
-            
-            // Empty cells before first day
-            for (let i = 0; i < startDay; i++) {
-                html += '<td class="other-month"></td>';
-            }
-            
-            // Days of the month
-            const today = new Date();
-            for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month, day);
-                const isToday = date.toDateString() === today.toDateString();
-                const dayBookings = bookings.filter(b => {
-                    const bookingDate = new Date(b.StartsAt);
-                    return bookingDate.getDate() === day && 
-                           bookingDate.getMonth() === month && 
-                           bookingDate.getFullYear() === year;
-                });
-                
-                html += `<td class="${isToday ? 'today' : ''}">`;
-                html += `<div class="day-number">${day}</div>`;
-                
-                dayBookings.forEach(booking => {
-                    const time = new Date(booking.StartsAt).toLocaleTimeString('it-IT', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                    });
-                    const cssClass = booking.User.SubType === 'SHARED' ? 'booking shared' : 'booking';
-                    html += `<div class="${cssClass}" title="${booking.User.FirstName} ${booking.User.LastName} - ${time}" onclick="event.stopPropagation(); handleBookingClick('${booking.ID}', '${booking.User.FirstName}', '${booking.User.LastName}', '${booking.StartsAt}')">
-                        ${time} ${booking.User.LastName.substring(0, 3)}.
-                    </div>`;
-                });
-                
-                html += '</td>';
-                
-                if ((startDay + day) % 7 === 0 && day !== daysInMonth) {
-                    html += '</tr><tr>';
-                }
-            }
-            
-            // Empty cells after last day
-            const endDay = (startDay + daysInMonth) % 7;
-            if (endDay !== 0) {
-                for (let i = endDay; i < 7; i++) {
-                    html += '<td class="other-month"></td>';
-                }
-            }
-            
-            html += '</tr></tbody></table>';
-            document.getElementById('calendarView').innerHTML = html;
-        }
-        
-        function renderWeekView() {
-            const weekStart = new Date(currentDate);
-            const day = weekStart.getDay();
-            const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
-            weekStart.setDate(diff);
-            
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate() + 6);
-            
-            document.getElementById('currentMonth').textContent = 
-                `${weekStart.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-            
-            let html = '<div class="week-view">';
-            html += '<div class="day-header"></div>';
-            
-            // Day headers (Monday to Saturday, skip Sunday)
-            for (let i = 0; i < 6; i++) {
-                const date = new Date(weekStart);
-                date.setDate(weekStart.getDate() + i);
-                const dayName = date.toLocaleDateString('it-IT', { weekday: 'short' });
-                const dayNum = date.getDate();
-                html += `<div class="day-header">${dayName} ${dayNum}</div>`;
-            }
-            
-            // Time slots from 7:00 to 21:00 (9 PM)
-            for (let hour = 7; hour <= 21; hour++) {
-                html += `<div class="time-label">${hour}:00</div>`;
-                
-                for (let i = 0; i < 6; i++) {
-                    const date = new Date(weekStart);
-                    date.setDate(weekStart.getDate() + i);
-                    date.setHours(hour, 0, 0, 0);
-                    
-                    const slotBookings = bookings.filter(b => {
-                        const bookingDate = new Date(b.StartsAt);
-                        return bookingDate.getTime() === date.getTime();
-                    });
-                    
-                    // Check slot state
-                    const slot = slots.find(s => {
-                        const slotDate = new Date(s.StartsAt);
-                        return slotDate.getTime() === date.getTime();
-                    });
-                    const slotState = slot ? slot.State : 'FREE';
-                    const isDisabled = slotState === 'UNAVAILABLE';
-                    const isMassage = slotState === 'MASSAGE';
-                    const isAppointment = slotState === 'APPOINTMENT';
-                    
-                    let slotClass = 'time-slot';
-                    if (isDisabled) slotClass += ' disabled';
-                    if (isMassage) slotClass += ' massage';
-                    if (isAppointment) slotClass += ' appointment';
-                    
-                    html += `<div class="${slotClass}" onclick="handleSlotClick('${date.toISOString()}', '${slotState}')">`;
-                    if (isDisabled) {
-                        html += '<div class="disabled-text">Non disponibile</div>';
-                    } else if (isMassage && slotBookings.length === 0) {
-                        html += '<div class="reserved-text">Massaggio</div>';
-                    } else if (isAppointment && slotBookings.length === 0) {
-                        html += '<div class="reserved-text">Appuntamento</div>';
-                    }
-                    slotBookings.forEach(booking => {
-                        const cssClass = booking.User.SubType === 'SHARED' ? 'booking shared' : 'booking';
-                        html += `<div class="${cssClass}" title="${booking.User.FirstName} ${booking.User.LastName}" onclick="event.stopPropagation(); handleBookingClick('${booking.ID}', '${booking.User.FirstName}', '${booking.User.LastName}', '${date.toISOString()}')">
-                            ${booking.User.LastName} ${booking.User.FirstName.substring(0, 1)}.
-                        </div>`;
-                    });
-                    html += '</div>';
-                }
-            }
-            
-            html += '</div>';
-            document.getElementById('calendarView').innerHTML = html;
-        }
-        
-        function changeView(mode) {
-            viewMode = mode;
-            loadBookings();
-        }
-        
-        function previousPeriod() {
-            if (viewMode === 'month') {
-                currentDate.setMonth(currentDate.getMonth() - 1);
-            } else {
-                currentDate.setDate(currentDate.getDate() - 7);
-            }
-            loadBookings();
-        }
-        
-        function nextPeriod() {
-            if (viewMode === 'month') {
-                currentDate.setMonth(currentDate.getMonth() + 1);
-            } else {
-                currentDate.setDate(currentDate.getDate() + 7);
-            }
-            loadBookings();
-        }
-        
-        function today() {
-            currentDate = new Date();
-            loadBookings();
-        }
-        
-        // Slot action functions
-        function handleSlotClick(slotTime, slotState) {
-            if (slotState === 'UNAVAILABLE') {
-                // Open enable slot modal
-                selectedSlot = slotTime;
-                selectedSlotState = slotState;
-                openEnableSlotModal();
-                return;
-            }
-            
-            // For all other states (FREE, MASSAGE, APPOINTMENT), show the full slot management modal
-            // This allows admin to create bookings even on MASSAGE/APPOINTMENT slots
-            selectedSlot = slotTime;
-            selectedSlotState = slotState;
-            openSlotModal();
-        }
-        
-        let selectedBookingId = null;
-        
-        function handleBookingClick(bookingId, firstName, lastName, slotTime) {
-            selectedBookingId = bookingId;
-            selectedSlot = slotTime;
-            document.getElementById('deleteBookingUserName').textContent = `${firstName} ${lastName}`;
-            const date = new Date(slotTime);
-            document.getElementById('deleteBookingSlotInfo').textContent = 
-                date.toLocaleString('it-IT', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            openDeleteBookingModal();
-        }
-        
-        function openSlotModal() {
-            document.getElementById('slotModal').style.display = 'block';
-            document.getElementById('actionSelection').style.display = 'block';
-            document.getElementById('unavailableForm').style.display = 'none';
-            document.getElementById('reserveMassageForm').style.display = 'none';
-            document.getElementById('reserveAppointmentForm').style.display = 'none';
-            document.getElementById('bookingForm').style.display = 'none';
-            document.getElementById('confirmBtn').style.display = 'none';
-            document.getElementById('modalTitle').textContent = 'Gestione Slot';
-            currentAction = null;
-            
-            // Show/hide actions based on current slot state
-            if (selectedSlotState === 'MASSAGE' || selectedSlotState === 'APPOINTMENT') {
-                // For reserved slots, show unreserve and create booking options
-                document.getElementById('actionUnreserve').style.display = 'block';
-                document.getElementById('actionUnavailable').style.display = 'none';
-                document.getElementById('actionMassage').style.display = 'none';
-                document.getElementById('actionAppointment').style.display = 'none';
-                document.getElementById('actionCreateBooking').style.display = 'block';
-            } else {
-                // For FREE slots, show all reservation options
-                document.getElementById('actionUnreserve').style.display = 'none';
-                document.getElementById('actionUnavailable').style.display = 'block';
-                document.getElementById('actionMassage').style.display = 'block';
-                document.getElementById('actionAppointment').style.display = 'block';
-                document.getElementById('actionCreateBooking').style.display = 'block';
-            }
-        }
-        
-        function closeSlotModal() {
-            document.getElementById('slotModal').style.display = 'none';
-            // Clean up any dynamic content
-            const confirmDiv = document.getElementById('unreserveConfirm');
-            if (confirmDiv) confirmDiv.remove();
-            selectedSlot = null;
-            selectedSlotState = null;
-            currentAction = null;
-        }
-        
-        function openDeleteBookingModal() {
-            document.getElementById('deleteBookingModal').style.display = 'block';
-        }
-        
-        function closeDeleteBookingModal() {
-            document.getElementById('deleteBookingModal').style.display = 'none';
-            selectedBookingId = null;
-            selectedSlot = null;
-        }
-        
-        async function confirmDeleteBooking() {
-            if (!selectedBookingId) {
-                showToast('Errore: prenotazione non selezionata', false);
-                return;
-            }
-            
-            showLoading('Eliminazione prenotazione...');
-            try {
-                const response = await fetch('/api/user/bookings/delete', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        id: selectedBookingId
-                    })
-                });
-                
-                const data = await response.json();
-                hideLoading();
-                
-                if (data.error) {
-                    showToast(data.error, false);
-                } else {
-                    showToast('Prenotazione eliminata con successo', true);
-                    closeDeleteBookingModal();
-                    loadBookings(); // Reload calendar
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Errore durante l\'eliminazione', false);
-                console.error(error);
-            }
-        }
-        
-        function openEnableSlotModal() {
-            const date = new Date(selectedSlot);
-            document.getElementById('enableSlotInfo').textContent = 
-                date.toLocaleString('it-IT', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            document.getElementById('enableSlotModal').style.display = 'block';
-        }
-        
-        function closeEnableSlotModal() {
-            document.getElementById('enableSlotModal').style.display = 'none';
-            selectedSlot = null;
-        }
-        
-        async function confirmEnableSlot() {
-            if (!selectedSlot) {
-                showToast('Errore: slot non selezionato', false);
-                return;
-            }
-            
-            showLoading('Riabilitazione slot...');
-            try {
-                const response = await fetch('/api/admin/slots/enable', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        startsAt: selectedSlot
-                    })
-                });
-                
-                const data = await response.json();
-                hideLoading();
-                
-                if (data.error) {
-                    showToast(data.error, false);
-                } else {
-                    showToast('Slot riabilitato con successo', true);
-                    closeEnableSlotModal();
-                    loadBookings(); // Reload calendar
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Errore durante la riabilitazione', false);
-                console.error(error);
-            }
-        }
-        
-        function showMarkUnavailable() {
-            currentAction = 'unavailable';
-            document.getElementById('actionSelection').style.display = 'none';
-            document.getElementById('unavailableForm').style.display = 'block';
-            document.getElementById('reserveMassageForm').style.display = 'none';
-            document.getElementById('reserveAppointmentForm').style.display = 'none';
-            document.getElementById('bookingForm').style.display = 'none';
-            document.getElementById('confirmBtn').style.display = 'block';
-            document.getElementById('modalTitle').textContent = 'Segna Slot Non Disponibile';
-            
-            const slotDate = new Date(selectedSlot);
-            const formatted = slotDate.toLocaleString('it-IT', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('slotInfo').textContent = `Slot: ${formatted}`;
-        }
-        
-        function showReserveMassage() {
-            currentAction = 'reserve-massage';
-            document.getElementById('actionSelection').style.display = 'none';
-            document.getElementById('unavailableForm').style.display = 'none';
-            document.getElementById('reserveMassageForm').style.display = 'block';
-            document.getElementById('reserveAppointmentForm').style.display = 'none';
-            document.getElementById('bookingForm').style.display = 'none';
-            document.getElementById('confirmBtn').style.display = 'block';
-            document.getElementById('modalTitle').textContent = 'Riserva per Massaggio';
-            
-            const slotDate = new Date(selectedSlot);
-            const formatted = slotDate.toLocaleString('it-IT', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('slotInfoReserveMassage').textContent = `Slot: ${formatted}`;
-        }
-        
-        function showReserveAppointment() {
-            currentAction = 'reserve-appointment';
-            document.getElementById('actionSelection').style.display = 'none';
-            document.getElementById('unavailableForm').style.display = 'none';
-            document.getElementById('reserveMassageForm').style.display = 'none';
-            document.getElementById('reserveAppointmentForm').style.display = 'block';
-            document.getElementById('bookingForm').style.display = 'none';
-            document.getElementById('confirmBtn').style.display = 'block';
-            document.getElementById('modalTitle').textContent = 'Riserva per Appuntamento';
-            
-            const slotDate = new Date(selectedSlot);
-            const formatted = slotDate.toLocaleString('it-IT', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('slotInfoReserveAppointment').textContent = `Slot: ${formatted}`;
-        }
-        
-        function showUnreserveSlot() {
-            currentAction = 'unreserve';
-            document.getElementById('actionSelection').style.display = 'none';
-            document.getElementById('unavailableForm').style.display = 'none';
-            document.getElementById('reserveMassageForm').style.display = 'none';
-            document.getElementById('reserveAppointmentForm').style.display = 'none';
-            document.getElementById('bookingForm').style.display = 'none';
-            document.getElementById('confirmBtn').style.display = 'block';
-            document.getElementById('modalTitle').textContent = 'Rilascia Slot';
-            
-            // Show confirmation message based on current state
-            const stateLabel = selectedSlotState === 'MASSAGE' ? 'massaggio' : 'appuntamento';
-            const confirmDiv = document.createElement('div');
-            confirmDiv.id = 'unreserveConfirm';
-            confirmDiv.innerHTML = `
-                <p style="margin-bottom: 16px; color: #666;">Slot riservato per: ${stateLabel}</p>
-                <p>Sei sicuro di voler rendere questo slot nuovamente disponibile per le prenotazioni?</p>
-            `;
-            
-            // Remove any existing unreserve confirm div
-            const existing = document.getElementById('unreserveConfirm');
-            if (existing) {
-                existing.remove();
-            }
-            
-            // Insert into modal body
-            const modalBody = document.querySelector('#slotModal .modal-body');
-            modalBody.appendChild(confirmDiv);
-        }
-        
-        async function showCreateBooking() {
-            currentAction = 'booking';
-            document.getElementById('actionSelection').style.display = 'none';
-            document.getElementById('unavailableForm').style.display = 'none';
-            document.getElementById('reserveMassageForm').style.display = 'none';
-            document.getElementById('reserveAppointmentForm').style.display = 'none';
-            document.getElementById('bookingForm').style.display = 'block';
-            document.getElementById('confirmBtn').style.display = 'block';
-            document.getElementById('modalTitle').textContent = 'Crea Prenotazione';
-            
-            const slotDate = new Date(selectedSlot);
-            const formatted = slotDate.toLocaleString('it-IT', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('slotInfoBooking').textContent = `Slot: ${formatted}`;
-            
-            // Load users if not already loaded
-            if (users.length === 0) {
-                await loadUsers();
-            }
-            
-            // Populate user dropdown - only users with remaining accesses > 0
-            const select = document.getElementById('bookingUserId');
-            select.innerHTML = '<option value="">Seleziona un utente...</option>';
-            users.forEach(user => {
-                if (user.RemainingAccesses > 0) {
-                    const option = document.createElement('option');
-                    option.value = user.ID;
-                    option.textContent = `${user.FirstName} ${user.LastName} (${user.Email})`;
-                    select.appendChild(option);
-                }
-            });
-        }
-        
-        async function confirmAction() {
-            if (currentAction === 'unavailable') {
-                await markSlotUnavailable();
-            } else if (currentAction === 'reserve-massage') {
-                await reserveSlot('MASSAGE');
-            } else if (currentAction === 'reserve-appointment') {
-                await reserveSlot('APPOINTMENT');
-            } else if (currentAction === 'unreserve') {
-                await confirmUnreserveSlotFromModal();
-            } else if (currentAction === 'booking') {
-                await createAdminBooking();
-            }
-        }
-        
-        async function markSlotUnavailable() {
-            showLoading('Disabilitazione slot...');
-            try {
-                const response = await fetch('/api/admin/slots/disable', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        startsAt: selectedSlot
-                    })
-                });
-                
-                const data = await response.json();
-                hideLoading();
-                
-                if (data.error) {
-                    showToast(data.error, false);
-                } else if (data.hasBookings) {
-                    // Ask for confirmation
-                    const confirmed = confirm(`Questo slot ha ${data.bookingCount} prenotazioni. Eliminarle tutte?`);
-                    if (confirmed) {
-                        await markSlotUnavailableConfirm();
-                    } else {
-                        closeSlotModal();
-                    }
-                } else {
-                    showToast('Slot segnato come non disponibile', true);
-                    closeSlotModal();
-                    loadBookings(); // Reload calendar
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Errore durante l\'operazione', false);
-                console.error(error);
-            }
-        }
-        
-        async function markSlotUnavailableConfirm() {
-            showLoading('Eliminazione prenotazioni...');
-            try {
-                const response = await fetch('/api/admin/slots/disable-confirm', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        startsAt: selectedSlot,
-                        confirmed: true
-                    })
-                });
-                
-                const data = await response.json();
-                hideLoading();
-                
-                if (data.error) {
-                    showToast(data.error, false);
-                } else {
-                    showToast(`Slot disabilitato. ${data.deletedCount} prenotazioni eliminate`, true);
-                    closeSlotModal();
-                    loadBookings(); // Reload calendar
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Errore durante l\'operazione', false);
-                console.error(error);
-            }
-        }
-        
-        async function reserveSlot(reservationType) {
-            showLoading('Prenotazione slot...');
-            try {
-                const response = await fetch('/api/admin/slots/reserve', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        startsAt: selectedSlot,
-                        reservationType: reservationType
-                    })
-                });
-                
-                const data = await response.json();
-                hideLoading();
-                
-                if (data.error) {
-                    showToast(data.error, false);
-                } else if (data.hasBookings) {
-                    // Slot has bookings
-                    showToast(`Questo slot ha ${data.bookingCount} prenotazioni. Eliminale prima.`, false);
-                    closeSlotModal();
-                } else {
-                    showToast('Slot riservato con successo', true);
-                    closeSlotModal();
-                    loadBookings(); // Reload calendar
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Errore durante l\'operazione', false);
-                console.error(error);
-            }
-        }
-        
-        function openUnreserveSlotModal() {
-            const date = new Date(selectedSlot);
-            document.getElementById('unreserveSlotInfo').textContent = 
-                date.toLocaleString('it-IT', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            document.getElementById('unreserveSlotModal').style.display = 'block';
-        }
-        
-        function closeUnreserveSlotModal() {
-            document.getElementById('unreserveSlotModal').style.display = 'none';
-            selectedSlot = null;
-        }
-        
-        async function confirmUnreserveSlot() {
-            if (!selectedSlot) {
-                showToast('Errore: slot non selezionato', false);
-                return;
-            }
-            
-            showLoading('Rilascio slot...');
-            try {
-                const response = await fetch('/api/admin/slots/unreserve', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        startsAt: selectedSlot
-                    })
-                });
-                
-                const data = await response.json();
-                hideLoading();
-                
-                if (data.error) {
-                    showToast(data.error, false);
-                } else {
-                    showToast('Slot rilasciato con successo', true);
-                    closeUnreserveSlotModal();
-                    loadBookings(); // Reload calendar
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Errore durante l\'operazione', false);
-                console.error(error);
-            }
-        }
-        
-        async function confirmUnreserveSlotFromModal() {
-            if (!selectedSlot) {
-                showToast('Errore: slot non selezionato', false);
-                return;
-            }
-            
-            showLoading('Rilascio slot...');
-            try {
-                const response = await fetch('/api/admin/slots/unreserve', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        startsAt: selectedSlot
-                    })
-                });
-                
-                const data = await response.json();
-                hideLoading();
-                
-                if (data.error) {
-                    showToast(data.error, false);
-                } else {
-                    showToast('Slot rilasciato con successo', true);
-                    // Remove the unreserve confirm div
-                    const confirmDiv = document.getElementById('unreserveConfirm');
-                    if (confirmDiv) confirmDiv.remove();
-                    closeSlotModal();
-                    loadBookings(); // Reload calendar
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Errore durante l\'operazione', false);
-                console.error(error);
-            }
-        }
-        
-        async function createAdminBooking() {
-            const userId = document.getElementById('bookingUserId').value;
-            
-            if (!userId) {
-                showToast('Seleziona un utente', false);
-                return;
-            }
-            
-            showLoading('Creazione prenotazione...');
-            try {
-                const response = await fetch('/api/admin/bookings/create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        userId: userId,
-                        startsAt: selectedSlot
-                    })
-                });
-                
-                const data = await response.json();
-                hideLoading();
-                
-                if (data.error) {
-                    showToast(data.error, false);
-                } else {
-                    showToast('Prenotazione creata con successo', true);
-                    closeSlotModal();
-                    loadBookings(); // Reload calendar
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Errore durante la creazione della prenotazione', false);
-                console.error(error);
-            }
-        }
-        
-        function showToast(message, isSuccess) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast' + (isSuccess ? ' success' : '');
-            toast.style.display = 'block';
-            
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 4000);
-        }
-        
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const slotModal = document.getElementById('slotModal');
-            if (event.target === slotModal) {
-                closeSlotModal();
-            }
-        }
-        
-        // WebSocket connection for real-time notifications
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-        
-        ws.onopen = () => {
-            console.log('WebSocket connected');
-            showNotificationToast('Connesso al server', 'success');
-        };
-        
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                showNotificationToast(data.message, data.type === 'booking_created' ? 'success' : 'error');
-                // Refresh calendar to show new booking
-                loadBookings();
-            } catch (e) {
-                console.error('Error parsing WebSocket message:', e);
-            }
-        };
-        
-        ws.onclose = () => {
-            console.log('WebSocket disconnected');
-            showNotificationToast('Disconnesso dal server', 'error');
-        };
-        
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
-        
-        function showNotificationToast(message, type) {
-            const panel = document.getElementById('notificationPanel');
-            if (!panel) {
-                // Create notification panel if it doesn't exist
-                const newPanel = document.createElement('div');
-                newPanel.id = 'notificationPanel';
-                newPanel.style.cssText = 'position: fixed; bottom: 20px; left: 20px; z-index: 10000; max-width: 350px;';
-                document.body.appendChild(newPanel);
-            }
-            
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.style.cssText = `
-                background: white;
-                border-left: 4px solid ${type === 'success' ? '#4caf50' : '#f44336'};
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                padding: 12px;
-                margin-bottom: 10px;
-                border-radius: 4px;
-                animation: slideInLeft 0.3s;
-            `;
-            notification.textContent = message;
-            
-            const panel2 = document.getElementById('notificationPanel');
-            panel2.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideOutLeft 0.3s';
-                setTimeout(() => notification.remove(), 300);
-            }, 5000);
-        }
-        
-        // Initial load
-        loadBookings();
-        loadUsers();
-    </script>
 </body>
 </html>
