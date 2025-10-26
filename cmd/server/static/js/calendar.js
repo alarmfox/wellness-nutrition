@@ -23,7 +23,8 @@ const CalendarState = {
     modal: {
         slotTime: null,
         slotData: null,
-        bookingId: null
+        bookingId: null,
+        refund: false
     },
 
     resetModal() {
@@ -141,11 +142,11 @@ const API = {
         return response.json();
     },
  
-    async deleteBooking(bookingId) {
-        const response = await fetch(`/api/admin/bookings/${bookingId}`, {
+    async deleteBooking(bookingId, refund = false) {
+        const response = await fetch(`/api/admin/bookings/${bookingId}?refund=${encodeURIComponent(refund)}`, {
             method: 'DELETE',
         });
-        return response.json();
+        return response.status == 204;
     }
 };
 
@@ -633,7 +634,7 @@ const SlotOverview = {
         massage.forEach(is => {
             html += `
                 <div class="action-card" onclick="SlotActions.quickUnreserve(${is.InstructorID}, '${is.InstructorName}', '${BookingType.MASSAGE}')">
-                    <h3>🔓 Rilascia Massaggio - ${is.InstructorName}</h3>
+                    <h3>🔓 Elimina Massaggio - ${is.InstructorName}</h3>
                     <p>Rimuovi la prenotazione per massaggio</p>
                 </div>
             `;
@@ -642,7 +643,7 @@ const SlotOverview = {
         appointment.forEach(is => {
             html += `
                 <div class="action-card" onclick="SlotActions.quickUnreserve(${is.InstructorID}, '${is.InstructorName}', '${BookingType.APPOINTMENT}')">
-                    <h3>🔓 Rilascia Appuntamento - ${is.InstructorName}</h3>
+                    <h3>🔓 Elimina Appuntamento - ${is.InstructorName}</h3>
                     <p>Rimuovi la prenotazione per appuntamento</p>
                 </div>
             `;
@@ -735,9 +736,9 @@ const SlotActions = {
     },
 
     async quickUnreserve(instructorId, instructorName, bookingType) {
-        if (!confirm(`Confermi di voler rilasciare la prenotazione per ${instructorName}?`)) return;
+        if (!confirm(`Confermi di voler eliminare la prenotazione per ${instructorName}?`)) return;
 
-        UI.showLoading(`Rilascio per ${instructorName}...`);
+        UI.showLoading(`Eliminazione in corso per ${instructorName}...`);
         
         try {
             const booking = this.findBookingToDelete(instructorId, bookingType);
@@ -754,13 +755,13 @@ const SlotActions = {
             if (data.error) {
                 UI.showToast(data.error, false);
             } else {
-                UI.showToast(`Prenotazione rilasciata per ${instructorName}`, true);
+                UI.showToast(`Prenotazione eliminata per ${instructorName}`, true);
                 Modal.hide();
                 Calendar.load();
             }
         } catch (error) {
             UI.hideLoading();
-            UI.showToast('Errore durante il rilascio', false);
+            UI.showToast('Errore durante l\'eliminazione', false);
             console.error(error);
         }
     }
@@ -962,7 +963,7 @@ const BookingActions = {
 
         UI.showLoading('Eliminazione prenotazione...');
         try {
-            const data = await API.deleteBooking(CalendarState.modal.bookingId);
+            const data = await API.deleteBooking(CalendarState.modal.bookingId, CalendarState.modal.refund == "true");
             UI.hideLoading();
 
             if (data.error) {
@@ -1056,6 +1057,11 @@ function nextPeriod() {
 
 function today() {
     Calendar.today();
+}
+
+function toggleRefund(elem) {
+    console.log(elem)
+   CalendarState.modal.refund = elem.checked; 
 }
 
 window.onclick = function(event) {

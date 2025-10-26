@@ -228,10 +228,11 @@ func (h *BookingHandler) DeleteAdmin(w http.ResponseWriter, r *http.Request) {
 		refund = "false"
 	}
 
-	refundBool, err := strconv.ParseBool(r.URL.Query().Get("refund"))
+	refundBool, err := strconv.ParseBool(refund)
 	if err != nil {
 		log.Printf("Error deleting booking: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
 	}
 
 	booking, err := h.bookingRepo.GetByID(idInt)

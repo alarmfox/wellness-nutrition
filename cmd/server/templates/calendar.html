@@ -86,6 +86,8 @@
             <div class="modal-body">
                 <p>Vuoi eliminare la prenotazione di <strong id="deleteBookingUserName"></strong>?</p>
                 <p id="deleteBookingSlotInfo" style="color: #666; margin-top: 10px;"></p>
+                <input type="checkbox" name="refund" id="refund-checkbox" value="true" onchange="toggleRefund(this)">
+                <label for="refund-checkbox">Rimborsa accesso</label>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeDeleteBookingModal()">Annulla</button>
