@@ -133,7 +133,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
-	
+
 	// Read request body
 	var req struct {
 		ID       string `json:"id"`
@@ -450,21 +450,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Get current time from query parameter (for proper timezone handling) or use server time
-	nowStr := r.URL.Query().Get("now")
-	var now time.Time
-	if nowStr != "" {
-		now, err = time.Parse(time.RFC3339, nowStr)
-		if err != nil {
-			now = time.Now().UTC()
-		} else {
-			// Convert to UTC for consistent slot generation and database comparison
-			now = now.UTC()
-		}
-	} else {
-		now = time.Now().UTC()
-	}
-
+	now := time.Now().Add(time.Hour * 3)
 	// Calculate end date: 1 month from now or user's plan expiration, whichever is earlier
 	endDate := now.AddDate(0, 1, 0)
 	if user.ExpiresAt.Before(endDate) {
@@ -528,7 +514,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		}
 
 		// Slot is available
-		availableSlots = append(availableSlots, slot)
+		availableSlots = append(availableSlots, slot.UTC())
 	}
 
 	sendJSON(w, http.StatusOK, map[string]interface{}{
@@ -543,14 +529,6 @@ func generateSlots(start, end time.Time) []time.Time {
 
 	// Start from the current hour or the next hour
 	current := start.Truncate(time.Hour)
-	
-	// If we're exactly on the hour, use it; otherwise go to next hour
-	if current.Equal(start) {
-		// Start is exactly on the hour, use it
-	} else {
-		// Start is not on the hour, move to next hour
-		current = current.Add(time.Hour)
-	}
 
 	// Ensure we start from at least 7am on the current day
 	if current.Hour() < 7 {

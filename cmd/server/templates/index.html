@@ -516,9 +516,7 @@
             showLoading('Caricamento slot disponibili...');
             
             // Fetch available slots for this instructor, sending client's current time for proper DST handling
-            const start = new Date();
-            start.setHours(start.getHours() + 3)
-            fetch(`/api/user/bookings/slots?instructorId=${encodeURIComponent(instructorId)}&now=${encodeURIComponent(start.toISOString())}`)
+            fetch(`/api/user/bookings/slots?instructorId=${encodeURIComponent(instructorId)}`)
                 .then(response => response.json())
                 .then(data => {
                     hideLoading();
