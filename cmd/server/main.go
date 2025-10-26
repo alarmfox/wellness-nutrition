@@ -635,11 +635,6 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 }
 
 func serveUserView(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
 	user := middleware.GetUserFromContext(r.Context())
 	if user == nil || user.Role != models.RoleAdmin {
 		http.Redirect(w, r, "/signin", http.StatusSeeOther)
