@@ -93,8 +93,6 @@ cd app/migrations
 go run .
 ```
 
-See [`migrations/README.md`](migrations/README.md) for complete schema documentation.
-
 ### Authentication
 
 - Sessions are stored in a `sessions` table
