@@ -252,7 +252,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', loadResults);
-        
+
         async function loadResults() {
             try {
                 const response = await fetch('/api/admin/survey/results');
@@ -261,38 +261,38 @@
                 renderResults(questions);
             } catch (error) {
                 console.error('Error loading results:', error);
-                document.getElementById('resultsContainer').innerHTML = 
+                document.getElementById('resultsContainer').innerHTML =
                     '<div class="empty-state"><span class="material-icons">error_outline</span><p>Errore nel caricamento dei risultati</p></div>';
             }
         }
-        
+
         function renderResults(questions) {
             const container = document.getElementById('resultsContainer');
-            
+
             if (!questions || questions.length === 0) {
-                container.innerHTML = 
+                container.innerHTML =
                     '<div class="empty-state"><span class="material-icons">poll</span><p>Nessun risultato disponibile.<br>Le domande del sondaggio non hanno ancora ricevuto risposte.</p></div>';
                 return;
             }
-            
+
             // Sort by index
             questions.sort((a, b) => a.Index - b.Index);
-            
+
             container.innerHTML = questions.map(q => {
                 const total = q.Star1 + q.Star2 + q.Star3 + q.Star4 + q.Star5;
                 const maxValue = Math.max(q.Star1, q.Star2, q.Star3, q.Star4, q.Star5, 1);
-                
+
                 return `
                     <div class="result-item">
                         <div class="question-header">
                             <div class="question-number">${q.Index}</div>
                             <div class="question-text">${q.Question}</div>
                         </div>
-                        
+
                         <div class="total-responses">
                             <strong>${total}</strong> ${total === 1 ? 'risposta ricevuta' : 'risposte ricevute'}
                         </div>
-                        
+
                         <div class="chart-container">
                             <div class="bar-chart">
                                 ${renderBar(5, q.Star5, maxValue)}
@@ -302,7 +302,7 @@
                                 ${renderBar(1, q.Star1, maxValue)}
                             </div>
                         </div>
-                        
+
                         <div class="stats-grid">
                             ${renderStatCard(1, q.Star1)}
                             ${renderStatCard(2, q.Star2)}
@@ -314,7 +314,7 @@
                 `;
             }).join('');
         }
-        
+
         function renderBar(stars, count, maxValue) {
             const percentage = maxValue > 0 ? (count / maxValue * 100) : 0;
             return `
@@ -331,7 +331,7 @@
                 </div>
             `;
         }
-        
+
         function renderStatCard(stars, count) {
             return `
                 <div class="stat-card">
@@ -343,7 +343,7 @@
                 </div>
             `;
         }
-        
+
         function renderStars(count, size) {
             let stars = '';
             for (let i = 1; i <= 5; i++) {
@@ -352,5 +352,7 @@
             return stars;
         }
     </script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/ws.js"></script>
 </body>
 </html>

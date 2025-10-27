@@ -69,9 +69,9 @@ func main() {
 	// Display table information
 	log.Println("\nDatabase tables created:")
 	rows, err := db.Query(`
-		SELECT table_name 
-		FROM information_schema.tables 
-		WHERE table_schema = 'public' 
+		SELECT table_name
+		FROM information_schema.tables
+		WHERE table_schema = 'public'
 		ORDER BY table_name
 	`)
 	if err != nil {

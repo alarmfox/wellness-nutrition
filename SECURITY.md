@@ -37,7 +37,7 @@ Example: abc123def456|1698765432.7f8e9d10a11b12c13d14e15f16
 ### Implementation Details
 
 - Session tokens: 30 days expiration
-- Email verification tokens: 7 days expiration  
+- Email verification tokens: 7 days expiration
 - Password reset tokens: 1 hour expiration
 
 ## CSRF Protection

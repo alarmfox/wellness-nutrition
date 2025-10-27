@@ -31,14 +31,6 @@ services:
 
   db:
     image: postgres:16.10-alpine
-    environment:
-      - POSTGRES_PASSWORD=
-      - EMAIL_SERVER_HOST=
-      - EMAIL_SERVER_PORT=
-      - EMAIL_SERVER_USER=
-      - EMAIL_SERVER_PASSWORD=
-      - EMAIL_SERVER_FROM=
-      - EMAIL_NOTIFY_ADDRESS=
     networks:
       - default
     healthcheck:
@@ -47,9 +39,17 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
- 
-   cron:
+
+  cron:
     image: wellness-app
+    environment:
+      - POSTGRES_PASSWORD=
+      - EMAIL_SERVER_HOST=
+      - EMAIL_SERVER_PORT=
+      - EMAIL_SERVER_USER=
+      - EMAIL_SERVER_PASSWORD=
+      - EMAIL_SERVER_FROM=
+      - EMAIL_NOTIFY_ADDRESS=
     depends_on:
       db:
         condition: service_healthy

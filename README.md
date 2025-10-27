@@ -60,7 +60,7 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
- 
+
   cron:
     build: .
     depends_on:

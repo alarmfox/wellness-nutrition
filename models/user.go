@@ -49,8 +49,8 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) GetByEmail(email string) (*User, error) {
 	query := `
-		SELECT id, first_name, last_name, address, password, role, med_ok, 
-			   cellphone, sub_type, email, email_verified, expires_at, 
+		SELECT id, first_name, last_name, address, password, role, med_ok,
+			   cellphone, sub_type, email, email_verified, expires_at,
 			   remaining_accesses, verification_token, verification_token_expires_in, goals
 		FROM users
 		WHERE LOWER(email) = LOWER($1)
@@ -84,8 +84,8 @@ func (r *UserRepository) GetByEmail(email string) (*User, error) {
 
 func (r *UserRepository) GetByID(id string) (*User, error) {
 	query := `
-		SELECT id, first_name, last_name, address, password, role, med_ok, 
-			   cellphone, sub_type, email, email_verified, expires_at, 
+		SELECT id, first_name, last_name, address, password, role, med_ok,
+			   cellphone, sub_type, email, email_verified, expires_at,
 			   remaining_accesses, verification_token, verification_token_expires_in, goals
 		FROM users
 		WHERE id = $1
@@ -119,8 +119,8 @@ func (r *UserRepository) GetByID(id string) (*User, error) {
 
 func (r *UserRepository) GetByVerificationToken(token string) (*User, error) {
 	query := `
-		SELECT id, first_name, last_name, address, password, role, med_ok, 
-			   cellphone, sub_type, email, email_verified, expires_at, 
+		SELECT id, first_name, last_name, address, password, role, med_ok,
+			   cellphone, sub_type, email, email_verified, expires_at,
 			   remaining_accesses, verification_token, verification_token_expires_in, goals
 		FROM users
 		WHERE verification_token = $1
@@ -154,8 +154,8 @@ func (r *UserRepository) GetByVerificationToken(token string) (*User, error) {
 
 func (r *UserRepository) GetAll() ([]*User, error) {
 	query := `
-		SELECT id, first_name, last_name, address, role, med_ok, 
-			   cellphone, sub_type, email, email_verified, expires_at, 
+		SELECT id, first_name, last_name, address, role, med_ok,
+			   cellphone, sub_type, email, email_verified, expires_at,
 			   remaining_accesses, verification_token, verification_token_expires_in, goals
 		FROM users
 		WHERE role = $1
@@ -199,9 +199,9 @@ func (r *UserRepository) GetAll() ([]*User, error) {
 
 func (r *UserRepository) Create(user *User) error {
 	query := `
-		INSERT INTO users 
-			(id, first_name, last_name, address, password, role, med_ok, 
-			 cellphone, sub_type, email, email_verified, expires_at, 
+		INSERT INTO users
+			(id, first_name, last_name, address, password, role, med_ok,
+			 cellphone, sub_type, email, email_verified, expires_at,
 			 remaining_accesses, verification_token, verification_token_expires_in, goals)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 	`
@@ -231,10 +231,10 @@ func (r *UserRepository) Create(user *User) error {
 func (r *UserRepository) Update(user *User) error {
 	query := `
 		UPDATE users
-		SET first_name = $2, last_name = $3, address = $4, password = $5, 
-			role = $6, med_ok = $7, cellphone = $8, sub_type = $9, 
-			email = $10, email_verified = $11, expires_at = $12, 
-			remaining_accesses = $13, verification_token = $14, 
+		SET first_name = $2, last_name = $3, address = $4, password = $5,
+			role = $6, med_ok = $7, cellphone = $8, sub_type = $9,
+			email = $10, email_verified = $11, expires_at = $12,
+			remaining_accesses = $13, verification_token = $14,
 			verification_token_expires_in = $15, goals = $16
 		WHERE id = $1
 	`

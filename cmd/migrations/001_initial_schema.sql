@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     type VARCHAR(20) NOT NULL DEFAULT 'SIMPLE',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE
+    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_instructor_time
+        UNIQUE (user_id, instructor_id, starts_at)
 );
 
 -- Indexes for bookings
@@ -90,10 +92,10 @@ CREATE TABLE IF NOT EXISTS questions (
     next INTEGER NOT NULL,
     previous INTEGER NOT NULL,
     question TEXT NOT NULL,
-    star1 INTEGER NOT NULL DEFAULT 0, 
-    star2 INTEGER NOT NULL DEFAULT 0, 
-    star3 INTEGER NOT NULL DEFAULT 0, 
-    star4 INTEGER NOT NULL DEFAULT 0, 
+    star1 INTEGER NOT NULL DEFAULT 0,
+    star2 INTEGER NOT NULL DEFAULT 0,
+    star3 INTEGER NOT NULL DEFAULT 0,
+    star4 INTEGER NOT NULL DEFAULT 0,
     star5 INTEGER NOT NULL DEFAULT 0
 );
 

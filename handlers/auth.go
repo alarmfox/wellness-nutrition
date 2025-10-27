@@ -128,9 +128,6 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		MaxAge:   -1,
 	})
-
-	// Redirect to signin page
-	http.Redirect(w, r, "/signin", http.StatusSeeOther)
 }
 
 type UserHandler struct {
@@ -380,7 +377,7 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendJSON(w, http.StatusOK, map[string]string{"message": "Users deleted successfully"})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type ResendVerificationRequest struct {

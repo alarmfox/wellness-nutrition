@@ -1,0 +1,58 @@
+services:
+  app:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db/postgres?sslmode=disable
+      - EMAIL_SERVER_HOST=mail.privateemail.com
+      - EMAIL_SERVER_PORT=587
+      - EMAIL_SERVER_USER=info@capass.org
+      - EMAIL_SERVER_PASSWORD=~(mxmDN!|/Rc[~_"150mb[(hP
+      - EMAIL_SERVER_FROM=info@capass.org
+      - EMAIL_NOTIFY_ADDRESS=capassog97@gmail.com
+      - AUTH_URL=http://localhost:3000
+      - LISTEN_ADDR=0.0.0.0:3000
+      - SECRET_KEY=secret-key
+    ports:
+      - 3000:3000/tcp
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+
+  db:
+    image: postgres:16.10-alpine
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  cron:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db/postgres?sslmode=disable
+      - EMAIL_SERVER_HOST=mail.privateemail.com
+      - EMAIL_SERVER_PORT=587
+      - EMAIL_SERVER_USER=info@capass.org
+      - EMAIL_SERVER_PASSWORD=~(mxmDN!|/Rc[~_"150mb[(hP
+      - EMAIL_SERVER_FROM=info@capass.org
+      - EMAIL_NOTIFY_ADDRESS=capassog97@gmail.com
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "echo '0 2 * * * /app/cleanup >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
+             echo '0 0 1/1 * * /app/remainder >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
+             crond -f -l 2"
+
+  seed:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db/postgres?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "./migrate && ./seed"

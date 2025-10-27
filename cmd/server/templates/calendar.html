@@ -26,7 +26,7 @@
             <a href="/admin/events">Eventi</a>
             <a href="/admin/survey/results">Sondaggio</a>
             <a href="/admin/user-view">Vista Utente</a>
-            <a href="/api/auth/logout">Esci</a>
+            <a href="#" onclick="handleLogout(); return false">Esci</a>
         </div>
     </div>
     <div class="container">
@@ -222,7 +222,21 @@
             </div>
         </div>
     </div>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/ws.js"></script>
     <script src="/static/js/calendar.js"></script>
-
+    <script>
+        function handleLogout() {
+            if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
+                return;
+            }
+            fetch('/api/auth/logout', {
+                method: 'DELETE'
+            })
+            .then(response => {
+                window.location.href = '/signin';
+            });
+        }
+    </script>
 </body>
 </html>
