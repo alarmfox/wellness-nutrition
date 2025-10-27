@@ -7,15 +7,32 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/alarmfox/wellness-nutrition/app/models"
 	"golang.org/x/crypto/argon2"
 )
 
+// SessionStoreInterface defines the interface for session management
+type SessionStoreInterface interface {
+	GetSession(token string) (*models.Session, error)
+	ExtendSession(signedToken string, newExpiresAt time.Time) (string, error)
+}
+
+// UserRepositoryInterface defines the interface for user management
+type UserRepositoryInterface interface {
+	GetByID(id string) (*models.User, error)
+}
+
 type contextKey string
 
 const (
 	UserContextKey contextKey = "user"
+	// SessionExtensionThreshold is the duration before expiration when we extend sessions
+	// If a session has less than this time remaining, it will be extended
+	SessionExtensionThreshold = 7 * 24 * time.Hour // 7 days
+	// SessionDuration is how long a session lasts
+	SessionDuration = 30 * 24 * time.Hour // 30 days
 )
 
 // Hash password using argon2
@@ -92,7 +109,7 @@ func VerifyPassword(password, encodedHash string) bool {
 }
 
 // Auth middleware checks if user is authenticated
-func Auth(sessionStore *models.SessionStore, userRepo *models.UserRepository) func(http.Handler) http.Handler {
+func Auth(sessionStore SessionStoreInterface, userRepo UserRepositoryInterface) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("session")
@@ -113,6 +130,9 @@ func Auth(sessionStore *models.SessionStore, userRepo *models.UserRepository) fu
 				return
 			}
 
+			// Extend session if needed (transparent to the rest of the application)
+			extendSessionIfNeeded(w, sessionStore, session, cookie.Value)
+
 			ctx := context.WithValue(r.Context(), UserContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -120,7 +140,7 @@ func Auth(sessionStore *models.SessionStore, userRepo *models.UserRepository) fu
 }
 
 // AdminAuth middleware checks if user is authenticated and is an admin
-func AdminAuth(sessionStore *models.SessionStore, userRepo *models.UserRepository) func(http.Handler) http.Handler {
+func AdminAuth(sessionStore SessionStoreInterface, userRepo UserRepositoryInterface) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("session")
@@ -146,6 +166,9 @@ func AdminAuth(sessionStore *models.SessionStore, userRepo *models.UserRepositor
 				return
 			}
 
+			// Extend session if needed (transparent to the rest of the application)
+			extendSessionIfNeeded(w, sessionStore, session, cookie.Value)
+
 			ctx := context.WithValue(r.Context(), UserContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -159,6 +182,38 @@ func GetUserFromContext(ctx context.Context) *models.User {
 		return nil
 	}
 	return user
+}
+
+// extendSessionIfNeeded checks if a session is about to expire and extends it
+// Returns the new token if extended, or the original token if no extension was needed
+func extendSessionIfNeeded(w http.ResponseWriter, sessionStore SessionStoreInterface, session *models.Session, currentToken string) string {
+	timeUntilExpiration := time.Until(session.ExpiresAt)
+	
+	// If session expires in less than the threshold, extend it
+	if timeUntilExpiration < SessionExtensionThreshold {
+		newExpiresAt := time.Now().Add(SessionDuration)
+		newToken, err := sessionStore.ExtendSession(currentToken, newExpiresAt)
+		if err != nil {
+			// If extension fails, log the error but don't interrupt the request
+			log.Printf("Failed to extend session: %v", err)
+			return currentToken
+		}
+		
+		// Set the new token as a cookie
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session",
+			Value:    newToken,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false, // Set to true in production with HTTPS
+			SameSite: http.SameSiteLaxMode,
+			Expires:  newExpiresAt,
+		})
+		
+		return newToken
+	}
+	
+	return currentToken
 }
 
 func sendJSON(w http.ResponseWriter, status int, data interface{}) {

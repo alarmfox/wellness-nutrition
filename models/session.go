@@ -72,6 +72,35 @@ func (s *SessionStore) DeleteSession(signedToken string) error {
 	return err
 }
 
+// ExtendSession extends the expiration of an existing session
+// Returns a new signed token with the updated expiration time
+func (s *SessionStore) ExtendSession(signedToken string, newExpiresAt time.Time) (string, error) {
+	// Verify and extract the session ID from the old token
+	sessionID, err := crypto.VerifyTimedToken(signedToken)
+	if err != nil {
+		return "", err
+	}
+
+	// Update the session expiration in the database
+	query := `UPDATE sessions SET expires_at = $1 WHERE token = $2 AND expires_at > NOW()`
+	result, err := s.db.Exec(query, newExpiresAt, sessionID)
+	if err != nil {
+		return "", err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return "", err
+	}
+	if rowsAffected == 0 {
+		return "", sql.ErrNoRows
+	}
+
+	// Return a new signed token with the updated expiration
+	newSignedToken := crypto.CreateTimedToken(sessionID, newExpiresAt)
+	return newSignedToken, nil
+}
+
 func generateToken() string {
 	b := make([]byte, 32)
 	rand.Read(b)
