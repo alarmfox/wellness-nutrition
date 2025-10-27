@@ -72,67 +72,7 @@ services:
              crond -f -l 2"
 ```
 
-### Database
 
-The application uses PostgreSQL with **lowercase snake_case table and column names**. All migrations are idempotent using `CREATE TABLE IF NOT EXISTS` statements.
-
-**Tables:**
-- `users` - User accounts and subscriptions
-- `bookings` - User bookings linked to slots
-- `events` - Event log for booking actions
-- `sessions` - Session management for authentication
-
-**Key Differences from Prisma:**
-- Prisma uses PascalCase table names (`User`, `Booking`) and camelCase columns (`firstName`, `startsAt`)
-- Go app uses lowercase snake_case (`users`, `bookings`, `first_name`, `starts_at`)
-- Go app removes the `slots` table
-
-### Authentication
-
-- Sessions are stored in a `sessions` table
-- Passwords are hashed using Argon2
-- Session tokens are stored in secure HTTP-only cookies
-- Session duration: 30 days
-
-### Authorization
-
-- **Public routes**: `/signin`, `/api/auth/login`
-- **User routes**: Require authentication, accessible to both users and admins
-  - `/` (home page)
-  - `/api/user/current`
-  - `/api/bookings/*`
-- **Admin routes**: Require admin role
-  - `/admin` (redirects to calendar)
-  - `/admin/calendar` (admin calendar view with all bookings)
-  - `/admin/users` (user management page)
-  - `/admin/events` (event log page)
-  - `/api/admin/users` (user CRUD endpoints)
-  - `/api/admin/bookings` (get all bookings for calendar)
-
-Admin API endpoints return a 403 Forbidden error if accessed by non-admin users.
-
-### Views
-
-The application provides two distinct views based on user role:
-
-**Admin View** (`/admin/*`):
-- Redirected to `/admin/calendar` on login
-- `/admin/calendar` - Interactive calendar showing all bookings from all users
-- `/admin/users` - User management page
-- `/admin/events` - Event log page
-- Week and month calendar views available
-- Color-coded by subscription type (SHARED vs SINGLE)
-- Access to user management and event logs
-- Can view bookings owned by any user
-
-**User View** (`/user`):
-- Dashboard at `/user` showing only their own bookings
-- Can create new bookings from available slots
-- Can delete their own bookings
-- Cannot view or modify other users' bookings
-- Bottom navigation for mobile-friendly experience
-
-The root path `/` automatically redirects users to their appropriate view based on role.
 
 ## Environment Variables
 
@@ -151,7 +91,7 @@ EMAIL_FROM=noreply@example.com
 EMAIL_NOTIFY_ADDRESS=admin@example.com
 
 # Application
-NEXTAUTH_URL=http://localhost:3000
+AUTH_URL=http://localhost:3000
 SECRET_KEY=secret
 LISTEN_ADDR=localhost:3000
 ```
