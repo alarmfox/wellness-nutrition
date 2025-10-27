@@ -48,12 +48,6 @@ services:
     image: postgres:16.10-alpine
     environment:
       - POSTGRES_PASSWORD=
-      - EMAIL_SERVER_HOST=
-      - EMAIL_SERVER_PORT=
-      - EMAIL_SERVER_USER=
-      - EMAIL_SERVER_PASSWORD=
-      - EMAIL_SERVER_FROM=
-      - EMAIL_NOTIFY_ADDRESS=
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s
@@ -63,6 +57,14 @@ services:
 
   cron:
     build: .
+    environment:
+      - DATABASE_URL=
+      - EMAIL_SERVER_HOST=
+      - EMAIL_SERVER_PORT=
+      - EMAIL_SERVER_USER=
+      - EMAIL_SERVER_PASSWORD=
+      - EMAIL_SERVER_FROM=
+      - EMAIL_NOTIFY_ADDRESS=
     depends_on:
         db:
           condition: service_healthy
