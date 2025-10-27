@@ -1,1 +1,9 @@
 .env
+
+# Build artifacts
+server
+cmd/*/server
+cmd/*/cleanup
+cmd/*/migrations
+cmd/*/reminder
+cmd/*/seed
