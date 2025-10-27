@@ -47,7 +47,7 @@
                 </div>
             </div>
 
-            <button type="submit">Conferma</button>
+            <button id="submitBtn" type="submit">Conferma</button>
 
             <div class="links">
                 <a href="/reset">Password dimenticata?</a>
@@ -84,7 +84,7 @@
                     return;
                 }
 
-                const button = form.querySelector('button');
+                const button = document.getElementById('submitBtn');
                 button.disabled = true;
                 button.innerHTML = '<span class="spinner"></span>Accesso in corso...';
 

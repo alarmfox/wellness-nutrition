@@ -173,3 +173,33 @@ button:disabled {
 .hidden {
     display: none;
 }
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #d32f2f;
+    color: white;
+    padding: 16px 24px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    display: none;
+    z-index: 1000;
+    max-width: 400px;
+}
+.toast.show {
+    display: block;
+    animation: slideIn 0.3s ease-out;
+}
+.toast.success {
+    background-color: #388e3c;
+}
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
