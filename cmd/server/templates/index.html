@@ -484,7 +484,10 @@
             if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
                 return;
             }
-            window.location.href = '/api/auth/logout';
+            fetch('/api/auth/logout', {
+                method: 'DELETE'
+            })
+            .then(response => showToast('Chiusura sessione...', true));
         }
 
         function confirmBookingWithInstructor(startsAt, instructorId) {

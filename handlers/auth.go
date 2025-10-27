@@ -128,9 +128,6 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		MaxAge:   -1,
 	})
-
-	// Redirect to signin page
-	http.Redirect(w, r, "/signin", http.StatusSeeOther)
 }
 
 type UserHandler struct {

@@ -169,75 +169,6 @@ const API = {
 };
 
 // ============================================================================
-// UI UTILITIES
-// ============================================================================
-const UI = {
-    showLoading(text = 'Caricamento...') {
-        const overlay = document.getElementById('loading-overlay');
-        const loadingText = document.getElementById('loading-text');
-        if (overlay && loadingText) {
-            loadingText.textContent = text;
-            overlay.classList.add('show');
-        }
-    },
-
-    hideLoading() {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) {
-            overlay.classList.remove('show');
-        }
-    },
-
-    showToast(message, isSuccess) {
-        const toast = document.getElementById('toast');
-        if (toast) {
-            toast.textContent = message;
-            toast.className = 'toast' + (isSuccess ? ' success' : '');
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 4000);
-        }
-    },
-
-    showNotification(message, type) {
-        let panel = document.getElementById('notificationPanel');
-        if (!panel) {
-            panel = document.createElement('div');
-            panel.id = 'notificationPanel';
-            panel.style.cssText = 'position: fixed; bottom: 20px; left: 20px; z-index: 10000; max-width: 350px;';
-            document.body.appendChild(panel);
-        }
-
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            background: white;
-            border-left: 4px solid ${type === 'success' ? '#4caf50' : '#f44336'};
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-        `;
-        notification.textContent = message;
-        panel.appendChild(notification);
-
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
-    },
-
-    formatSlotDateTime(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleString('it-IT', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-};
-
-// ============================================================================
 // MODAL MANAGER
 // ============================================================================
 const Modal = {
@@ -1000,49 +931,6 @@ const BookingActions = {
 };
 
 // ============================================================================
-// WEBSOCKET HANDLER
-// ============================================================================
-const WebSocketHandler = {
-    ws: null,
-
-    connect() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-
-        try {
-            this.ws = new WebSocket(wsUrl);
-
-            this.ws.onopen = () => {
-                console.log('WebSocket connected');
-                UI.showNotification('Connesso al server', 'success');
-            };
-
-            this.ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    UI.showNotification(data.message, data.type === 'booking_created' ? 'success' : 'error');
-                    Calendar.load();
-                } catch (e) {
-                    console.error('Error parsing WebSocket message:', e);
-                }
-            };
-
-            this.ws.onclose = () => {
-                console.log('WebSocket disconnected');
-                UI.showNotification('Disconnesso dal server', 'error');
-                setTimeout(() => this.connect(), 5000);
-            };
-
-            this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-        } catch (error) {
-            console.error('Failed to create WebSocket:', error);
-        }
-    }
-};
-
-// ============================================================================
 // GLOBAL EVENT HANDLERS
 // ============================================================================
 function onInstructorFilterChange() {
@@ -1099,7 +987,6 @@ document.addEventListener('DOMContentLoaded', function() {
         DataLoader.loadUsers(),
         DataLoader.loadInstructors()
     ]).then(() => {
-        WebSocketHandler.connect();
         Calendar.load();
     }).catch(error => {
         console.error('Initialization error:', error);

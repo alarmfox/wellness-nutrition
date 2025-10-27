@@ -2,12 +2,19 @@ FROM golang:1.24.9 AS build
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+# Install minifier
+RUN go install github.com/tdewolff/minify/v2/cmd/minify@latest
 
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
+# Minify static assets before compilation
+RUN minify -r -o ./static cmd/server/static
+RUN cp -r ./static/static/* cmd/server/static && rm -rf ./static
+
+# Build binaries
 RUN CGO_ENABLED=0 GOOS=linux go build -o server cmd/server/main.go
 RUN CGO_ENABLED=0 GOOS=linux go build -o seed cmd/seed/main.go
 RUN CGO_ENABLED=0 GOOS=linux go build -o migrate cmd/migrations/migrate.go

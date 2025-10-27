@@ -141,7 +141,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// Auth API routes - apply CSRF
 	mux.Handle("POST /api/auth/login", csrfMiddleware(http.HandlerFunc(authHandler.Login)))
-	mux.HandleFunc("GET  /api/auth/logout", authHandler.Logout)
+	mux.HandleFunc("DELETE /api/auth/logout", authHandler.Logout)
 	mux.Handle("POST /api/auth/reset", csrfMiddleware(http.HandlerFunc(userHandler.ResetPassword)))
 	mux.Handle("POST /api/auth/verify", csrfMiddleware(http.HandlerFunc(userHandler.VerifyAccount)))
 
@@ -635,7 +635,6 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 }
 
 func serveUserView(w http.ResponseWriter, r *http.Request) {
-
 	// Create mock user data for simulation
 	mockUser := &models.User{
 		ID:                "mock-user-id",

@@ -71,7 +71,7 @@ func seedTest(db *sql.DB) {
 	for i, u := range users {
 		userID := generateID()
 		userIDs[i] = userID
-		_, err = db.Exec(`
+		result, err := db.Exec(`
 			INSERT INTO users
 			(id, first_name, last_name, address, password, med_ok,
 			 sub_type, email, email_verified, expires_at, remaining_accesses)
@@ -84,6 +84,19 @@ func seedTest(db *sql.DB) {
 		} else {
 			log.Printf("✓ Created user %s %s (email: %s, password: password123)", u.firstName, u.lastName, u.email)
 		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			err = db.QueryRow(`SELECT id FROM users WHERE email = $1`, u.email).Scan(&userID)
+			if err != nil {
+				log.Fatalf("Failed retrieving existing ID for %s: %v", u.email, err)
+			}
+			log.Printf("User %s existed → using ID %s", u.email, userID)
+		} else {
+			log.Printf("✓ Created user %s %s (email: %s, password: password123)", u.firstName, u.lastName, u.email)
+		}
+
+		userIDs[i] = userID
 	}
 
 	// Create instructors (just tags, no email/password)
@@ -102,11 +115,10 @@ func seedTest(db *sql.DB) {
 	for i, instr := range instructors {
 		err := db.QueryRow(`
 			INSERT INTO instructors
-			(first_name, last_name)
-			VALUES ($1, $2)
+			(id, first_name, last_name)
+			VALUES ($1, $2, $3)
 			ON CONFLICT DO NOTHING
-			RETURNING id
-		`, instr.firstName, instr.lastName).Scan(&id)
+		`, i, instr.firstName, instr.lastName)
 		if err != nil {
 			log.Printf("Warning: Could not create instructor %s %s: %v", instr.firstName, instr.lastName, err)
 		} else {
@@ -155,7 +167,7 @@ func seedTest(db *sql.DB) {
 
 			_, err = db.Exec(`
 				INSERT INTO bookings (user_id, instructor_id, created_at, starts_at, type)
-				VALUES ($1, $2, $3, $4, $5)
+				VALUES ($1, $2, $3, $4, $5) ON CONFLICT (user_id, instructor_id, starts_at) DO NOTHING
 			`, userID, instructorID, time.Now().Add(-time.Duration(j)*24*time.Hour), bookingTime, "SIMPLE")
 			if err != nil {
 				log.Printf("Warning: Could not create booking: %v", err)

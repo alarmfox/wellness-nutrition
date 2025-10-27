@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     type VARCHAR(20) NOT NULL DEFAULT 'SIMPLE',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE
+    FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_instructor_time
+        UNIQUE (user_id, instructor_id, starts_at)
 );
 
 -- Indexes for bookings
