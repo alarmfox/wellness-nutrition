@@ -6,150 +6,54 @@
     <title>Accedi - Wellness & Nutrition</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <link rel="stylesheet" href="https://unpkg.com/@mui/material@latest/umd/material-ui.production.min.css" />
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Roboto', sans-serif;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 400px;
-            margin: 80px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .avatar {
-            width: 40px;
-            height: 40px;
-            margin: 0 auto 10px;
-            background-color: #9c27b0;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-        h1 {
-            font-size: 24px;
-            font-weight: 400;
-            margin: 10px 0;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: rgba(0, 0, 0, 0.6);
-            font-size: 12px;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(0, 0, 0, 0.23);
-            border-radius: 4px;
-            font-size: 16px;
-            font-family: 'Roboto', sans-serif;
-            box-sizing: border-box;
-        }
-        input:focus {
-            outline: none;
-            border-color: #1976d2;
-            border-width: 2px;
-        }
-        .error {
-            background-color: #d32f2f;
-            color: white;
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #1976d2;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            position: relative;
-        }
-        button:hover {
-            background-color: #1565c0;
-        }
-        button:disabled {
-            background-color: #9e9e9e;
-            cursor: not-allowed;
-        }
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .links {
-            margin-top: 20px;
-            text-align: left;
-        }
-        .links a {
-            color: #1976d2;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .links a:hover {
-            text-decoration: underline;
-        }
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #d32f2f;
-            color: white;
-            padding: 16px 24px;
-            border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 1000;
-            max-width: 400px;
-        }
-        .toast.show {
-            display: block;
-            animation: slideIn 0.3s ease-out;
-        }
-        .toast.success {
-            background-color: #388e3c;
-        }
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/signin.css" />
+</head>
+<body>
+    <div id="toast" class="toast"></div>
+
+    <div class="container">
+        <div class="header">
+            <div class="avatar">
+                <span class="material-icons">lock</span>
+            </div>
+            <h1>Accedi</h1>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Indirizzo email</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    required
+                    autofocus
+                />
+            </div>
+
+            <div class="form-group">
+                <div class="password-container">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        minlength="6"
+                        autofocus
+                    />
+                    <button type="button" class="toggle-password" onclick="togglePassword('password')">
+                        <span class="material-icons">visibility</span>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit">Conferma</button>
+
+            <div class="links">
+                <a href="/reset">Password dimenticata?</a>
+            </div>
+        </form>
+    </div>
     <script>
         function showToast(message, isSuccess = false) {
             const toast = document.getElementById('toast');
@@ -171,19 +75,19 @@
             const form = document.querySelector('form');
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
+
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
-                
+
                 if (!email || !password) {
                     showToast('Per favore inserisci email e password');
                     return;
                 }
-                
+
                 const button = form.querySelector('button');
                 button.disabled = true;
                 button.innerHTML = '<span class="spinner"></span>Accesso in corso...';
-                
+
                 try {
                     const csrfToken = getCookie('csrf_token');
                     const response = await fetch('/api/auth/login', {
@@ -194,9 +98,9 @@
                         },
                         body: JSON.stringify({ email, password }),
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (response.ok && data.success) {
                         showToast('Accesso effettuato con successo!', true);
                         setTimeout(() => {
@@ -230,47 +134,19 @@
                 }
             });
         });
+        function togglePassword() {
+            const field = document.getElementById('password');
+            const button = field.parentElement.querySelector('.toggle-password');
+            const icon = button.querySelector('.material-icons');
+
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.textContent = 'visibility_off';
+            } else {
+                field.type = 'password';
+                icon.textContent = 'visibility';
+            }
+        }
     </script>
-</head>
-<body>
-    <div id="toast" class="toast"></div>
-    
-    <div class="container">
-        <div class="header">
-            <div class="avatar">
-                <span class="material-icons">lock</span>
-            </div>
-            <h1>Accedi</h1>
-        </div>
-        
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="email">Indirizzo email</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    required 
-                    autofocus
-                />
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    required
-                />
-            </div>
-            
-            <button type="submit">Conferma</button>
-            
-            <div class="links">
-                <a href="/reset">Password dimenticata?</a>
-            </div>
-        </form>
-    </div>
 </body>
 </html>

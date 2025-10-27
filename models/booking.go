@@ -35,7 +35,7 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 	query := `
 		SELECT id, user_id, instructor_id, created_at, starts_at
 		FROM bookings
-		WHERE user_id = $1 
+		WHERE user_id = $1
 			AND starts_at > date_trunc('month', CURRENT_TIMESTAMP)
 		ORDER BY starts_at DESC
 	`

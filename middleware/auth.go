@@ -188,7 +188,7 @@ func GetUserFromContext(ctx context.Context) *models.User {
 // Returns the new token if extended, or the original token if no extension was needed
 func extendSessionIfNeeded(w http.ResponseWriter, sessionStore SessionStoreInterface, session *models.Session, currentToken string) string {
 	timeUntilExpiration := time.Until(session.ExpiresAt)
-	
+
 	// If session expires in less than the threshold, extend it
 	if timeUntilExpiration < SessionExtensionThreshold {
 		newExpiresAt := time.Now().Add(SessionDuration)
@@ -198,7 +198,7 @@ func extendSessionIfNeeded(w http.ResponseWriter, sessionStore SessionStoreInter
 			log.Printf("Failed to extend session: %v", err)
 			return currentToken
 		}
-		
+
 		// Set the new token as a cookie
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session",
@@ -209,10 +209,10 @@ func extendSessionIfNeeded(w http.ResponseWriter, sessionStore SessionStoreInter
 			SameSite: http.SameSiteLaxMode,
 			Expires:  newExpiresAt,
 		})
-		
+
 		return newToken
 	}
-	
+
 	return currentToken
 }
 

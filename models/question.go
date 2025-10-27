@@ -29,7 +29,7 @@ func NewQuestionRepository(db *sql.DB) *QuestionRepository {
 
 // GetAll retrieves all questions ordered by index
 func (r *QuestionRepository) GetAll() ([]*Question, error) {
-	query := `SELECT id, sku, index, next, previous, question, star1, star2, star3, star4, star5 
+	query := `SELECT id, sku, index, next, previous, question, star1, star2, star3, star4, star5
 			  FROM questions ORDER BY index`
 
 	rows, err := r.db.Query(query)
@@ -54,7 +54,7 @@ func (r *QuestionRepository) GetAll() ([]*Question, error) {
 
 // GetByID retrieves a single question by ID
 func (r *QuestionRepository) GetByID(id int) (*Question, error) {
-	query := `SELECT id, sku, index, next, previous, question, star1, star2, star3, star4, star5 
+	query := `SELECT id, sku, index, next, previous, question, star1, star2, star3, star4, star5
 			  FROM questions WHERE id = $1`
 
 	q := &Question{}
@@ -82,7 +82,7 @@ func (r *QuestionRepository) Create(q *Question) error {
 
 // Update updates an existing question
 func (r *QuestionRepository) Update(q *Question) error {
-	query := `UPDATE questions 
+	query := `UPDATE questions
 			  SET sku = $1, index = $2, next = $3, previous = $4, question = $5
 			  WHERE id = $6`
 
@@ -126,8 +126,8 @@ func (r *QuestionRepository) Delete(id int) error {
 
 // UpdateResults updates the star ratings for a question
 func (r *QuestionRepository) UpdateResults(id int, stars [5]int) error {
-	query := `UPDATE questions 
-			  SET star1 = star1 + $1, star2 = star2 + $2, star3 = star3 + $3, 
+	query := `UPDATE questions
+			  SET star1 = star1 + $1, star2 = star2 + $2, star3 = star3 + $3,
 			      star4 = star4 + $4, star5 = star5 + $5
 			  WHERE id = $6`
 
@@ -141,7 +141,7 @@ func (r *QuestionRepository) UpdateResults(id int, stars [5]int) error {
 
 // GetResults retrieves aggregated results for all questions
 func (r *QuestionRepository) GetResults() ([]*Question, error) {
-	query := `SELECT id, sku, index, next, previous, question, star1, star2, star3, star4, star5 
+	query := `SELECT id, sku, index, next, previous, question, star1, star2, star3, star4, star5
 			  FROM questions ORDER BY index`
 
 	rows, err := r.db.Query(query)

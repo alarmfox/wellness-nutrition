@@ -6,195 +6,7 @@
     <title>Wellness & Nutrition</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Roboto', sans-serif;
-            background-color: #f5f5f5;
-        }
-        .simulation-banner {
-            background: #ff9800;
-            color: white;
-            padding: 12px 20px;
-            text-align: center;
-            font-weight: 500;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: #1976d2;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            margin: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .back-button:hover {
-            background: #1565c0;
-        }
-        .container {
-            max-width: 400px;
-            margin: 20px auto;
-            padding: 20px;
-        }
-        .header {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .content {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            min-height: 400px;
-        }
-        h1 {
-            font-size: 20px;
-            margin: 0 0 10px 0;
-        }
-        .subscription-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        .info-item {
-            flex: 1;
-        }
-        .info-label {
-            font-size: 12px;
-            color: rgba(0, 0, 0, 0.6);
-            margin-bottom: 4px;
-        }
-        .info-value {
-            font-size: 16px;
-            font-weight: 500;
-        }
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: rgba(0, 0, 0, 0.6);
-            text-decoration: none;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .nav-item:hover {
-            color: #1976d2;
-        }
-        .nav-item.active {
-            color: #1976d2;
-        }
-        .list-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .list-item:hover {
-            background-color: #f5f5f5;
-        }
-        .list-icon {
-            margin-right: 12px;
-            color: rgba(0, 0, 0, 0.54);
-        }
-        .list-text {
-            flex: 1;
-        }
-        .list-primary {
-            font-size: 16px;
-            margin-bottom: 4px;
-        }
-        .list-secondary {
-            font-size: 12px;
-            color: rgba(0, 0, 0, 0.6);
-        }
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: rgba(0, 0, 0, 0.4);
-        }
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #d32f2f;
-            color: white;
-            padding: 16px 24px;
-            border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 1000;
-            max-width: 400px;
-        }
-        .toast.show {
-            display: block;
-            animation: slideIn 0.3s ease-out;
-        }
-        .toast.success {
-            background-color: #388e3c;
-        }
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-        .loading-overlay.show {
-            display: flex;
-        }
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .loading-text {
-            color: white;
-            margin-top: 16px;
-            font-size: 16px;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
     {{if .IsSimulation}}
@@ -241,7 +53,7 @@
                 {{end}}
             </div>
         </div>
-        
+
         <div class="content">
             <h1>Lista prenotazioni</h1>
             <div id="bookings-list">
@@ -263,10 +75,10 @@
                 {{end}}
             </div>
         </div>
-        
+
         <div style="height: 80px;"></div>
     </div>
-    
+
     <div class="bottom-nav">
         <a href="#" class="nav-item active" onclick="showBookings(); return false;">
             <span class="material-icons">list</span>
@@ -281,7 +93,7 @@
             <span>Esci</span>
         </a>
     </div>
-    
+
     <script>
         const userSubType = '{{.User.SubType}}';
         let availableSlots = [];
@@ -355,20 +167,20 @@
                     },
                     {{end}}
                 ];
-                
+
                 // Filter future bookings only
                 const futureBookings = bookings.filter(b => {
                     const bookingTime = new Date(b.startsAt);
                     return bookingTime > new Date();
                 });
-                
+
                 localStorage.setItem(this.STORAGE_KEY, JSON.stringify(futureBookings));
             },
 
             scheduleCheck: function() {
                 // Check immediately
                 this.checkAndNotify();
-                
+
                 // Then check periodically
                 setInterval(() => {
                     this.checkAndNotify();
@@ -388,21 +200,21 @@
                     bookings.forEach(booking => {
                         const bookingTime = new Date(booking.startsAt);
                         const timeDiff = bookingTime - now;
-                        
+
                         // Check if notification should be sent (6 hours before, within 1 minute window)
-                        const shouldNotify = timeDiff > 0 && 
-                                           timeDiff <= this.NOTIFICATION_ADVANCE_MS && 
+                        const shouldNotify = timeDiff > 0 &&
+                                           timeDiff <= this.NOTIFICATION_ADVANCE_MS &&
                                            timeDiff > (this.NOTIFICATION_ADVANCE_MS - this.CHECK_INTERVAL);
-                        
+
                         // Check if already notified for this booking
                         const alreadyNotified = notified.includes(booking.id);
-                        
+
                         if (shouldNotify && !alreadyNotified) {
                             this.sendNotification(booking);
                             notified.push(booking.id);
                             localStorage.setItem(notifiedKey, JSON.stringify(notified));
                         }
-                        
+
                         // Clean up old notified bookings (past bookings)
                         if (bookingTime < now && alreadyNotified) {
                             const index = notified.indexOf(booking.id);
@@ -514,22 +326,22 @@
                     {{end}}
                 </div>
             `;
-            
+
             // Format timestamps to local time
             formatTimestamps();
-            
+
             // Update active nav item
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.nav-item')[0].classList.add('active');
         }
     </script>
-    
+
     <!-- Simulation vs Real Mode: Separate function implementations -->
     {{if .IsSimulation}}
     <!-- SIMULATION MODE -->
     <script>
         console.log('🎭 Simulation mode active - all actions are mocked');
-        
+
         // Simulation-specific implementations
         function handleLogout() {
             if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
@@ -540,32 +352,32 @@
                 window.location.href = '/admin/calendar';
             }, 1000);
         }
-        
+
         function confirmBookingWithInstructor(startsAt, instructorId) {
             if (!confirm('Vuoi confermare questa prenotazione?')) {
                 return;
             }
             showToast('✓ Prenotazione simulata! (Non salvata in modalità simulazione)', true);
         }
-        
+
         function deleteBooking(id, startsAt) {
             if (!confirm('Sicuro di voler eliminare questa prenotazione?')) {
                 return;
             }
             showToast('✓ Cancellazione simulata! (Non salvata in modalità simulazione)', true);
         }
-        
+
         function showSlots() {
             const contentDiv = document.querySelector('.content');
-            
+
             // Update active nav item
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.nav-item')[1].classList.add('active');
-            
+
             // Use mock data for simulation
             let html = '<h1>Seleziona Istruttore</h1>';
             html += '<div style="margin-bottom: 16px; color: rgba(0,0,0,0.6);">Prima scegli un istruttore, poi vedrai gli slot disponibili (simulati)</div>';
-            
+
             mockInstructors.forEach(instructor => {
                 const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
                 html += `
@@ -578,14 +390,14 @@
                     </div>
                 `;
             });
-            
+
             contentDiv.innerHTML = html;
         }
-        
+
         function showSlotsForInstructor(instructorId, instructorName) {
             const contentDiv = document.querySelector('.content');
             availableSlots = mockSlots[instructorId] || [];
-            
+
             if (availableSlots.length === 0) {
                 contentDiv.innerHTML = `
                     <h1>Slot per ${instructorName}</h1>
@@ -599,7 +411,7 @@
                 `;
                 return;
             }
-            
+
             // Build slots HTML
             const groupedSlots = {};
             availableSlots.forEach(slotTime => {
@@ -628,11 +440,11 @@
             sortedKeys.forEach(dateKey => {
                 const firstSlot = groupedSlots[dateKey][0];
                 const date = new Date(firstSlot);
-                const dateLabel = date.toLocaleDateString('it-IT', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
+                const dateLabel = date.toLocaleDateString('it-IT', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                 });
 
                 html += `
@@ -660,7 +472,7 @@
                         `;
                     });
             });
-            
+
             contentDiv.innerHTML = html;
         }
     </script>
@@ -674,14 +486,14 @@
             }
             window.location.href = '/api/auth/logout';
         }
-        
+
         function confirmBookingWithInstructor(startsAt, instructorId) {
             if (!confirm('Vuoi confermare questa prenotazione?')) {
                 return;
             }
-            
+
             showLoading('Creazione prenotazione...');
-            
+
             const csrfToken = getCookie('csrf_token');
             fetch('/api/user/bookings', {
                 method: 'POST',
@@ -689,7 +501,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken,
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     startsAt,
                     instructorId
                 }),
@@ -711,14 +523,14 @@
                 console.error(error);
             });
         }
-        
+
         function deleteBooking(id, startsAt) {
             if (!confirm('Sicuro di voler eliminare questa prenotazione?')) {
                 return;
             }
-            
+
             showLoading('Cancellazione prenotazione...');
-            
+
             const csrfToken = getCookie('csrf_token');
             fetch('/api/user/bookings/' + id, {
                 method: 'DELETE',
@@ -747,24 +559,24 @@
                 console.error(error);
             });
         }
-        
+
         function showSlots() {
             const contentDiv = document.querySelector('.content');
-            
+
             // Update active nav item
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.nav-item')[1].classList.add('active');
-            
+
             // Show instructor selection first
             contentDiv.innerHTML = '<h1>Seleziona Istruttore</h1><div class="empty-state">Caricamento...</div>';
-            
+
             showLoading('Caricamento istruttori...');
-            
+
             fetch('/api/user/instructors')
                 .then(response => response.json())
                 .then(instructors => {
                     hideLoading();
-                    
+
                     if (!instructors || instructors.length === 0) {
                         contentDiv.innerHTML = `
                             <h1>Seleziona Istruttore</h1>
@@ -772,11 +584,11 @@
                         `;
                         return;
                     }
-                    
+
                     // Build instructor selection UI
                     let html = '<h1>Seleziona Istruttore</h1>';
                     html += '<div style="margin-bottom: 16px; color: rgba(0,0,0,0.6);">Prima scegli un istruttore, poi vedrai gli slot disponibili</div>';
-                    
+
                     instructors.forEach(instructor => {
                         const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
                         html += `
@@ -789,7 +601,7 @@
                             </div>
                         `;
                     });
-                    
+
                     contentDiv.innerHTML = html;
                 })
                 .catch(error => {
@@ -802,14 +614,14 @@
                     `;
                 });
         }
-        
+
         function showSlotsForInstructor(instructorId, instructorName) {
             const contentDiv = document.querySelector('.content');
             contentDiv.innerHTML = '<h1>Caricamento slot disponibili...</h1>';
-            
+
             // Show loading indicator
             showLoading('Caricamento slot disponibili...');
-            
+
             // Fetch available slots for this instructor
             fetch(`/api/user/bookings/slots?instructorId=${encodeURIComponent(instructorId)}`)
                 .then(response => response.json())
@@ -819,9 +631,9 @@
                         showToast('Errore nel caricamento degli slot');
                         return;
                     }
-                    
+
                     availableSlots = data.slots || [];
-                    
+
                     if (availableSlots.length === 0) {
                         contentDiv.innerHTML = `
                             <h1>Slot per ${instructorName}</h1>
@@ -835,7 +647,7 @@
                         `;
                         return;
                     }
-                    
+
                     // Group slots by date
                     const groupedSlots = {};
                     availableSlots.forEach(slotTime => {
@@ -864,11 +676,11 @@
                     sortedKeys.forEach(dateKey => {
                         const firstSlot = groupedSlots[dateKey][0];
                         const date = new Date(firstSlot);
-                        const dateLabel = date.toLocaleDateString('it-IT', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
+                        const dateLabel = date.toLocaleDateString('it-IT', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
                         });
 
                         html += `
@@ -896,7 +708,7 @@
                                 `;
                             });
                     });
-                    
+
                     contentDiv.innerHTML = html;
                 })
                 .catch(error => {

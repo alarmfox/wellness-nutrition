@@ -29,7 +29,7 @@ const CalendarState = {
     users: [],
     instructors: [],
     selectedInstructorId: '',
-    
+
     modal: {
         slotTime: null,
         slotData: null,
@@ -132,7 +132,7 @@ const API = {
         const data = await response.json();
         return Array.isArray(data) ? data : [];
     },
- 
+
     async fetchUsers() {
         const response = await fetch('/api/admin/users');
         return response.json();
@@ -142,12 +142,12 @@ const API = {
         const response = await fetch('/api/admin/instructors');
         return response.json();
     },
- 
+
     async createBooking(type, payload) {
         const csrfToken = getCookie('csrf_token');
         const response = await fetch('/api/admin/bookings', {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken
             },
@@ -155,7 +155,7 @@ const API = {
         });
         return response.json();
     },
- 
+
     async deleteBooking(bookingId, refund = false) {
         const csrfToken = getCookie('csrf_token');
         const response = await fetch(`/api/admin/bookings/${bookingId}?refund=${encodeURIComponent(refund)}`, {
@@ -180,14 +180,14 @@ const UI = {
             overlay.classList.add('show');
         }
     },
- 
+
     hideLoading() {
         const overlay = document.getElementById('loading-overlay');
         if (overlay) {
             overlay.classList.remove('show');
         }
     },
- 
+
     showToast(message, isSuccess) {
         const toast = document.getElementById('toast');
         if (toast) {
@@ -197,7 +197,7 @@ const UI = {
             setTimeout(() => toast.style.display = 'none', 4000);
         }
     },
- 
+
     showNotification(message, type) {
         let panel = document.getElementById('notificationPanel');
         if (!panel) {
@@ -223,7 +223,7 @@ const UI = {
             notification.remove();
         }, 5000);
     },
- 
+
     formatSlotDateTime(dateString) {
         const date = new Date(dateString);
         return date.toLocaleString('it-IT', {
@@ -242,7 +242,7 @@ const UI = {
 // ============================================================================
 const Modal = {
     element: null,
-    
+
     init() {
         this.element = document.getElementById('slotModal');
     },
@@ -256,7 +256,7 @@ const Modal = {
 
         if (titleEl) titleEl.textContent = title;
         if (body) body.innerHTML = content;
-        
+
         if (confirmBtn) {
             if (showConfirm && onConfirm) {
                 confirmBtn.style.display = 'block';
@@ -283,7 +283,7 @@ const Modal = {
         const modal = document.getElementById('deleteBookingModal');
         const userName = document.getElementById('deleteBookingUserName');
         const slotInfo = document.getElementById('deleteBookingSlotInfo');
-        
+
         if (modal && userName && slotInfo) {
             userName.textContent = `${firstName} ${lastName}`;
             slotInfo.textContent = UI.formatSlotDateTime(slotTime);
@@ -311,34 +311,34 @@ const OperationForm = {
         let html = `<div style="margin-bottom: 20px;">
             <strong>Slot:</strong> ${UI.formatSlotDateTime(slotTime)}
         </div>`;
- 
+
         html += this.buildInstructorSelect(operation, slotData?.InstructorSlots);
- 
+
         if (operation === BookingType.SIMPLE) {
             html += this.buildUserSelect();
         }
- 
+
         return html;
     },
 
     buildInstructorSelect(operation, instructorStates) {
         const availableInstructors = this.getAvailableInstructors(operation, instructorStates);
-        const canSelectAll = operation === BookingType.DISABLE && 
-                            availableInstructors.length === CalendarState.instructors.length && 
+        const canSelectAll = operation === BookingType.DISABLE &&
+                            availableInstructors.length === CalendarState.instructors.length &&
                             availableInstructors.length > 0;
- 
+
         let html = `<div style="margin-bottom: 16px;">
             <label style="display: block; margin-bottom: 8px; font-weight: 500;">
                 Seleziona Istruttore *
             </label>
             <select id="operationInstructorId" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">`;
- 
+
         if (canSelectAll) {
             html += '<option value="all">Tutti</option>';
         } else {
             html += '<option value="">-- Seleziona istruttore --</option>';
         }
- 
+
         if (availableInstructors.length === 0) {
             html += '<option value="" disabled>Nessun istruttore disponibile</option>';
         } else {
@@ -347,19 +347,19 @@ const OperationForm = {
                 html += `<option value="${instructor.ID}">${instructor.FirstName}${lastName}</option>`;
             });
         }
- 
+
         html += `</select>`;
- 
+
         if (canSelectAll) {
             html += `<div style="margin-top: 8px; font-size: 12px; color: #666;">
                 Seleziona "Tutti" per applicare a tutti gli istruttori disponibili
             </div>`;
         }
- 
+
         html += '</div>';
         return html;
     },
- 
+
     buildUserSelect() {
         let html = `<div style="margin-bottom: 16px;">
             <label style="display: block; margin-bottom: 8px; font-weight: 500;">
@@ -367,20 +367,20 @@ const OperationForm = {
             </label>
             <select id="operationUserId" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                 <option value="">-- Seleziona utente --</option>`;
- 
+
         CalendarState.users.forEach(user => {
             if (user.RemainingAccesses > 0) {
                 html += `<option value="${user.ID}">${user.FirstName} ${user.LastName} (${user.Email})</option>`;
             }
         });
- 
+
         html += `</select></div>`;
         return html;
     },
 
     getAvailableInstructors(operation, instructorStates) {
         if (!instructorStates) return CalendarState.instructors;
- 
+
         const exclusionRules = {
             [BookingType.SIMPLE]: ['UNAVAILABLE'],
             [BookingType.DISABLE]: ['MASSAGE', 'APPOINTMENT', 'UNAVAILABLE'],
@@ -390,12 +390,12 @@ const OperationForm = {
 
         const excludeStates = exclusionRules[operation] || [];
         const occupiedIds = new Set();
- 
+
         instructorStates.forEach(is => {
-            const state = is.Disabled || is.State === 'UNAVAILABLE' ? 'UNAVAILABLE' : 
+            const state = is.Disabled || is.State === 'UNAVAILABLE' ? 'UNAVAILABLE' :
                          is.State === 'MASSAGE' ? 'MASSAGE' :
                          is.State === 'APPOINTMENT' ? 'APPOINTMENT' : 'AVAILABLE';
- 
+
             if (excludeStates.includes(state)) {
                 occupiedIds.add(is.InstructorID);
             }
@@ -411,7 +411,7 @@ const OperationForm = {
     async submit(operation) {
         const instructorIdEl = document.getElementById('operationInstructorId');
         const userIdEl = document.getElementById('operationUserId');
-        
+
         const instructorId = instructorIdEl ? instructorIdEl.value : '';
         const userId = userIdEl ? userIdEl.value : '';
 
@@ -419,7 +419,7 @@ const OperationForm = {
             UI.showToast('Seleziona un istruttore', false);
             return false;
         }
-        
+
         if (operation === BookingType.SIMPLE && !userId) {
             UI.showToast('Seleziona un utente', false);
             return false;
@@ -483,13 +483,13 @@ const OperationForm = {
         UI.hideLoading();
 
         if (successCount > 0) {
-            const message = errorCount === 0 
-                ? `Operazione completata per tutti gli istruttori (${successCount})` 
+            const message = errorCount === 0
+                ? `Operazione completata per tutti gli istruttori (${successCount})`
                 : `Completato: ${successCount} successi, ${errorCount} errori`;
             UI.showToast(message, errorCount === 0);
             return true;
         }
-        
+
         UI.showToast('Operazione fallita per tutti gli istruttori', false);
         return false;
     },
@@ -517,16 +517,16 @@ const OperationForm = {
                 UI.showToast(data.error, false);
                 return false;
             }
-            
+
             if (data.hasBookings && operation === BookingType.DISABLE) {
                 const confirmed = confirm(
                     `Questo slot ha ${data.bookingCount} prenotazioni. Eliminarle tutte?`
                 );
                 if (!confirmed) return false;
-                
+
                 return await this.confirmOperation(operation, instructorId, userId);
             }
-            
+
             UI.showToast(`Operazione completata per ${instructorName}`, true);
             return true;
         } catch (error) {
@@ -557,7 +557,7 @@ const OperationForm = {
                 UI.showToast(data.error, false);
                 return false;
             }
-            
+
             UI.showToast(`Slot disabilitato. ${data.deletedCount || 0} prenotazioni eliminate`, true);
             return true;
         } catch (error) {
@@ -575,7 +575,7 @@ const OperationForm = {
 const SlotOverview = {
     build() {
         const slotData = CalendarState.modal.slotData;
-        
+
         let html = '<div style="margin-bottom: 20px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 4px; background: #f9f9f9;">';
         html += '<div style="margin-bottom: 10px;"><strong>Stato attuale per istruttore:</strong></div>';
 
@@ -697,9 +697,9 @@ const SlotActions = {
         const content = OperationForm.build(operation);
 
         Modal.show(
-            titles[operation], 
-            content, 
-            true, 
+            titles[operation],
+            content,
+            true,
             async () => {
                 const success = await OperationForm.submit(operation);
                 if (success) {
@@ -713,10 +713,10 @@ const SlotActions = {
     findBookingToDelete(instructorId, bookingType) {
         const slotTime = CalendarState.modal.slotTime;
         const targetTime = new Date(slotTime).getTime();
-        
+
         return CalendarState.bookings.find(b => {
             const bookingTime = new Date(b.startsAt).getTime();
-            return bookingTime === targetTime && 
+            return bookingTime === targetTime &&
                    b.instructorId === instructorId &&
                    b.type === bookingType;
         });
@@ -726,10 +726,10 @@ const SlotActions = {
         if (!confirm(`Confermi di voler abilitare lo slot per ${instructorName}?`)) return;
 
         UI.showLoading(`Abilitazione slot per ${instructorName}...`);
-        
+
         try {
             const booking = this.findBookingToDelete(instructorId, BookingType.DISABLE);
-            
+
             if (!booking) {
                 UI.hideLoading();
                 UI.showToast('Booking non trovato', false);
@@ -757,10 +757,10 @@ const SlotActions = {
         if (!confirm(`Confermi di voler eliminare la prenotazione per ${instructorName}?`)) return;
 
         UI.showLoading(`Eliminazione in corso per ${instructorName}...`);
-        
+
         try {
             const booking = this.findBookingToDelete(instructorId, bookingType);
-            
+
             if (!booking) {
                 UI.hideLoading();
                 UI.showToast('Booking non trovato', false);
@@ -791,10 +791,10 @@ const SlotActions = {
 const DataLoader = {
     async loadBookings() {
         UI.showLoading('Caricamento calendario...');
-        
+
         const from = new Date(CalendarState.currentDate);
         const to = new Date(CalendarState.currentDate);
- 
+
         const day = from.getDay();
         const diff = from.getDate() - day + (day === 0 ? -6 : 1);
         from.setDate(diff);
@@ -892,13 +892,13 @@ const Calendar = {
         }
 
         html += '</div>';
-        
+
         const calendarView = document.getElementById('calendarView');
         if (calendarView) {
             calendarView.innerHTML = html;
         }
     },
- 
+
     renderTimeSlot(date) {
         const targetTime = date.getTime();
         const isoTime = date.toISOString();
@@ -910,7 +910,7 @@ const Calendar = {
         });
 
         // Filter by selected instructor if applicable
-        const filteredBookings = CalendarState.selectedInstructorId 
+        const filteredBookings = CalendarState.selectedInstructorId
             ? allBookings.filter(b => b.instructorId === parseInt(CalendarState.selectedInstructorId))
             : allBookings;
 
@@ -939,11 +939,11 @@ const Calendar = {
                 </div>`;
             }
         });
- 
+
         html += '</div>';
         return html;
     },
- 
+
     handleSlotClick(slotTime) {
         const slotData = CalendarState.getOrCreateSlotData(slotTime);
         SlotActions.openSlot(slotTime, slotData);
@@ -1008,7 +1008,7 @@ const WebSocketHandler = {
     connect() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws`;
-        
+
         try {
             this.ws = new WebSocket(wsUrl);
 
@@ -1079,7 +1079,7 @@ function today() {
 
 function toggleRefund(elem) {
     console.log(elem)
-   CalendarState.modal.refund = elem.checked; 
+   CalendarState.modal.refund = elem.checked;
 }
 
 window.onclick = function(event) {

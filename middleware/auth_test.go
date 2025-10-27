@@ -30,12 +30,12 @@ func (m *mockSessionStore) GetSession(signedToken string) (*models.Session, erro
 	if err != nil {
 		return nil, err
 	}
-	
+
 	session, ok := m.sessions[sessionID]
 	if !ok {
 		return nil, sql.ErrNoRows
 	}
-	
+
 	return session, nil
 }
 
@@ -44,16 +44,16 @@ func (m *mockSessionStore) ExtendSession(signedToken string, newExpiresAt time.T
 	if err != nil {
 		return "", err
 	}
-	
+
 	session, ok := m.sessions[sessionID]
 	if !ok {
 		return "", sql.ErrNoRows
 	}
-	
+
 	session.ExpiresAt = newExpiresAt
 	newToken := crypto.CreateTimedToken(sessionID, newExpiresAt)
 	m.extendedTokens[signedToken] = newToken
-	
+
 	return newToken, nil
 }
 
@@ -100,7 +100,7 @@ func TestSessionExtension(t *testing.T) {
 		sessionID := "test-session-near-expiry"
 		expiresAt := time.Now().Add(5 * 24 * time.Hour)
 		signedToken := crypto.CreateTimedToken(sessionID, expiresAt)
-		
+
 		sessionStore.sessions[sessionID] = &models.Session{
 			Token:     sessionID,
 			UserID:    user.ID,
@@ -168,7 +168,7 @@ func TestSessionExtension(t *testing.T) {
 		sessionID := "test-session-far-expiry"
 		expiresAt := time.Now().Add(20 * 24 * time.Hour)
 		signedToken := crypto.CreateTimedToken(sessionID, expiresAt)
-		
+
 		sessionStore.sessions[sessionID] = &models.Session{
 			Token:     sessionID,
 			UserID:    user.ID,
@@ -231,7 +231,7 @@ func TestSessionExtension(t *testing.T) {
 		sessionID := "admin-session-near-expiry"
 		expiresAt := time.Now().Add(5 * 24 * time.Hour)
 		signedToken := crypto.CreateTimedToken(sessionID, expiresAt)
-		
+
 		sessionStore.sessions[sessionID] = &models.Session{
 			Token:     sessionID,
 			UserID:    adminUser.ID,
@@ -289,7 +289,7 @@ func TestSessionExtension(t *testing.T) {
 		sessionID := "test-session-context"
 		expiresAt := time.Now().Add(5 * 24 * time.Hour)
 		signedToken := crypto.CreateTimedToken(sessionID, expiresAt)
-		
+
 		sessionStore.sessions[sessionID] = &models.Session{
 			Token:     sessionID,
 			UserID:    user.ID,

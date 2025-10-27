@@ -6,183 +6,7 @@
     <title>Ripristino Password - Wellness & Nutrition</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Roboto', sans-serif;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 400px;
-            margin: 80px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .avatar {
-            width: 40px;
-            height: 40px;
-            margin: 0 auto 10px;
-            background-color: #9c27b0;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-        h1 {
-            font-size: 24px;
-            font-weight: 400;
-            margin: 10px 0;
-        }
-        .form-group {
-            margin-bottom: 20px;
-            position: relative;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: rgba(0, 0, 0, 0.6);
-            font-size: 12px;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(0, 0, 0, 0.23);
-            border-radius: 4px;
-            font-size: 16px;
-            font-family: 'Roboto', sans-serif;
-            box-sizing: border-box;
-        }
-        input:focus {
-            outline: none;
-            border-color: #1976d2;
-            border-width: 2px;
-        }
-        input:disabled {
-            background-color: #f5f5f5;
-            color: rgba(0, 0, 0, 0.6);
-            cursor: not-allowed;
-        }
-        .password-container {
-            position: relative;
-        }
-        .password-container input {
-            padding-right: 45px;
-        }
-        .toggle-password {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: rgba(0, 0, 0, 0.54);
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-        }
-        .toggle-password .material-icons {
-            font-size: 20px;
-            line-height: 1;
-        }
-        .password-requirements {
-            font-size: 12px;
-            margin-top: 8px;
-            padding: 8px;
-            background-color: #f5f5f5;
-            border-radius: 4px;
-        }
-        .requirement {
-            display: flex;
-            align-items: center;
-            margin: 4px 0;
-            color: #666;
-        }
-        .requirement.met {
-            color: #2e7d32;
-        }
-        .requirement .material-icons {
-            font-size: 16px;
-            margin-right: 6px;
-        }
-        .password-mismatch {
-            font-size: 12px;
-            color: #d32f2f;
-            margin-top: 4px;
-            display: none;
-        }
-        .password-mismatch.show {
-            display: block;
-        }
-        .success {
-            background-color: #2e7d32;
-            color: white;
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        .error {
-            background-color: #d32f2f;
-            color: white;
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        .info {
-            background-color: #e3f2fd;
-            color: #1976d2;
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #1976d2;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        button:hover:not(:disabled) {
-            background-color: #1565c0;
-        }
-        button:disabled {
-            background-color: #9e9e9e;
-            cursor: not-allowed;
-        }
-        .links {
-            margin-top: 20px;
-            text-align: center;
-        }
-        .links a {
-            color: #1976d2;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .links a:hover {
-            text-decoration: underline;
-        }
-        .hidden {
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/signin.css" />
 </head>
 <body>
     <div class="container">
@@ -192,27 +16,27 @@
             </div>
             <h1>Ripristino Password</h1>
         </div>
-        
+
         <div id="successMessage" class="success hidden"></div>
         <div id="errorMessage" class="error hidden"></div>
-        
+
         {{if .Token}}
         <!-- Password Reset Form (with token) -->
         <div class="info">
             Imposta una nuova password per il tuo account.
         </div>
-        
+
         <form id="resetForm" method="post" action="/api/auth/verify">
             <input type="hidden" name="token" value="{{.Token}}" />
-            
+
             <div class="form-group">
                 <label for="password">Nuova Password</label>
                 <div class="password-container">
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        required 
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
                         minlength="6"
                         autofocus
                     />
@@ -239,15 +63,15 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="form-group">
                 <label for="confirmPassword">Conferma Password</label>
                 <div class="password-container">
-                    <input 
-                        type="password" 
-                        id="confirmPassword" 
-                        name="confirmPassword" 
-                        required 
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        required
                         minlength="6"
                     />
                     <button type="button" class="toggle-password" onclick="togglePassword('confirmPassword')">
@@ -258,7 +82,7 @@
                     Le password non corrispondono
                 </div>
             </div>
-            
+
             <button type="submit" id="submitBtn">Reimposta Password</button>
         </form>
         {{else}}
@@ -266,34 +90,34 @@
         <div class="info">
             Inserisci il tuo indirizzo email per ricevere il link di ripristino password.
         </div>
-        
+
         <form id="emailForm" method="post" action="/api/auth/reset">
             <div class="form-group">
                 <label for="email">Indirizzo email</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    required 
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    required
                     autofocus
                 />
             </div>
-            
+
             <button type="submit">Invia link di ripristino</button>
-            
+
             <div class="links">
                 <a href="/signin">Torna al login</a>
             </div>
         </form>
         {{end}}
     </div>
-    
+
     <script>
         function togglePassword(fieldId) {
             const field = document.getElementById(fieldId);
             const button = field.parentElement.querySelector('.toggle-password');
             const icon = button.querySelector('.material-icons');
-            
+
             if (field.type === 'password') {
                 field.type = 'text';
                 icon.textContent = 'visibility_off';
@@ -325,7 +149,7 @@
         function checkPasswordsMatch() {
             const password = passwordInput.value;
             const confirmPassword = confirmPasswordInput.value;
-            
+
             // Show mismatch if:
             // 1. Both fields have content and don't match
             // 2. Password has content but confirm is empty (default state)
@@ -349,7 +173,7 @@
             const password = passwordInput.value;
             const confirmPassword = confirmPasswordInput.value;
             let allMet = true;
-            
+
             for (const [key, req] of Object.entries(requirements)) {
                 const met = req.regex.test(password);
                 if (met) {
@@ -361,7 +185,7 @@
                     allMet = false;
                 }
             }
-            
+
             const passwordsMatch = checkPasswordsMatch();
             // Button should only be enabled if:
             // 1. All requirements are met
@@ -372,23 +196,23 @@
 
         passwordInput.addEventListener('input', validateForm);
         confirmPasswordInput.addEventListener('input', validateForm);
-        
+
         // Set initial state - button should be disabled and mismatch shown
         document.getElementById('submitBtn').disabled = true;
 
         // Form submission for password reset
         document.getElementById('resetForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             const token = document.querySelector('input[name="token"]').value;
-            
+
             if (password !== confirmPassword) {
                 showError('Le password non corrispondono');
                 return;
             }
-            
+
             // Check all requirements
             let allMet = true;
             for (const req of Object.values(requirements)) {
@@ -397,16 +221,16 @@
                     break;
                 }
             }
-            
+
             if (!allMet) {
                 showError('La password non soddisfa tutti i requisiti');
                 return;
             }
-            
+
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Reimpostazione...';
-            
+
             try {
                 const csrfToken = getCookie('csrf_token');
                 const response = await fetch('/api/auth/verify', {
@@ -417,9 +241,9 @@
                     },
                     body: JSON.stringify({ token, password }),
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     showSuccess('Password reimpostata con successo! Reindirizzamento alla pagina di login...');
                     setTimeout(() => {
@@ -441,14 +265,14 @@
         // Form submission for email request
         document.getElementById('emailForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const emailInput = document.getElementById('email');
             const email = emailInput.value;
             const submitBtn = this.querySelector('button[type="submit"]');
-            
+
             submitBtn.disabled = true;
             submitBtn.textContent = 'Invio in corso...';
-            
+
             try {
                 const csrfToken = getCookie('csrf_token');
                 const response = await fetch('/api/auth/reset', {
@@ -459,9 +283,9 @@
                     },
                     body: JSON.stringify({ email }),
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     showSuccess('Email inviata! Controlla la tua casella di posta. Puoi chiudere questa pagina.');
                     emailInput.disabled = true;

@@ -15,7 +15,7 @@
             <div class="loading-text" id="loading-text">Caricamento...</div>
         </div>
     </div>
-    
+
     <div class="header">
         <h1>Wellness & Nutrition - Admin</h1>
         <div class="nav">
@@ -28,13 +28,13 @@
             <a href="/api/auth/logout">Esci</a>
         </div>
     </div>
-    
+
     <div class="container">
         <div class="toolbar">
             <h2 style="margin: 0; font-size: 18px; font-weight: 500;">Gestione Utenti</h2>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="text" id="userSearch" placeholder="Cerca per nome..." 
-                       onkeyup="filterUsers()" 
+                <input type="text" id="userSearch" placeholder="Cerca per nome..."
+                       onkeyup="filterUsers()"
                        style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-width: 200px;">
                 <button class="btn btn-danger" onclick="deleteSelected()" id="deleteBtn" disabled>
                     <span class="material-icons" style="font-size: 18px;">delete</span>
@@ -46,7 +46,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="table-container">
             <table>
                 <thead>
@@ -73,7 +73,7 @@
                         <td>{{.Email}}</td>
                         <td>
                             <span class="badge {{if eq .SubType "SHARED"}}badge-shared{{else}}badge-single{{end}}">
-                                {{.SubType}}
+                                {{if eq .SubType "SHARED"}}CONDIVISO{{else}}SINGOLO{{end}}
                             </span>
                         </td>
                         <td>
@@ -100,10 +100,10 @@
             </table>
         </div>
     </div>
-    
+
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
-    
+
     <!-- Create User Modal -->
     <div id="createModal" class="modal">
         <div class="modal-content">
@@ -172,7 +172,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Edit User Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
@@ -250,7 +250,7 @@
             </div>
         </div>
     </div>
-    
+
     <script>
         // Helper function to get cookie value
         function getCookie(name) {
@@ -271,29 +271,29 @@
             const overlay = document.getElementById('loading-overlay');
             overlay.classList.remove('show');
         }
-        
+
         function toggleAll(checkbox) {
             const checkboxes = document.querySelectorAll('.user-checkbox');
             checkboxes.forEach(cb => cb.checked = checkbox.checked);
             updateDeleteButton();
         }
-        
+
         function updateDeleteButton() {
             const checkboxes = document.querySelectorAll('.user-checkbox:checked');
             const deleteBtn = document.getElementById('deleteBtn');
             deleteBtn.disabled = checkboxes.length === 0;
         }
-        
+
         function deleteSelected() {
             const checkboxes = document.querySelectorAll('.user-checkbox:checked');
             const ids = Array.from(checkboxes).map(cb => cb.value);
-            
+
             if (ids.length === 0) return;
-            
+
             if (!confirm(`Sicuro di voler eliminare ${ids.length} utente(i)?`)) {
                 return;
             }
-            
+
             showLoading('Eliminazione utenti...');
             const csrfToken = getCookie('csrf_token');
             fetch('/api/admin/users', {
@@ -320,7 +320,7 @@
                 console.error(error);
             });
         }
-        
+
         // Modal functions
         function openCreateModal() {
             document.getElementById('createModal').style.display = 'block';
@@ -329,12 +329,12 @@
             nextYear.setFullYear(nextYear.getFullYear() + 1);
             document.getElementById('createExpiresAt').value = nextYear.toISOString().split('T')[0];
         }
-        
+
         function closeCreateModal() {
             document.getElementById('createModal').style.display = 'none';
             document.getElementById('createForm').reset();
         }
-        
+
         function openEditModal(id, firstName, lastName, email, address, cellphone, subType, medOk, expiresAt, remainingAccesses, goals, emailVerified) {
             document.getElementById('editModal').style.display = 'block';
             document.getElementById('editUserId').value = id;
@@ -347,12 +347,12 @@
             document.getElementById('editMedOk').checked = medOk;
             document.getElementById('editRemainingAccesses').value = remainingAccesses;
             document.getElementById('editGoals').value = goals;
-            
+
             // Set expiry date (handle null/invalid dates)
             if (expiresAt && expiresAt !== '0001-01-01T00:00:00Z') {
                 document.getElementById('editExpiresAt').value = expiresAt.split('T')[0];
             }
-            
+
             // Show/hide verification status
             const verificationStatus = document.getElementById('verificationStatus');
             if (!emailVerified) {
@@ -361,12 +361,12 @@
                 verificationStatus.style.display = 'none';
             }
         }
-        
+
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
             document.getElementById('editForm').reset();
         }
-        
+
         // Close modals when clicking outside
         window.onclick = function(event) {
             const createModal = document.getElementById('createModal');
@@ -378,13 +378,13 @@
                 closeEditModal();
             }
         }
-        
+
         function submitCreateUser() {
             const goals = document.getElementById('createGoals').value
                 .split(',')
                 .map(g => g.trim())
                 .filter(g => g.length > 0);
-                
+
             const data = {
                 firstName: document.getElementById('createFirstName').value,
                 lastName: document.getElementById('createLastName').value,
@@ -397,7 +397,7 @@
                 remainingAccesses: parseInt(document.getElementById('createRemainingAccesses').value),
                 goals: goals
             };
-            
+
             showLoading('Creazione utente...');
             const csrfToken = getCookie('csrf_token');
             fetch('/api/admin/users', {
@@ -425,13 +425,13 @@
                 console.error(error);
             });
         }
-        
+
         function submitEditUser() {
             const goals = document.getElementById('editGoals').value
                 .split(',')
                 .map(g => g.trim())
                 .filter(g => g.length > 0);
-                
+
             const data = {
                 id: document.getElementById('editUserId').value,
                 firstName: document.getElementById('editFirstName').value,
@@ -445,7 +445,7 @@
                 remainingAccesses: parseInt(document.getElementById('editRemainingAccesses').value),
                 goals: goals
             };
-            
+
             showLoading('Aggiornamento utente...');
             const csrfToken = getCookie('csrf_token');
             fetch('/api/admin/users', {
@@ -477,10 +477,10 @@
                 console.error(error);
             });
         }
-        
+
         function resendVerification() {
             const userId = document.getElementById('editUserId').value;
-            
+
             showLoading('Invio email di verifica...');
             const csrfToken = getCookie('csrf_token');
             fetch('/api/admin/users/resend-verification', {
@@ -506,16 +506,16 @@
                 console.error(error);
             });
         }
-        
+
         function filterUsers() {
             const searchTerm = document.getElementById('userSearch').value.toLowerCase();
             const rows = document.querySelectorAll('tbody tr');
-            
+
             rows.forEach(row => {
                 const firstName = row.cells[1].textContent.toLowerCase();  // Second column (after checkbox)
                 const lastName = row.cells[2].textContent.toLowerCase();   // Third column
                 const fullName = firstName + ' ' + lastName;
-                
+
                 if (fullName.includes(searchTerm) || firstName.includes(searchTerm) || lastName.includes(searchTerm)) {
                     row.style.display = '';
                 } else {
@@ -523,13 +523,13 @@
                 }
             });
         }
-        
+
         function showToast(message, isSuccess) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = 'toast' + (isSuccess ? ' success' : '');
             toast.style.display = 'block';
-            
+
             setTimeout(() => {
                 toast.style.display = 'none';
             }, 4000);

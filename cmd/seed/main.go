@@ -39,7 +39,7 @@ func seedTest(db *sql.DB) {
 	adminPassword := hashPassword("admin123")
 	adminID := generateID()
 	_, err = db.Exec(`
-		INSERT INTO users 
+		INSERT INTO users
 		(id, first_name, last_name, address, password, role, med_ok, email, email_verified, expires_at, remaining_accesses, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (email) DO NOTHING
@@ -72,8 +72,8 @@ func seedTest(db *sql.DB) {
 		userID := generateID()
 		userIDs[i] = userID
 		_, err = db.Exec(`
-			INSERT INTO users 
-			(id, first_name, last_name, address, password, med_ok, 
+			INSERT INTO users
+			(id, first_name, last_name, address, password, med_ok,
 			 sub_type, email, email_verified, expires_at, remaining_accesses)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			ON CONFLICT (email) DO NOTHING
@@ -101,7 +101,7 @@ func seedTest(db *sql.DB) {
 	var id int
 	for i, instr := range instructors {
 		err := db.QueryRow(`
-			INSERT INTO instructors 
+			INSERT INTO instructors
 			(first_name, last_name)
 			VALUES ($1, $2)
 			ON CONFLICT DO NOTHING
