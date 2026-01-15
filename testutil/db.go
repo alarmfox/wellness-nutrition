@@ -41,8 +41,26 @@ func CleanupTestDB(t *testing.T, db *sql.DB) {
 }
 
 // TruncateTables removes all data from specified tables
+// Only allows truncating known test tables to prevent SQL injection
 func TruncateTables(t *testing.T, db *sql.DB, tables ...string) {
+	// Whitelist of allowed table names for testing
+	allowedTables := map[string]bool{
+		"users":       true,
+		"sessions":    true,
+		"bookings":    true,
+		"events":      true,
+		"instructors": true,
+		"questions":   true,
+	}
+
 	for _, table := range tables {
+		// Validate table name against whitelist
+		if !allowedTables[table] {
+			t.Logf("Warning: table %s is not in the allowed list, skipping", table)
+			continue
+		}
+
+		// Safe to use fmt.Sprintf here since table name is validated
 		_, err := db.Exec(fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table))
 		if err != nil {
 			t.Logf("Warning: failed to truncate table %s: %v", table, err)
@@ -118,8 +136,11 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 
 // DropTestSchema drops all test tables
 func DropTestSchema(t *testing.T, db *sql.DB) {
+	// Fixed list of tables to drop in correct order (respecting foreign keys)
 	tables := []string{"questions", "bookings", "events", "sessions", "instructors", "users"}
+	
 	for _, table := range tables {
+		// Safe to use fmt.Sprintf here since tables is a fixed list defined in this function
 		_, err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table))
 		if err != nil {
 			t.Logf("Warning: failed to drop table %s: %v", table, err)

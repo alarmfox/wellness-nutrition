@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"database/sql"
+	"strconv"
 	"sync"
 	"time"
 
@@ -116,15 +117,15 @@ func (m *MockBookingRepository) GetByInstructorAndDateRange(instructorID string,
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	// Convert instructorID string to int64
+	instrID, err := strconv.ParseInt(instructorID, 10, 64)
+	if err != nil {
+		// If conversion fails, return empty list (no matches)
+		return []*models.Booking{}, nil
+	}
+
 	var bookings []*models.Booking
 	for _, booking := range m.bookings {
-		// Convert instructorID to int64 for comparison
-		var instrID int64
-		// Simple conversion - in real code this would be more robust
-		if instructorID == "1" {
-			instrID = 1
-		}
-
 		if booking.InstructorID == instrID &&
 			(booking.StartsAt.Equal(from) || booking.StartsAt.After(from)) &&
 			(booking.StartsAt.Equal(to) || booking.StartsAt.Before(to)) {
