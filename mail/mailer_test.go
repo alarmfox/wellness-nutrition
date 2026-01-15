@@ -145,7 +145,7 @@ func TestMockMailer(t *testing.T) {
 
 	t.Run("Error Handling", func(t *testing.T) {
 		mailer.Reset()
-		
+
 		// Set an error
 		testErr := &mockError{msg: "test error"}
 		mailer.Error = testErr

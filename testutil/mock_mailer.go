@@ -167,7 +167,7 @@ func (m *MockMailer) Reset() {
 func (m *MockMailer) GetEmails() []SentEmail {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	emails := make([]SentEmail, len(m.Emails))
 	copy(emails, m.Emails)
 	return emails
@@ -184,11 +184,11 @@ func (m *MockMailer) GetEmailCount() int {
 func (m *MockMailer) GetLastEmail() *SentEmail {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if len(m.Emails) == 0 {
 		return nil
 	}
-	
+
 	email := m.Emails[len(m.Emails)-1]
 	return &email
 }
@@ -197,7 +197,7 @@ func (m *MockMailer) GetLastEmail() *SentEmail {
 func (m *MockMailer) GetEmailsByType(emailType string) []SentEmail {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	var filtered []SentEmail
 	for _, email := range m.Emails {
 		if email.Type == emailType {

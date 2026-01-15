@@ -266,7 +266,7 @@ func TestMockBookingRepository(t *testing.T) {
 		repo.Reset()
 
 		now := time.Now()
-		
+
 		// Create booking in range
 		booking1 := &models.Booking{
 			UserID: sql.NullString{
@@ -293,7 +293,7 @@ func TestMockBookingRepository(t *testing.T) {
 
 		from := now.Add(1 * 24 * time.Hour)
 		to := now.Add(5 * 24 * time.Hour)
-		
+
 		bookings, err := repo.GetByDateRange(from, to)
 		if err != nil {
 			t.Fatalf("Failed to get bookings by date range: %v", err)

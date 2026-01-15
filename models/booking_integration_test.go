@@ -119,7 +119,7 @@ func TestBookingRepository_Integration(t *testing.T) {
 		testutil.TruncateTables(t, db, "bookings")
 
 		now := time.Now().UTC()
-		
+
 		// Create booking in range
 		booking1 := &models.Booking{
 			UserID: sql.NullString{
@@ -153,7 +153,7 @@ func TestBookingRepository_Integration(t *testing.T) {
 		// Query with date range
 		from := now.Add(1 * 24 * time.Hour)
 		to := now.Add(5 * 24 * time.Hour)
-		
+
 		bookings, err := bookingRepo.GetByDateRange(from, to)
 		if err != nil {
 			t.Fatalf("Failed to get bookings by date range: %v", err)

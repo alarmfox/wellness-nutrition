@@ -147,7 +147,7 @@ func (m *MockBookingRepository) Reset() {
 func (m *MockBookingRepository) AddBooking(booking *models.Booking) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if booking.ID == 0 {
 		booking.ID = m.nextID
 		m.nextID++
