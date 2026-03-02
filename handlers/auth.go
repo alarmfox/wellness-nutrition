@@ -545,12 +545,13 @@ type ResetPasswordRequest struct {
 }
 
 func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	var req ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
 
-	email := r.FormValue("email")
+	email := req.Email
 	if email == "" {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Email is required"})
 		return
