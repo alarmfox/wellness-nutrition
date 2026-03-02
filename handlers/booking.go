@@ -433,7 +433,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Verify instructor exists
-	_, err = h.instructorRepo.GetByID(instructorID)
+	instructor, err := h.instructorRepo.GetByID(instructorID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJSON(w, http.StatusNotFound, map[string]string{"error": "Instructor not found"})
@@ -497,8 +497,8 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 
 		peopleCount := slotBookingCount[slotKey]
 
-		// 3. Slot is unavailable if there are 2 SIMPLE bookings
-		if peopleCount >= 2 {
+		// 3. Slot is unavailable if there are instructor.MaxSlots SIMPLE bookings
+		if peopleCount >= instructor.MaxSlots {
 			continue
 		}
 

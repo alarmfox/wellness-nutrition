@@ -35,6 +35,7 @@ func (h *InstructorHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 type CreateInstructorRequest struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
+	MaxSlots  int    `json:"maxSlots"`
 }
 
 func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -50,10 +51,15 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.MaxSlots <= 0 {
+		req.MaxSlots = 2
+	}
+
 	// Create instructor
 	instructor := &models.Instructor{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
+		MaxSlots:  req.MaxSlots,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -70,6 +76,7 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 type UpdateInstructorRequest struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
+	MaxSlots  int    `json:"maxSlots"`
 }
 
 func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +108,9 @@ func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// Update fields
 	instructor.FirstName = req.FirstName
 	instructor.LastName = req.LastName
+	if req.MaxSlots > 0 {
+		instructor.MaxSlots = req.MaxSlots
+	}
 
 	if err := h.instructorRepo.Update(instructor); err != nil {
 		log.Printf("Error updating instructor: %v", err)
