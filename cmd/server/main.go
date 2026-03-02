@@ -609,6 +609,7 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 			ID        int64
 			FirstName string
 			LastName  string
+			MaxSlots  int
 			CreatedAt string
 		}
 
@@ -618,6 +619,7 @@ func serveInstructors(instructorRepo *models.InstructorRepository) http.HandlerF
 				ID:        i.ID,
 				FirstName: i.FirstName,
 				LastName:  i.LastName,
+				MaxSlots:  i.MaxSlots,
 				CreatedAt: i.CreatedAt.Format("02 Jan 2006"),
 			})
 		}

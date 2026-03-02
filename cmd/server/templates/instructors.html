@@ -37,6 +37,7 @@
                     <tr>
                         <th>Nome</th>
                         <th>Cognome</th>
+                        <th>Slot Massimi</th>
                         <th>Azioni</th>
                     </tr>
                 </thead>
@@ -45,9 +46,10 @@
                     <tr data-id="{{.ID}}">
                         <td>{{.FirstName}}</td>
                         <td>{{.LastName}}</td>
+                        <td>{{.MaxSlots}}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-icon" onclick="openEditModal('{{.ID}}', '{{.FirstName}}', '{{.LastName}}')" title="Modifica">
+                                <button class="btn-icon" onclick="openEditModal('{{.ID}}', '{{.FirstName}}', '{{.LastName}}', {{.MaxSlots}})" title="Modifica">
                                     <span class="material-icons">edit</span>
                                 </button>
                                 <button class="btn-icon" onclick="deleteInstructor('{{.ID}}')" title="Elimina">
@@ -79,6 +81,10 @@
                         <label for="create-lastName">Cognome</label>
                         <input type="text" id="create-lastName">
                     </div>
+                    <div class="form-group">
+                        <label for="create-maxSlots">Slot Massimi</label>
+                        <input type="number" id="create-maxSlots" min="1" value="2">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -105,6 +111,10 @@
                     <div class="form-group">
                         <label for="edit-lastName">Cognome</label>
                         <input type="text" id="edit-lastName">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-maxSlots">Slot Massimi</label>
+                        <input type="number" id="edit-maxSlots" min="1">
                     </div>
                 </form>
             </div>
@@ -135,10 +145,11 @@
             document.getElementById('createForm').reset();
         }
 
-        function openEditModal(id, firstName, lastName) {
+        function openEditModal(id, firstName, lastName, maxSlots) {
             document.getElementById('edit-id').value = id;
             document.getElementById('edit-firstName').value = firstName;
             document.getElementById('edit-lastName').value = lastName || '';
+            document.getElementById('edit-maxSlots').value = maxSlots || 2;
             document.getElementById('editModal').style.display = 'block';
         }
 
@@ -160,6 +171,7 @@
         async function createInstructor() {
             const firstName = document.getElementById('create-firstName').value;
             const lastName = document.getElementById('create-lastName').value;
+            const maxSlots = parseInt(document.getElementById('create-maxSlots').value, 10) || 2;
 
             if (!firstName) {
                 showToast('Il nome è obbligatorio');
@@ -177,6 +189,7 @@
                     body: JSON.stringify({
                         firstName,
                         lastName,
+                        maxSlots,
                     }),
                 });
 
@@ -198,6 +211,7 @@
             const id = document.getElementById('edit-id').value;
             const firstName = document.getElementById('edit-firstName').value;
             const lastName = document.getElementById('edit-lastName').value;
+            const maxSlots = parseInt(document.getElementById('edit-maxSlots').value, 10) || 2;
 
             if (!firstName) {
                 showToast('Il nome è obbligatorio');
@@ -215,6 +229,7 @@
                     body: JSON.stringify({
                         firstName,
                         lastName,
+                        maxSlots,
                     }),
                 });
 
