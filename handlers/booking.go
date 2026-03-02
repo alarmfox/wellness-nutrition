@@ -465,6 +465,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	// Build map of unavailable slots
 	unavailableSlots := make(map[int64]bool)
 	slotBookingCount := make(map[int64]int)
+	userSubTypes := make(map[string]models.SubType)
 
 	for _, booking := range bookings {
 		// Both booking times and slots are in UTC, so direct comparison works
@@ -479,14 +480,35 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 			continue
 		}
 
-		// 2. Count SIMPLE bookings
-		if booking.Type == models.BookingTypeSimple {
-			slotBookingCount[slotKey]++
+		// 2. Count SIMPLE bookings weighted by subscription type
+		// SINGLE subscriptions consume 2 slots, SHARED consume 1
+		if booking.Type == models.BookingTypeSimple && booking.UserID.Valid {
+			subType, ok := userSubTypes[booking.UserID.String]
+			if !ok {
+				bookingUser, err := h.userRepo.GetByID(booking.UserID.String)
+				if err == nil {
+					subType = bookingUser.SubType
+				} else {
+					log.Printf("Error looking up user %s for slot counting: %v", booking.UserID.String, err)
+					subType = models.SubTypeShared
+				}
+				userSubTypes[booking.UserID.String] = subType
+			}
+			if subType == models.SubTypeSingle {
+				slotBookingCount[slotKey] += 2
+			} else {
+				slotBookingCount[slotKey]++
+			}
 		}
 	}
 
 	// Filter slots based on availability rules
 	var availableSlots []time.Time
+	neededSlots := 1
+	if user.SubType == models.SubTypeSingle {
+		neededSlots = 2
+	}
+
 	for _, slot := range slots {
 		slotKey := slot.Unix()
 
@@ -495,15 +517,10 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 			continue
 		}
 
-		peopleCount := slotBookingCount[slotKey]
+		usedSlots := slotBookingCount[slotKey]
 
-		// 3. Slot is unavailable if there are instructor.MaxSlots SIMPLE bookings
-		if peopleCount >= instructor.MaxSlots {
-			continue
-		}
-
-		// 4. If user has SINGLE plan and there's already 1 SIMPLE booking, slot is unavailable
-		if user.SubType == models.SubTypeSingle && peopleCount >= 1 {
+		// Slot is unavailable if there isn't enough capacity for the current user
+		if usedSlots+neededSlots > instructor.MaxSlots {
 			continue
 		}
 

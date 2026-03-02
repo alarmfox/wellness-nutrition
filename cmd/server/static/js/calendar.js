@@ -69,7 +69,7 @@ const CalendarState = {
                     State: 'AVAILABLE',
                     Disabled: false,
                     PeopleCount: 0,
-                    MaxCapacity: 2
+                    MaxCapacity: instructor ? instructor.MaxSlots : 2
                 };
                 slot.InstructorSlots.push(instructorSlot);
             }
@@ -82,7 +82,7 @@ const CalendarState = {
             } else if (booking.type === BookingType.APPOINTMENT) {
                 instructorSlot.State = 'APPOINTMENT';
             } else if (booking.type === BookingType.SIMPLE && booking.user) {
-                instructorSlot.PeopleCount++;
+                instructorSlot.PeopleCount += booking.user.subType === 'SINGLE' ? 2 : 1;
             }
         });
 
@@ -110,7 +110,7 @@ const CalendarState = {
                     State: 'AVAILABLE',
                     Disabled: false,
                     PeopleCount: 0,
-                    MaxCapacity: 2
+                    MaxCapacity: instructor.MaxSlots || 2
                 });
             }
         });
