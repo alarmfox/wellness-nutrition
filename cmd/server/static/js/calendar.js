@@ -69,7 +69,7 @@ const CalendarState = {
                     State: 'AVAILABLE',
                     Disabled: false,
                     PeopleCount: 0,
-                    MaxCapacity: instructor ? instructor.MaxSlots : 2
+                    MaxCapacity: instructor ? instructor.MaxSlots : 0
                 };
                 slot.InstructorSlots.push(instructorSlot);
             }
@@ -110,7 +110,7 @@ const CalendarState = {
                     State: 'AVAILABLE',
                     Disabled: false,
                     PeopleCount: 0,
-                    MaxCapacity: instructor.MaxSlots || 2
+                    MaxCapacity: instructor.MaxSlots
                 });
             }
         });
