@@ -138,6 +138,56 @@ Run the application with `docker compose`:
 docker compose up -d
 ```
 
+## Testing
+
+The application includes a comprehensive test infrastructure with unit tests, integration tests, and mock implementations.
+
+### Running Tests
+
+```bash
+# Run all tests (unit + integration)
+make test
+
+# Run unit tests only (no database required)
+make test-unit
+
+# Run integration tests (requires database)
+make test-integration
+
+# Run tests with coverage report
+make test-coverage
+
+# Run tests with Docker database
+make test-docker
+```
+
+### Test Structure
+
+- **Unit Tests**: Use mock implementations for database and mail
+- **Integration Tests**: Use a real PostgreSQL database
+- **Mock Implementations**: Available in `testutil` package
+  - `MockMailer`: Test email functionality without SMTP
+  - `MockUserRepository`: Test user logic without database
+  - `MockBookingRepository`: Test booking logic without database
+
+### Setting Up Test Database
+
+```bash
+# Start test database
+make test-docker-up
+
+# Set environment variable
+export DATABASE_URL="postgresql://postgres:test123@localhost:5433/test_db?sslmode=disable"
+
+# Run tests
+make test
+
+# Stop test database
+make test-docker-down
+```
+
+For more details on testing utilities and best practices, see [testutil/README.md](testutil/README.md).
+
 ## Security
 
 - Passwords are hashed using Argon2id
