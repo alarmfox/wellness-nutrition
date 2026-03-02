@@ -220,7 +220,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// Generate user ID and verification token
 	userID := generateID()
 	tokenExpiresAt := time.Now().Add(7 * 24 * time.Hour)
-	verificationToken, err := generateSignedToken(tokenExpiresAt)
+	signedToken, unsignedToken, err := generateSignedToken(tokenExpiresAt)
 	if err != nil {
 		log.Printf("Error generating token: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
@@ -246,7 +246,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:                  expiresAt,
 		RemainingAccesses:          req.RemainingAccesses,
 		Role:                       models.RoleUser,
-		VerificationToken:          sql.NullString{String: verificationToken, Valid: true},
+		VerificationToken:          sql.NullString{String: unsignedToken, Valid: true},
 		VerificationTokenExpiresIn: sql.NullTime{Time: tokenExpiresAt, Valid: true},
 		Goals:                      sql.NullString{String: goals, Valid: goals != ""},
 	}
@@ -258,7 +258,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send welcome email with verification link
-	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
+	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), signedToken)
 	if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
 		log.Printf("Error sending welcome email: %v", err)
 		// Don't fail user creation if email fails, but log it
@@ -330,18 +330,18 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// If email changed, reset verification and generate new token
 	if emailChanged {
 		expiresAt := time.Now().Add(7 * 24 * time.Hour)
-		verificationToken, err := generateSignedToken(expiresAt)
+		signedToken, unsignedToken, err := generateSignedToken(expiresAt)
 		if err != nil {
 			log.Printf("Error generating token: %v", err)
 			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
 			return
 		}
 		user.EmailVerified = sql.NullTime{Valid: false}
-		user.VerificationToken = sql.NullString{String: verificationToken, Valid: true}
+		user.VerificationToken = sql.NullString{String: unsignedToken, Valid: true}
 		user.VerificationTokenExpiresIn = sql.NullTime{Time: expiresAt, Valid: true}
 
 		// Send new verification email
-		verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
+		verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), signedToken)
 		if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
 			log.Printf("Error sending verification email: %v", err)
 			// Don't fail update if email fails, but log it
@@ -401,13 +401,13 @@ func (h *UserHandler) ResendVerification(w http.ResponseWriter, r *http.Request)
 
 	// Generate new verification token
 	expiresAt := time.Now().Add(7 * 24 * time.Hour)
-	verificationToken, err := generateSignedToken(expiresAt)
+	signedToken, unsignedToken, err := generateSignedToken(expiresAt)
 	if err != nil {
 		log.Printf("Error generating token: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to generate verification token"})
 		return
 	}
-	user.VerificationToken = sql.NullString{String: verificationToken, Valid: true}
+	user.VerificationToken = sql.NullString{String: unsignedToken, Valid: true}
 	user.VerificationTokenExpiresIn = sql.NullTime{Time: expiresAt, Valid: true}
 
 	if err := h.userRepo.Update(user); err != nil {
@@ -417,7 +417,7 @@ func (h *UserHandler) ResendVerification(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Send verification email
-	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), verificationToken)
+	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), signedToken)
 	if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
 		log.Printf("Error sending verification email: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to send verification email"})
@@ -443,15 +443,15 @@ func generateToken() (string, error) {
 	return token, nil
 }
 
-func generateSignedToken(expiresAt time.Time) (string, error) {
+func generateSignedToken(expiresAt time.Time) (signedToken, unsignedToken string, err error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", "", err
 	}
-	token := base64.URLEncoding.EncodeToString(b)
+	unsignedToken = base64.URLEncoding.EncodeToString(b)
 	// Sign the token with the expiration time
-	signedToken := crypto.CreateTimedToken(token, expiresAt)
-	return signedToken, nil
+	signedToken = crypto.CreateTimedToken(unsignedToken, expiresAt)
+	return signedToken, unsignedToken, nil
 }
 
 func getBaseURL(r *http.Request) string {
@@ -545,12 +545,13 @@ type ResetPasswordRequest struct {
 }
 
 func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	var req ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
 		return
 	}
 
-	email := r.FormValue("email")
+	email := req.Email
 	if email == "" {
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Email is required"})
 		return
@@ -565,7 +566,7 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	// Generate reset token
 	expiresAt := time.Now().Add(1 * time.Hour)
-	resetToken, err := generateSignedToken(expiresAt)
+	signedToken, unsignedToken, err := generateSignedToken(expiresAt)
 	if err != nil {
 		log.Printf("Error generating reset token: %v", err)
 		sendJSON(w, http.StatusOK, map[string]string{"message": "If the email exists, a reset link has been sent"})
@@ -573,7 +574,7 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update user with reset token
-	user.VerificationToken = sql.NullString{String: resetToken, Valid: true}
+	user.VerificationToken = sql.NullString{String: unsignedToken, Valid: true}
 	user.VerificationTokenExpiresIn = sql.NullTime{Time: expiresAt, Valid: true}
 
 	if err := h.userRepo.Update(user); err != nil {
@@ -583,7 +584,7 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send reset email
-	resetURL := fmt.Sprintf("%s/reset?token=%s", getBaseURL(r), resetToken)
+	resetURL := fmt.Sprintf("%s/reset?token=%s", getBaseURL(r), signedToken)
 	if err := h.mailer.SendResetEmail(user.Email, user.FirstName, resetURL); err != nil {
 		log.Printf("Error sending reset email: %v", err)
 	}
