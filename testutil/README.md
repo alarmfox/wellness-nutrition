@@ -13,15 +13,15 @@ import "github.com/alarmfox/wellness-nutrition/app/testutil"
 
 func TestSomeFeature(t *testing.T) {
     mailer := testutil.NewMockMailer()
-    
+
     // Use mailer in your test
     err := mailer.SendWelcomeEmail("user@example.com", "John", "https://example.com/verify")
-    
+
     // Verify email was sent
     if mailer.GetEmailCount() != 1 {
         t.Error("Expected 1 email to be sent")
     }
-    
+
     // Check email details
     email := mailer.GetLastEmail()
     if email.Type != "welcome" {
@@ -43,15 +43,15 @@ A mock implementation of the UserRepository for testing without a database.
 ```go
 func TestUserLogic(t *testing.T) {
     repo := testutil.NewMockUserRepository()
-    
+
     user := &models.User{
         ID:    "user-123",
         Email: "test@example.com",
         // ... other fields
     }
-    
+
     repo.Create(user)
-    
+
     retrieved, err := repo.GetByID("user-123")
     if err != nil {
         t.Fatal(err)
@@ -66,16 +66,16 @@ A mock implementation of the BookingRepository for testing without a database.
 ```go
 func TestBookingLogic(t *testing.T) {
     repo := testutil.NewMockBookingRepository()
-    
+
     booking := &models.Booking{
         UserID:       sql.NullString{String: "user-123", Valid: true},
         InstructorID: 1,
         StartsAt:     time.Now().Add(24 * time.Hour),
         Type:         models.BookingTypeSimple,
     }
-    
+
     repo.Create(booking)
-    
+
     bookings, err := repo.GetByUserID("user-123")
     if err != nil {
         t.Fatal(err)
@@ -95,7 +95,7 @@ Creates a connection to the test database. Automatically skips the test if:
 func TestWithDatabase(t *testing.T) {
     db := testutil.SetupTestDB(t)
     defer testutil.CleanupTestDB(t, db)
-    
+
     // Use db for testing
 }
 ```
@@ -108,10 +108,10 @@ Creates all required database tables for testing.
 func TestIntegration(t *testing.T) {
     db := testutil.SetupTestDB(t)
     defer testutil.CleanupTestDB(t, db)
-    
+
     testutil.CreateTestSchema(t, db)
     defer testutil.DropTestSchema(t, db)
-    
+
     // Run tests with schema
 }
 ```
@@ -124,15 +124,15 @@ Removes all data from specified tables between tests.
 func TestMultipleScenarios(t *testing.T) {
     db := testutil.SetupTestDB(t)
     defer testutil.CleanupTestDB(t, db)
-    
+
     testutil.CreateTestSchema(t, db)
     defer testutil.DropTestSchema(t, db)
-    
+
     t.Run("scenario 1", func(t *testing.T) {
         testutil.TruncateTables(t, db, "users", "bookings")
         // Test scenario 1
     })
-    
+
     t.Run("scenario 2", func(t *testing.T) {
         testutil.TruncateTables(t, db, "users", "bookings")
         // Test scenario 2
@@ -210,7 +210,7 @@ func TestFeature(t *testing.T) {
     // Setup
     mailer := testutil.NewMockMailer()
     userRepo := testutil.NewMockUserRepository()
-    
+
     // Test cases
     tests := []struct {
         name    string
@@ -236,20 +236,20 @@ func TestFeature(t *testing.T) {
             },
         },
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             // Reset mocks
             mailer.Reset()
             userRepo.Reset()
-            
+
             // Run setup
             if tt.setup != nil {
                 tt.setup()
             }
-            
+
             // Execute test logic here
-            
+
             // Verify
             if tt.verify != nil {
                 tt.verify(t)

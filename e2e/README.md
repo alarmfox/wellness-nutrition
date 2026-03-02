@@ -93,7 +93,7 @@ When writing new e2e tests:
    ```go
    db := testutil.SetupTestDB(t)
    defer testutil.CleanupTestDB(t, db)
-   
+
    testutil.CreateTestSchema(t, db)
    defer testutil.DropTestSchema(t, db)
    ```
@@ -102,9 +102,9 @@ When writing new e2e tests:
    ```go
    req := httptest.NewRequest("GET", "/endpoint", nil)
    w := httptest.NewRecorder()
-   
+
    handler.ServeHTTP(w, req)
-   
+
    if w.Code != http.StatusOK {
        t.Errorf("Expected 200, got %d", w.Code)
    }
@@ -128,28 +128,28 @@ func TestProtectedEndpoint(t *testing.T) {
     // Setup
     db := testutil.SetupTestDB(t)
     defer testutil.CleanupTestDB(t, db)
-    
+
     testutil.CreateTestSchema(t, db)
     defer testutil.DropTestSchema(t, db)
-    
+
     userRepo := models.NewUserRepository(db)
     sessionStore := models.NewSessionStore(db)
-    
+
     // Create test user
     user := &models.User{...}
     userRepo.Create(user)
-    
+
     // Create session
     token, _ := sessionStore.CreateSession(user.ID)
-    
+
     // Test
     req := httptest.NewRequest("GET", "/protected", nil)
     req.AddCookie(&http.Cookie{Name: "session", Value: token})
     w := httptest.NewRecorder()
-    
+
     handler := middleware.Auth(sessionStore, userRepo)(protectedHandler)
     handler.ServeHTTP(w, req)
-    
+
     // Verify
     if w.Code != http.StatusOK {
         t.Errorf("Expected 200, got %d", w.Code)
@@ -164,10 +164,10 @@ func TestCSRFProtection(t *testing.T) {
     // Get CSRF token
     getReq := httptest.NewRequest("GET", "/page", nil)
     getW := httptest.NewRecorder()
-    
+
     csrfHandler := middleware.CSRF(handler)
     csrfHandler.ServeHTTP(getW, getReq)
-    
+
     // Extract token from cookie
     var token string
     for _, c := range getW.Result().Cookies() {
@@ -175,7 +175,7 @@ func TestCSRFProtection(t *testing.T) {
             token = c.Value
         }
     }
-    
+
     // Use token in POST request
     postReq := httptest.NewRequest("POST", "/action", nil)
     postReq.Header.Set(middleware.CSRFHeaderName, token)
@@ -184,9 +184,9 @@ func TestCSRFProtection(t *testing.T) {
         Value: token,
     })
     postW := httptest.NewRecorder()
-    
+
     csrfHandler.ServeHTTP(postW, postReq)
-    
+
     // Should succeed with valid token
     if postW.Code != http.StatusOK {
         t.Errorf("Expected 200, got %d", postW.Code)

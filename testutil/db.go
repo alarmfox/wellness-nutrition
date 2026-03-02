@@ -138,7 +138,7 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 func DropTestSchema(t *testing.T, db *sql.DB) {
 	// Fixed list of tables to drop in correct order (respecting foreign keys)
 	tables := []string{"questions", "bookings", "events", "sessions", "instructors", "users"}
-	
+
 	for _, table := range tables {
 		// Safe to use fmt.Sprintf here since tables is a fixed list defined in this function
 		_, err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table))
