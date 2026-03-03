@@ -20,6 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o seed cmd/seed/main.go
 RUN CGO_ENABLED=0 GOOS=linux go build -o migrate cmd/migrations/migrate.go
 RUN CGO_ENABLED=0 GOOS=linux go build -o cleanup cmd/cleanup/main.go
 RUN CGO_ENABLED=0 GOOS=linux go build -o reminder cmd/reminder/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o nextjs2go cmd/nextjs2goschema/main.go
 
 FROM alpine
 
