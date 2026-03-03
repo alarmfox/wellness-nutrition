@@ -196,7 +196,7 @@ For more details on testing utilities and best practices, see [testutil/README.m
 - Admin endpoints are protected by role-based middleware
 - SQL queries use parameterized statements to prevent SQL injection
 - CSRF token in all forms and API
-- Singed cookies with HMAC-SHA256
+- Signed cookies with HMAC-SHA256
 
 ## Migration from Next.js
 
