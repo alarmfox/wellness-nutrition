@@ -41,6 +41,11 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 20px;
 }
+.user-card-logo {
+    height: 48px;
+    display: block;
+    margin-bottom: 16px;
+}
 .content {
     background: white;
     padding: 20px;
