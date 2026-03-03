@@ -12,6 +12,9 @@ body {
     justify-content: space-between;
     align-items: center;
 }
+.header-logo {
+    height: 40px;
+}
 h1 {
     font-size: 20px;
     margin: 0;

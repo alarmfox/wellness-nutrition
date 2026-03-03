@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/smtp"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -150,6 +151,11 @@ func (m *Mailer) sendEmail(client *smtp.Client, to, subject string, data EmailDa
 	if data.Copyright == "" {
 		data.Copyright = "Tutti i diritti riservati"
 	}
+	if data.LogoURL == "" && data.AppLink != "" {
+		if u, err := url.Parse(data.AppLink); err == nil && (u.Scheme == "http" || u.Scheme == "https") {
+			data.LogoURL = data.AppLink + "/static/images/logo.png"
+		}
+	}
 
 	tmpl, err := template.New("email").Parse(emailTemplate)
 	if err != nil {
@@ -207,6 +213,7 @@ type EmailData struct {
 	AppName      string
 	AppLink      string
 	Copyright    string
+	LogoURL      string
 }
 
 const emailTemplate = `
@@ -217,59 +224,97 @@ const emailTemplate = `
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Roboto', Arial, sans-serif;
             line-height: 1.6;
             color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .wrapper {
             max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .header {
+            background-color: #ffffff;
             text-align: center;
-            padding: 20px 0;
-            border-bottom: 2px solid #22BC66;
+            padding: 24px 32px;
+            border-bottom: 3px solid #1976d2;
+        }
+        .header img {
+            height: 48px;
+            max-width: 200px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 500;
+            color: #1976d2;
         }
         .content {
-            padding: 30px 0;
+            padding: 32px;
+            color: #333;
+        }
+        .content h2 {
+            color: #1976d2;
+            font-size: 18px;
+            font-weight: 500;
+            margin-top: 0;
         }
         .button {
             display: inline-block;
-            padding: 12px 24px;
-            background-color: #22BC66;
-            color: white;
+            padding: 12px 28px;
+            background-color: #1976d2;
+            color: #ffffff !important;
             text-decoration: none;
             border-radius: 4px;
+            font-size: 15px;
+            font-weight: 500;
             margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #1565c0;
         }
         .footer {
             text-align: center;
-            padding: 20px 0;
-            border-top: 1px solid #ddd;
-            color: #666;
+            padding: 20px 32px;
+            background-color: #f5f5f5;
+            border-top: 1px solid #e0e0e0;
+            color: #757575;
             font-size: 12px;
+        }
+        .footer a {
+            color: #1976d2;
+            text-decoration: none;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>{{.AppName}}</h1>
-    </div>
-    <div class="content">
-        {{if .Name}}<p>Ciao {{.Name}},</p>{{end}}
-        {{if .Intro}}<p>{{.Intro}}</p>{{end}}
-        {{if .Title}}<h2>{{.Title}}</h2>{{end}}
-        {{if .Instructions}}<p>{{.Instructions}}</p>{{end}}
-        {{if .ButtonText}}
-        <p style="text-align: center;">
-            <a href="{{.ButtonLink}}" class="button">{{.ButtonText}}</a>
-        </p>
-        {{end}}
-        {{if .Outro}}<p>{{.Outro}}</p>{{end}}
-        {{if .Signature}}<p>{{.Signature}}</p>{{end}}
-    </div>
-    <div class="footer">
-        <p>{{.Copyright}}</p>
-        <p><a href="{{.AppLink}}">{{.AppName}}</a></p>
+    <div class="wrapper">
+        <div class="header">
+            {{if .LogoURL}}<img src="{{.LogoURL}}" alt="{{.AppName}} logo" />{{else}}<h1>{{.AppName}}</h1>{{end}}
+        </div>
+        <div class="content">
+            {{if .Name}}<p>Ciao {{.Name}},</p>{{end}}
+            {{if .Intro}}<p>{{.Intro}}</p>{{end}}
+            {{if .Title}}<h2>{{.Title}}</h2>{{end}}
+            {{if .Instructions}}<p>{{.Instructions}}</p>{{end}}
+            {{if .ButtonText}}
+            <p style="text-align: center;">
+                <a href="{{.ButtonLink}}" class="button">{{.ButtonText}}</a>
+            </p>
+            {{end}}
+            {{if .Outro}}<p>{{.Outro}}</p>{{end}}
+            {{if .Signature}}<p>{{.Signature}}</p>{{end}}
+        </div>
+        <div class="footer">
+            <p>{{.Copyright}}</p>
+            <p><a href="{{.AppLink}}">{{.AppName}}</a></p>
+        </div>
     </div>
 </body>
 </html>
