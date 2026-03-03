@@ -9,6 +9,7 @@ type Instructor struct {
 	ID        int64
 	FirstName string
 	LastName  string
+	MaxSlots  int
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -23,7 +24,7 @@ func NewInstructorRepository(db *sql.DB) *InstructorRepository {
 
 func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 	query := `
-		SELECT id, first_name, last_name, created_at, updated_at
+		SELECT id, first_name, last_name, max_slots, created_at, updated_at
 		FROM instructors
 		ORDER BY first_name, last_name
 	`
@@ -41,6 +42,7 @@ func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 			&instructor.ID,
 			&instructor.FirstName,
 			&instructor.LastName,
+			&instructor.MaxSlots,
 			&instructor.CreatedAt,
 			&instructor.UpdatedAt,
 		)
@@ -55,7 +57,7 @@ func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 
 func (r *InstructorRepository) GetByID(id int64) (*Instructor, error) {
 	query := `
-		SELECT id, first_name, last_name, created_at, updated_at
+		SELECT id, first_name, last_name, max_slots, created_at, updated_at
 		FROM instructors
 		WHERE id = $1
 	`
@@ -65,6 +67,7 @@ func (r *InstructorRepository) GetByID(id int64) (*Instructor, error) {
 		&instructor.ID,
 		&instructor.FirstName,
 		&instructor.LastName,
+		&instructor.MaxSlots,
 		&instructor.CreatedAt,
 		&instructor.UpdatedAt,
 	)
@@ -77,14 +80,15 @@ func (r *InstructorRepository) GetByID(id int64) (*Instructor, error) {
 
 func (r *InstructorRepository) Create(instructor *Instructor) error {
 	query := `
-		INSERT INTO instructors (first_name, last_name)
-		VALUES ($1, $2)
+		INSERT INTO instructors (first_name, last_name, max_slots)
+		VALUES ($1, $2, $3)
 		RETURNING id, created_at, updated_at
 	`
 
 	err := r.db.QueryRow(query,
 		instructor.FirstName,
 		instructor.LastName,
+		instructor.MaxSlots,
 	).Scan(&instructor.ID, &instructor.CreatedAt, &instructor.UpdatedAt)
 
 	return err
@@ -93,7 +97,7 @@ func (r *InstructorRepository) Create(instructor *Instructor) error {
 func (r *InstructorRepository) Update(instructor *Instructor) error {
 	query := `
 		UPDATE instructors
-		SET first_name = $2, last_name = $3, updated_at = $4
+		SET first_name = $2, last_name = $3, max_slots = $4, updated_at = $5
 		WHERE id = $1
 	`
 
@@ -101,6 +105,7 @@ func (r *InstructorRepository) Update(instructor *Instructor) error {
 		instructor.ID,
 		instructor.FirstName,
 		instructor.LastName,
+		instructor.MaxSlots,
 		time.Now(),
 	)
 

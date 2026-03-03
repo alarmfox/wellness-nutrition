@@ -47,7 +47,7 @@ func seedTest(db *sql.DB) {
 	if err != nil {
 		log.Printf("Warning: Could not create admin: %v", err)
 	} else {
-		log.Println("✓ Created admin user (email: admin@wellness.local, password: admin123, role: ADMIN)")
+		log.Println("Created admin user (email: admin@wellness.local, password: admin123, role: ADMIN)")
 	}
 
 	// Create test users
@@ -82,7 +82,7 @@ func seedTest(db *sql.DB) {
 		if err != nil {
 			log.Printf("Warning: Could not create user %s: %v", u.email, err)
 		} else {
-			log.Printf("✓ Created user %s %s (email: %s, password: password123)", u.firstName, u.lastName, u.email)
+			log.Printf("Created user %s %s (email: %s, password: password123)", u.firstName, u.lastName, u.email)
 		}
 
 		rowsAffected, _ := result.RowsAffected()
@@ -93,7 +93,7 @@ func seedTest(db *sql.DB) {
 			}
 			log.Printf("User %s existed → using ID %s", u.email, userID)
 		} else {
-			log.Printf("✓ Created user %s %s (email: %s, password: password123)", u.firstName, u.lastName, u.email)
+			log.Printf("Created user %s %s (email: %s, password: password123)", u.firstName, u.lastName, u.email)
 		}
 
 		userIDs[i] = userID
@@ -122,7 +122,7 @@ func seedTest(db *sql.DB) {
 		if err != nil {
 			log.Printf("Warning: Could not create instructor %s %s: %v", instr.firstName, instr.lastName, err)
 		} else {
-			log.Printf("✓ Created instructor %s %s", instr.firstName, instr.lastName)
+			log.Printf("Created instructor %s %s", instr.firstName, instr.lastName)
 		}
 		instructorIDs[i] = id
 	}
