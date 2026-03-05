@@ -30,6 +30,12 @@ body {
     padding: 30px;
     text-align: center;
 }
+.survey-logo {
+    height: 50px;
+    display: block;
+    margin: 0 auto 16px;
+    filter: brightness(0) invert(1);
+}
 .survey-header h1 {
     margin: 0;
     font-size: 28px;
