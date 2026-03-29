@@ -253,7 +253,7 @@ func serveRoot() http.HandlerFunc {
 		}
 
 		// Redirect based on role
-		if user != nil && user.Role == models.RoleAdmin {
+		if user.Role == models.RoleAdmin {
 			http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
 		} else {
 			http.Redirect(w, r, "/user", http.StatusSeeOther)
@@ -270,7 +270,7 @@ func serveUserDashboard(bookingRepo *models.BookingRepository, instructorRepo *m
 		}
 
 		// Only regular users can access user dashboard
-		if user != nil && user.Role == models.RoleAdmin {
+		if user.Role == models.RoleAdmin {
 			http.Redirect(w, r, "/admin/calendar", http.StatusSeeOther)
 			return
 		}
