@@ -42,8 +42,8 @@ func TestBookingRepository_Integration(t *testing.T) {
 	}
 
 	// Create test instructor
-	_, err := db.Exec("INSERT INTO instructors (id, name) VALUES (1, 'Test Instructor')")
-	if err != nil {
+	instructor := &models.Instructor{FirstName: "Test", LastName: "Instructor", MaxSlots: 5}
+	if err := instructorRepo.Create(instructor); err != nil {
 		t.Fatalf("Failed to create test instructor: %v", err)
 	}
 
@@ -55,7 +55,7 @@ func TestBookingRepository_Integration(t *testing.T) {
 				String: user.ID,
 				Valid:  true,
 			},
-			InstructorID: 1,
+			InstructorID: instructor.ID,
 			StartsAt:     time.Now().Add(24 * time.Hour).UTC(),
 			Type:         models.BookingTypeSimple,
 		}
@@ -79,13 +79,14 @@ func TestBookingRepository_Integration(t *testing.T) {
 			t.Errorf("Expected user ID %s, got %s", user.ID, retrieved.UserID.String)
 		}
 
-		if retrieved.InstructorID != 1 {
-			t.Errorf("Expected instructor ID 1, got %d", retrieved.InstructorID)
+		if retrieved.InstructorID != instructor.ID {
+			t.Errorf("Expected instructor ID %d, got %d", instructor.ID, retrieved.InstructorID)
 		}
 	})
 
 	t.Run("Get Bookings by User ID", func(t *testing.T) {
 		testutil.TruncateTables(t, db, "bookings")
+		now := time.Now().UTC()
 
 		// Create multiple bookings for the user
 		for i := 0; i < 3; i++ {
@@ -94,8 +95,8 @@ func TestBookingRepository_Integration(t *testing.T) {
 					String: user.ID,
 					Valid:  true,
 				},
-				InstructorID: 1,
-				StartsAt:     time.Now().Add(time.Duration(i+1) * 24 * time.Hour).UTC(),
+				InstructorID: instructor.ID,
+				StartsAt:     now.Add(time.Duration(i+1) * 24 * time.Hour),
 				Type:         models.BookingTypeSimple,
 			}
 			err := bookingRepo.Create(booking)
@@ -126,7 +127,7 @@ func TestBookingRepository_Integration(t *testing.T) {
 				String: user.ID,
 				Valid:  true,
 			},
-			InstructorID: 1,
+			InstructorID: instructor.ID,
 			StartsAt:     now.Add(2 * 24 * time.Hour),
 			Type:         models.BookingTypeSimple,
 		}
@@ -141,7 +142,7 @@ func TestBookingRepository_Integration(t *testing.T) {
 				String: user.ID,
 				Valid:  true,
 			},
-			InstructorID: 1,
+			InstructorID: instructor.ID,
 			StartsAt:     now.Add(10 * 24 * time.Hour),
 			Type:         models.BookingTypeSimple,
 		}
@@ -176,7 +177,7 @@ func TestBookingRepository_Integration(t *testing.T) {
 				String: user.ID,
 				Valid:  true,
 			},
-			InstructorID: 1,
+			InstructorID: instructor.ID,
 			StartsAt:     time.Now().Add(24 * time.Hour).UTC(),
 			Type:         models.BookingTypeSimple,
 		}

@@ -2,8 +2,9 @@ package models
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type Role string
@@ -278,22 +279,7 @@ func (r *UserRepository) Delete(ids []string) error {
 		return nil
 	}
 
-	// Use IN clause with placeholders instead of ANY
-	query := `DELETE FROM users WHERE id IN (`
-	for i := range ids {
-		if i > 0 {
-			query += ", "
-		}
-		query += fmt.Sprintf("$%d", i+1)
-	}
-	query += `)`
-
-	// Convert []string to []interface{} for Exec
-	args := make([]interface{}, len(ids))
-	for i, id := range ids {
-		args[i] = id
-	}
-
-	_, err := r.db.Exec(query, args...)
+	query := `DELETE FROM users WHERE id = ANY($1)`
+	_, err := r.db.Exec(query, pq.Array(ids))
 	return err
 }

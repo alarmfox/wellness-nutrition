@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/alarmfox/wellness-nutrition/app/middleware"
 	"github.com/alarmfox/wellness-nutrition/app/models"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/argon2"
 )
 
 type AuthHandler struct {
@@ -79,8 +79,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify password using Argon2
-	if !verifyPassword(req.Password, user.Password.String) {
+	// Verify password using centralized crypto
+	if !crypto.VerifyPassword(req.Password, user.Password.String) {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid credentials"})
 		return
 	}
@@ -92,12 +92,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isProd := os.Getenv("ENVIRONMENT") == "production"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   isProd,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 	})
@@ -121,11 +122,15 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		h.sessionStore.DeleteSession(cookie.Value)
 	}
 
+	isProd := os.Getenv("ENVIRONMENT") == "production"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   isProd,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 	})
 }
@@ -432,17 +437,6 @@ func generateID() string {
 	return uuid.New().String()
 }
 
-func generateToken() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	token := base64.URLEncoding.EncodeToString(b)
-	// Sign the token with expiration (7 days for verification, 1 hour for reset)
-	// We'll handle expiration in the calling code
-	return token, nil
-}
-
 func generateSignedToken(expiresAt time.Time) (signedToken, unsignedToken string, err error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -460,84 +454,6 @@ func getBaseURL(r *http.Request) string {
 		scheme = "https"
 	}
 	return fmt.Sprintf("%s://%s", scheme, r.Host)
-}
-
-// hashPassword hashes a password using Argon2id
-func hashPassword(password string) (string, error) {
-	// Generate a random salt
-	salt := make([]byte, 16)
-	if _, err := rand.Read(salt); err != nil {
-		return "", err
-	}
-
-	// Hash the password
-	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
-
-	// Encode salt and hash to base64
-	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
-	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
-
-	// Return in the format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
-	return fmt.Sprintf("$argon2id$v=19$m=65536,t=1,p=4$%s$%s", b64Salt, b64Hash), nil
-}
-
-// verifyPassword verifies a password against an argon2 hash
-func verifyPassword(password, encodedHash string) bool {
-	// Parse the encoded hash
-	// Expected format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
-	parts := []byte(encodedHash)
-
-	// Find salt and hash parts
-	dollarCount := 0
-	saltStart := 0
-	hashStart := 0
-
-	for i, b := range parts {
-		if b == '$' {
-			dollarCount++
-			if dollarCount == 4 {
-				saltStart = i + 1
-			} else if dollarCount == 5 {
-				hashStart = i + 1
-				break
-			}
-		}
-	}
-
-	if hashStart == 0 {
-		// Invalid format, fallback to direct comparison for backward compatibility
-		return password == encodedHash
-	}
-
-	// Extract salt and hash
-	saltStr := string(parts[saltStart : hashStart-1])
-	hashStr := string(parts[hashStart:])
-
-	salt, err := base64.RawStdEncoding.DecodeString(saltStr)
-	if err != nil {
-		return false
-	}
-
-	expectedHash, err := base64.RawStdEncoding.DecodeString(hashStr)
-	if err != nil {
-		return false
-	}
-
-	// Generate hash from provided password with the same salt
-	computedHash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
-
-	// Compare hashes
-	if len(computedHash) != len(expectedHash) {
-		return false
-	}
-
-	for i := range computedHash {
-		if computedHash[i] != expectedHash[i] {
-			return false
-		}
-	}
-
-	return true
 }
 
 type ResetPasswordRequest struct {
@@ -647,8 +563,8 @@ func (h *UserHandler) VerifyAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hash password
-	hashedPassword, err := hashPassword(req.Password)
+	// Hash password using centralized crypto
+	hashedPassword, err := crypto.HashPassword(req.Password)
 	if err != nil {
 		log.Printf("Error hashing password: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to set password"})

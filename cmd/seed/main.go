@@ -71,7 +71,7 @@ func seedTest(db *sql.DB) {
 	for i, u := range users {
 		userID := generateID()
 		userIDs[i] = userID
-		result, err := db.Exec(`
+		_, err := db.Exec(`
 			INSERT INTO users
 			(id, first_name, last_name, address, password, med_ok,
 			 sub_type, email, email_verified, expires_at, remaining_accesses)
@@ -81,19 +81,7 @@ func seedTest(db *sql.DB) {
 			u.subType, u.email, time.Now(), time.Now().AddDate(0, 6, 0), u.accesses)
 		if err != nil {
 			log.Printf("Warning: Could not create user %s: %v", u.email, err)
-		} else {
-			log.Printf("Created user %s %s (email: %s, password: password123)", u.firstName, u.lastName, u.email)
-		}
-
-		rowsAffected, _ := result.RowsAffected()
-		if rowsAffected == 0 {
-			err = db.QueryRow(`SELECT id FROM users WHERE email = $1`, u.email).Scan(&userID)
-			if err != nil {
-				log.Fatalf("Failed retrieving existing ID for %s: %v", u.email, err)
-			}
-			log.Printf("User %s existed → using ID %s", u.email, userID)
-		} else {
-			log.Printf("Created user %s %s (email: %s, password: password123)", u.firstName, u.lastName, u.email)
+			continue
 		}
 
 		userIDs[i] = userID

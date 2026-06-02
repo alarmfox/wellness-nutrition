@@ -8,8 +8,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/argon2"
 )
 
 var (
@@ -29,6 +32,97 @@ func InitializeSecretKey(key string) error {
 	}
 	SecretKey = []byte(key)
 	return nil
+}
+
+// HashPassword hashes a password using Argon2id
+func HashPassword(password string) (string, error) {
+	// Generate a random salt
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return "", err
+	}
+
+	// Hash the password
+	// Memory: 64MB, Iterations: 1, Parallelism: 4
+	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+
+	// Encode salt and hash to base64
+	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
+	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
+
+	// Return in the format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
+	return fmt.Sprintf("$argon2id$v=19$m=65536,t=1,p=4$%s$%s", b64Salt, b64Hash), nil
+}
+
+// VerifyPassword verifies a password against an argon2 hash
+func VerifyPassword(password, encodedHash string) bool {
+	// Expected format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
+	parts := strings.Split(encodedHash, "$")
+	if len(parts) != 6 {
+		return false
+	}
+	if parts[1] != "argon2id" || parts[2] != "v=19" {
+		return false
+	}
+
+	memory, iterations, parallelism, err := parseArgon2idParams(parts[3])
+	if err != nil {
+		return false
+	}
+
+	// parts[1] is argon2id, parts[2] is v=19, parts[3] is parameters
+	// parts[4] is salt, parts[5] is hash
+	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil {
+		return false
+	}
+
+	expectedHash, err := base64.RawStdEncoding.DecodeString(parts[5])
+	if err != nil {
+		return false
+	}
+
+	// Generate hash from provided password with the same salt
+	computedHash := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, uint32(len(expectedHash)))
+
+	// Constant-time comparison
+	if len(computedHash) != len(expectedHash) {
+		return false
+	}
+
+	return hmac.Equal(computedHash, expectedHash)
+}
+
+func parseArgon2idParams(encodedParams string) (memory uint32, iterations uint32, parallelism uint8, err error) {
+	for _, param := range strings.Split(encodedParams, ",") {
+		keyValue := strings.SplitN(param, "=", 2)
+		if len(keyValue) != 2 {
+			return 0, 0, 0, ErrInvalidToken
+		}
+
+		value, parseErr := strconv.ParseUint(keyValue[1], 10, 32)
+		if parseErr != nil {
+			return 0, 0, 0, parseErr
+		}
+
+		switch keyValue[0] {
+		case "m":
+			memory = uint32(value)
+		case "t":
+			iterations = uint32(value)
+		case "p":
+			if value > 255 {
+				return 0, 0, 0, ErrInvalidToken
+			}
+			parallelism = uint8(value)
+		}
+	}
+
+	if memory == 0 || iterations == 0 || parallelism == 0 {
+		return 0, 0, 0, ErrInvalidToken
+	}
+
+	return memory, iterations, parallelism, nil
 }
 
 // SignToken creates a signed token with the given data
@@ -55,12 +149,6 @@ func VerifyToken(signedToken string) (string, error) {
 	}
 
 	return data, nil
-}
-
-// SignedToken represents a token with expiration
-type SignedToken struct {
-	Data      string
-	ExpiresAt int64 // Unix timestamp
 }
 
 // CreateTimedToken creates a signed token with expiration
@@ -106,23 +194,6 @@ func VerifyTimedToken(signedToken string) (string, error) {
 	}
 
 	return data, nil
-}
-
-// GenerateCSRFToken generates a new CSRF token
-func GenerateCSRFToken() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	token := base64.URLEncoding.EncodeToString(b)
-	// Sign the token
-	return SignToken(token), nil
-}
-
-// VerifyCSRFToken verifies a CSRF token
-func VerifyCSRFToken(token string) error {
-	_, err := VerifyToken(token)
-	return err
 }
 
 // computeHMAC computes HMAC-SHA256
