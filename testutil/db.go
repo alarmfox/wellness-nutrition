@@ -74,20 +74,49 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 		CREATE TABLE IF NOT EXISTS users (
 			id VARCHAR(255) PRIMARY KEY,
 			first_name VARCHAR(255) NOT NULL,
-			last_name VARCHAR(255) NOT NULL,
-			address TEXT,
-			password VARCHAR(255),
+			last_name VARCHAR(255),
+			address VARCHAR(255) NOT NULL,
+			password TEXT,
 			role VARCHAR(50) NOT NULL DEFAULT 'USER',
-			med_ok BOOLEAN DEFAULT FALSE,
+			med_ok BOOLEAN NOT NULL DEFAULT false,
 			cellphone VARCHAR(50),
-			sub_type VARCHAR(50) DEFAULT 'SINGLE',
-			email VARCHAR(255) UNIQUE NOT NULL,
+			sub_type VARCHAR(50) NOT NULL DEFAULT 'SHARED',
+			email VARCHAR(255) NOT NULL UNIQUE,
 			email_verified TIMESTAMP,
 			expires_at TIMESTAMP NOT NULL,
-			remaining_accesses INTEGER DEFAULT 0,
+			remaining_accesses INTEGER NOT NULL,
 			verification_token VARCHAR(255),
 			verification_token_expires_in TIMESTAMP,
-			goals TEXT
+			goals TEXT,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+
+		CREATE TABLE IF NOT EXISTS instructors (
+			id SERIAL PRIMARY KEY,
+			first_name VARCHAR(255) NOT NULL,
+			last_name VARCHAR(255) NOT NULL,
+			max_slots INTEGER NOT NULL DEFAULT 2,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+
+		CREATE TABLE IF NOT EXISTS bookings (
+			id BIGSERIAL PRIMARY KEY,
+			user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+			instructor_id INTEGER NOT NULL REFERENCES instructors(id) ON DELETE CASCADE,
+			starts_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			type VARCHAR(20) NOT NULL DEFAULT 'SIMPLE',
+			CONSTRAINT unique_user_instructor_time UNIQUE (user_id, instructor_id, starts_at)
+		);
+
+		CREATE TABLE IF NOT EXISTS events (
+			id SERIAL PRIMARY KEY,
+			user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			starts_at TIMESTAMP NOT NULL,
+			type VARCHAR(50) NOT NULL,
+			occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE TABLE IF NOT EXISTS sessions (
@@ -96,35 +125,18 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 			expires_at TIMESTAMP NOT NULL
 		);
 
-		CREATE TABLE IF NOT EXISTS instructors (
-			id SERIAL PRIMARY KEY,
-			name VARCHAR(255) NOT NULL,
-			description TEXT
-		);
-
-		CREATE TABLE IF NOT EXISTS bookings (
-			id SERIAL PRIMARY KEY,
-			user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
-			instructor_id INTEGER NOT NULL REFERENCES instructors(id),
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			starts_at TIMESTAMP NOT NULL,
-			type VARCHAR(50) DEFAULT 'SIMPLE'
-		);
-
-		CREATE TABLE IF NOT EXISTS events (
-			id SERIAL PRIMARY KEY,
-			instructor_id INTEGER NOT NULL REFERENCES instructors(id),
-			starts_at TIMESTAMP NOT NULL,
-			ends_at TIMESTAMP NOT NULL
-		);
-
 		CREATE TABLE IF NOT EXISTS questions (
 			id SERIAL PRIMARY KEY,
-			user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			sku VARCHAR(255) UNIQUE NOT NULL,
+			index INTEGER NOT NULL,
+			next INTEGER NOT NULL,
+			previous INTEGER NOT NULL,
 			question TEXT NOT NULL,
-			answer TEXT,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			star1 INTEGER NOT NULL DEFAULT 0,
+			star2 INTEGER NOT NULL DEFAULT 0,
+			star3 INTEGER NOT NULL DEFAULT 0,
+			star4 INTEGER NOT NULL DEFAULT 0,
+			star5 INTEGER NOT NULL DEFAULT 0
 		);
 	`
 
@@ -136,11 +148,9 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 
 // DropTestSchema drops all test tables
 func DropTestSchema(t *testing.T, db *sql.DB) {
-	// Fixed list of tables to drop in correct order (respecting foreign keys)
-	tables := []string{"questions", "bookings", "events", "sessions", "instructors", "users"}
+	tables := []string{"questions", "sessions", "bookings", "events", "instructors", "users"}
 
 	for _, table := range tables {
-		// Safe to use fmt.Sprintf here since tables is a fixed list defined in this function
 		_, err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table))
 		if err != nil {
 			t.Logf("Warning: failed to drop table %s: %v", table, err)

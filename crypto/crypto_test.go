@@ -1,9 +1,63 @@
 package crypto
 
 import (
+	"encoding/base64"
+	"fmt"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/argon2"
 )
+
+func TestVerifyPassword(t *testing.T) {
+	t.Run("current hash verifies", func(t *testing.T) {
+		hash, err := HashPassword("correct-password")
+		if err != nil {
+			t.Fatalf("HashPassword() error = %v", err)
+		}
+
+		if !VerifyPassword("correct-password", hash) {
+			t.Fatal("VerifyPassword() returned false for current hash")
+		}
+	})
+
+	t.Run("stored t=3 hash verifies", func(t *testing.T) {
+		hash := encodedArgon2idHash("correct-password", []byte("test-salt-123456"), 3, 64*1024, 4)
+
+		if !VerifyPassword("correct-password", hash) {
+			t.Fatal("VerifyPassword() returned false for t=3 hash")
+		}
+	})
+
+	t.Run("invalid hash format fails", func(t *testing.T) {
+		if VerifyPassword("correct-password", "not-an-argon2id-hash") {
+			t.Fatal("VerifyPassword() returned true for invalid hash")
+		}
+	})
+
+	t.Run("wrong password fails", func(t *testing.T) {
+		hash, err := HashPassword("correct-password")
+		if err != nil {
+			t.Fatalf("HashPassword() error = %v", err)
+		}
+
+		if VerifyPassword("wrong-password", hash) {
+			t.Fatal("VerifyPassword() returned true for wrong password")
+		}
+	})
+}
+
+func encodedArgon2idHash(password string, salt []byte, iterations uint32, memory uint32, parallelism uint8) string {
+	hash := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, 32)
+	return fmt.Sprintf(
+		"$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
+		memory,
+		iterations,
+		parallelism,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(hash),
+	)
+}
 
 func TestSignAndVerifyToken(t *testing.T) {
 	// Initialize secret key for testing

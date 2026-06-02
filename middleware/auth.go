@@ -2,15 +2,13 @@ package middleware
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/alarmfox/wellness-nutrition/app/models"
-	"golang.org/x/crypto/argon2"
 )
 
 // SessionStoreInterface defines the interface for session management
@@ -34,79 +32,6 @@ const (
 	// SessionDuration is how long a session lasts
 	SessionDuration = 30 * 24 * time.Hour // 30 days
 )
-
-// Hash password using argon2
-func HashPassword(password string) string {
-	salt := make([]byte, 16)
-	rand.Read(salt)
-
-	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
-
-	encoded := "$argon2id$v=19$m=65536,t=1,p=4$" +
-		base64.RawStdEncoding.EncodeToString(salt) + "$" +
-		base64.RawStdEncoding.EncodeToString(hash)
-
-	return encoded
-}
-
-// VerifyPassword verifies a password against an argon2 hash
-func VerifyPassword(password, encodedHash string) bool {
-	// Parse the encoded hash
-	// Expected format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
-	parts := []byte(encodedHash)
-
-	// Find salt and hash parts
-	dollarCount := 0
-	saltStart := 0
-	hashStart := 0
-
-	for i, b := range parts {
-		if b == '$' {
-			dollarCount++
-			if dollarCount == 4 {
-				saltStart = i + 1
-			} else if dollarCount == 5 {
-				hashStart = i + 1
-				break
-			}
-		}
-	}
-
-	if hashStart == 0 {
-		// Invalid format, fallback to direct comparison for backward compatibility
-		return password == encodedHash
-	}
-
-	// Extract salt and hash
-	saltStr := string(parts[saltStart : hashStart-1])
-	hashStr := string(parts[hashStart:])
-
-	salt, err := base64.RawStdEncoding.DecodeString(saltStr)
-	if err != nil {
-		return false
-	}
-
-	expectedHash, err := base64.RawStdEncoding.DecodeString(hashStr)
-	if err != nil {
-		return false
-	}
-
-	// Generate hash from provided password with the same salt
-	computedHash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
-
-	// Compare hashes
-	if len(computedHash) != len(expectedHash) {
-		return false
-	}
-
-	for i := range computedHash {
-		if computedHash[i] != expectedHash[i] {
-			return false
-		}
-	}
-
-	return true
-}
 
 // Auth middleware checks if user is authenticated
 func Auth(sessionStore SessionStoreInterface, userRepo UserRepositoryInterface) func(http.Handler) http.Handler {
@@ -200,12 +125,13 @@ func extendSessionIfNeeded(w http.ResponseWriter, sessionStore SessionStoreInter
 		}
 
 		// Set the new token as a cookie
+		isProd := os.Getenv("ENVIRONMENT") == "production"
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session",
 			Value:    newToken,
 			Path:     "/",
 			HttpOnly: true,
-			Secure:   false, // Set to true in production with HTTPS
+			Secure:   isProd,
 			SameSite: http.SameSiteLaxMode,
 			Expires:  newExpiresAt,
 		})

@@ -24,13 +24,15 @@ func NewSessionStore(db *sql.DB) *SessionStore {
 }
 
 func (s *SessionStore) CreateSession(userID string) (string, error) {
-	// Generate a random session ID
-	sessionID := generateToken()
+	sessionID, err := generateToken()
+	if err != nil {
+		return "", err
+	}
 	expiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days
 
 	// Store the unsigned session ID in database
 	query := `INSERT INTO sessions (token, user_id, expires_at) VALUES ($1, $2, $3)`
-	_, err := s.db.Exec(query, sessionID, userID, expiresAt)
+	_, err = s.db.Exec(query, sessionID, userID, expiresAt)
 	if err != nil {
 		return "", err
 	}
@@ -101,8 +103,10 @@ func (s *SessionStore) ExtendSession(signedToken string, newExpiresAt time.Time)
 	return newSignedToken, nil
 }
 
-func generateToken() string {
+func generateToken() (string, error) {
 	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }

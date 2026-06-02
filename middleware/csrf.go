@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/alarmfox/wellness-nutrition/app/crypto"
@@ -50,12 +51,13 @@ func CSRF(next http.Handler) http.Handler {
 			// Set the CSRF token in a cookie
 			// Note: HttpOnly is false so JavaScript can read the token for AJAX requests
 			// This is safe for CSRF tokens as they don't grant authentication
+			isProd := os.Getenv("ENVIRONMENT") == "production"
 			http.SetCookie(w, &http.Cookie{
 				Name:     CSRFCookieName,
 				Value:    token,
 				Path:     "/",
 				HttpOnly: false, // JavaScript needs to read this for fetch requests
-				Secure:   false, // Set to true in production with HTTPS
+				Secure:   isProd,
 				SameSite: http.SameSiteStrictMode,
 				MaxAge:   86400, // 24 hours
 			})
