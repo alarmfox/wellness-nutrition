@@ -5,13 +5,13 @@ name: Go
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "fix/ci" ]
     paths-ignore:
       - '*.md'
       - 'LICENSE'
       - '*.yml'
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "fix/ci" ]
     paths-ignore:
       - '*.md'
       - 'LICENSE'
