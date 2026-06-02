@@ -66,7 +66,7 @@
                         <div class="list-text">
                             <div class="list-primary" data-timestamp="{{.StartsAt}}"></div>
                             <div class="list-secondary">
-                                {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ {{.InstructorName}}</span> • {{end}}<span data-created="{{.CreatedAt}}"></span>
+                                {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;"> {{.InstructorName}}</span> • {{end}}<span data-created="{{.CreatedAt}}"></span>
                             </div>
                         </div>
                         <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
@@ -342,7 +342,7 @@
     {{if .IsSimulation}}
     <!-- SIMULATION MODE -->
     <script>
-        console.log('🎭 Simulation mode active - all actions are mocked');
+        console.log('Simulation mode active - all actions are mocked');
 
         // Simulation-specific implementations
         function handleLogout() {
