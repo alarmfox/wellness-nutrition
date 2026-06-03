@@ -44,7 +44,7 @@ func HashPassword(password string) (string, error) {
 
 	// Hash the password
 	// Memory: 64MB, Iterations: 1, Parallelism: 4
-	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+	hash := argon2.IDKey([]byte(password), salt, 3, 64*1024, 4, 32)
 
 	// Encode salt and hash to base64
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
