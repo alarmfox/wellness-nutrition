@@ -50,8 +50,8 @@ func HashPassword(password string) (string, error) {
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
 
-	// Return in the format: $argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>
-	return fmt.Sprintf("$argon2id$v=19$m=65536,t=1,p=4$%s$%s", b64Salt, b64Hash), nil
+	// Return in the format: $argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>
+	return fmt.Sprintf("$argon2id$v=19$m=65536,t=3,p=4$%s$%s", b64Salt, b64Hash), nil
 }
 
 // VerifyPassword verifies a password against an argon2 hash
