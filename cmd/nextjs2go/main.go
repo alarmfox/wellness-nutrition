@@ -122,6 +122,7 @@ func runMigration(db *sql.DB, backupPath string) error {
 	for _, task := range migrationTasks {
 		log.Printf("Running migration task: %s", task.name)
 		if _, err := tx.Exec(task.query); err != nil {
+			tx.Rollback()
 			return fmt.Errorf("error during %s migration: %w", task.name, err)
 		}
 	}

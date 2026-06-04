@@ -28,6 +28,6 @@ WORKDIR /app
 
 RUN apk add --no-cache tz
 
-COPY --from=build /app/server /app/seed /app/migrate /app/cleanup /app/reminder .
+COPY --from=build /app/server /app/seed /app/migrate /app/cleanup /app/reminder /app/nextjs2go .
 
 CMD ["/app/server"]
