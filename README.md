@@ -69,6 +69,23 @@ go run cmd/seed/main.go
 # Default Admin: admin@wellness.local / admin123
 ```
 
+### Migrating from the old Next.js database
+
+Restore the old `pg_dump` into a temporary database, run migrations on a fresh target database, then run `nextjs2go` with both database URLs.
+
+```bash
+createdb wellness_old
+psql "$OLD_DATABASE_URL" -v ON_ERROR_STOP=1 -f wellness_prod.sql
+
+DATABASE_URL="$NEW_DATABASE_URL" go run ./cmd/migrations
+
+OLD_DATABASE_URL="$OLD_DATABASE_URL" \
+DATABASE_URL="$NEW_DATABASE_URL" \
+go run ./cmd/nextjs2go
+```
+
+`nextjs2go` expects the old Next.js tables in the old database's `public` schema and the target Go database to be fresh. It imports users, bookings, disabled slots, events, and survey questions, assigns migrated bookings to a default `System Default` instructor, converts old disabled `Slot` rows into `DISABLE` bookings, skips stale old bookings that sit on disabled slots, skips duplicate old bookings that violate the new booking uniqueness rule, and reports the remaining old `Slot` summary.
+
 ## Testing
 
 The application features a comprehensive test suite including unit, integration, and permission-based tests.

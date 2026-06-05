@@ -43,6 +43,7 @@ build: ## Build the application
 	@go build -o bin/cleanup ./cmd/cleanup
 	@go build -o bin/reminder ./cmd/reminder
 	@go build -o bin/seed ./cmd/seed
+	@go build -o bin/nextjs2go ./cmd/nextjs2go
 
 lint: ## Run linters
 	@echo "Running linters..."
