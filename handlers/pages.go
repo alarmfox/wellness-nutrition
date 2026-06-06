@@ -403,6 +403,7 @@ func (h *PageHandler) ServeInstructors(w http.ResponseWriter, r *http.Request) {
 		FirstName string
 		LastName  string
 		MaxSlots  int
+		Enabled   bool
 		CreatedAt string
 	}
 
@@ -413,6 +414,7 @@ func (h *PageHandler) ServeInstructors(w http.ResponseWriter, r *http.Request) {
 			FirstName: i.FirstName,
 			LastName:  i.LastName,
 			MaxSlots:  i.MaxSlots,
+			Enabled:   i.Enabled,
 			CreatedAt: i.CreatedAt.Format("02 Jan 2006"),
 		})
 	}

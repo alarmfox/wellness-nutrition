@@ -88,6 +88,16 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	startsAt = startsAt.UTC()
 
+	if _, err := h.instructorRepo.GetEnabledByID(req.InstructorID); err != nil {
+		if err == sql.ErrNoRows {
+			sendJSON(w, http.StatusNotFound, map[string]string{"error": "Instructor not found"})
+			return
+		}
+		log.Printf("Error getting instructor: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+
 	booking := models.Booking{
 		InstructorID: req.InstructorID,
 		UserID:       sql.NullString{Valid: true, String: user.ID},
@@ -378,6 +388,16 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 	}
 	startsAt = startsAt.UTC()
 
+	if _, err := h.instructorRepo.GetEnabledByID(req.InstructorID); err != nil {
+		if err == sql.ErrNoRows {
+			sendJSON(w, http.StatusNotFound, map[string]string{"error": "Instructor not found"})
+			return
+		}
+		log.Printf("Error getting instructor: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+
 	// Create booking
 	booking := &models.Booking{
 		UserID:       sql.NullString{Valid: req.UserID != "", String: req.UserID},
@@ -440,8 +460,8 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Verify instructor exists
-	instructor, err := h.instructorRepo.GetByID(instructorID)
+	// Verify instructor exists and can accept bookings
+	instructor, err := h.instructorRepo.GetEnabledByID(instructorID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJSON(w, http.StatusNotFound, map[string]string{"error": "Instructor not found"})

@@ -97,6 +97,7 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 			first_name VARCHAR(255) NOT NULL,
 			last_name VARCHAR(255) NOT NULL,
 			max_slots INTEGER NOT NULL DEFAULT 2,
+			enabled BOOLEAN NOT NULL DEFAULT TRUE,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
