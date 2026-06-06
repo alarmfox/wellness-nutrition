@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const businessTimeZone = "Europe/Rome"
+
 var itMonths = map[string]string{
 	"January":   "Gennaio",
 	"February":  "Febbraio",
@@ -363,7 +365,7 @@ func (m *Mailer) SendResetEmail(email, firstName, verificationURL string) error 
 
 func (m *Mailer) SendNewBookingNotification(firstName, lastName string, startsAt time.Time) error {
 	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
-	localTime, err := formatUserTime(startsAt, "Europe/Rome")
+	localTime, err := formatUserTime(startsAt, businessTimeZone)
 	if err != nil {
 		return err
 	}
@@ -382,7 +384,7 @@ func (m *Mailer) SendNewBookingNotification(firstName, lastName string, startsAt
 func (m *Mailer) SendDeleteBookingNotification(firstName, lastName string, startsAt time.Time) error {
 	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
 
-	localTime, err := formatUserTime(startsAt, "Europe/Rome")
+	localTime, err := formatUserTime(startsAt, businessTimeZone)
 	if err != nil {
 		return err
 	}
@@ -399,7 +401,7 @@ func (m *Mailer) SendDeleteBookingNotification(firstName, lastName string, start
 }
 
 func (m *Mailer) SendReminderEmail(email, firstName string, startsAt time.Time) error {
-	localTime, err := formatUserTime(startsAt, "Europe/Rome")
+	localTime, err := formatUserTime(startsAt, businessTimeZone)
 	if err != nil {
 		return err
 	}

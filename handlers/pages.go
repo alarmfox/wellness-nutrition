@@ -88,6 +88,10 @@ func (h *PageHandler) ServeUserDashboard(w http.ResponseWriter, r *http.Request)
 	}
 
 	var displayBookings []BookingDisplay
+	loc, err := time.LoadLocation(businessTimeZone)
+	if err != nil {
+		panic(err)
+	}
 	for _, b := range bookings {
 		instructorName := ""
 		instructor, err := h.instructorRepo.GetByID(b.InstructorID)
@@ -98,10 +102,11 @@ func (h *PageHandler) ServeUserDashboard(w http.ResponseWriter, r *http.Request)
 			}
 		}
 
+		startsAt := b.StartsAt.In(loc)
 		displayBookings = append(displayBookings, BookingDisplay{
 			ID:                b.ID,
 			StartsAt:          b.StartsAt.Format(time.RFC3339),
-			StartsAtFormatted: b.StartsAt.Format("02 Jan 2006, 15:04"),
+			StartsAtFormatted: startsAt.Format("02 Jan 2006, 15:04"),
 			CreatedAt:         b.CreatedAt.Format(time.RFC3339),
 			InstructorName:    instructorName,
 		})

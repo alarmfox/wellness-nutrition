@@ -36,10 +36,11 @@ func main() {
 		log.Fatal("old database connection string is required (use OLD_DATABASE_URL env var)")
 	}
 
-	targetURL := os.Getenv("DATABASE_URL")
+	targetURL := os.Getenv("NEW_DATABASE_URL")
 	if targetURL == "" {
 		log.Fatal("target database connection string is required (use DATABASE_URL env var)")
 	}
+	fmt.Println(targetURL)
 
 	oldDB, err := sql.Open("postgres", oldURL)
 	if err != nil {
@@ -278,8 +279,12 @@ func insertDefaultInstructor(tx *sql.Tx) (int64, error) {
 func copyUsers(oldDB *sql.DB, tx *sql.Tx) (int64, error) {
 	rows, err := oldDB.Query(fmt.Sprintf(`
 		SELECT id, "firstName", "lastName", address, password, role::text, "medOk",
-			cellphone, "subType"::text, email, "emailVerified", "expiresAt",
-			"remainingAccesses", "verificationToken", "verificationTokenExpiresIn", goals
+			cellphone, "subType"::text, email,
+			"emailVerified" AT TIME ZONE 'UTC',
+			"expiresAt"::date,
+			"remainingAccesses", "verificationToken",
+			"verificationTokenExpiresIn" AT TIME ZONE 'UTC',
+			goals
 		FROM %s
 		ORDER BY id`, publicTable("User")))
 	if err != nil {
@@ -357,7 +362,11 @@ func copyBookings(oldDB *sql.DB, tx *sql.Tx, instructorID int64) (int64, int64, 
 	}
 
 	rows, err := oldDB.Query(fmt.Sprintf(`
-		SELECT b.id, b."userId", b."createdAt", b."startsAt"
+		SELECT
+			b.id,
+			b."userId",
+			b."createdAt" AT TIME ZONE 'UTC',
+			b."startsAt" AT TIME ZONE 'UTC'
 		FROM %s b
 		WHERE NOT EXISTS (
 			SELECT 1
@@ -428,7 +437,7 @@ func countOldBookingsOnDisabledSlots(db *sql.DB) (int64, error) {
 
 func copyDisabledSlots(oldDB *sql.DB, tx *sql.Tx, instructorID int64) (int64, error) {
 	rows, err := oldDB.Query(fmt.Sprintf(`
-		SELECT "startsAt"
+		SELECT "startsAt" AT TIME ZONE 'UTC'
 		FROM %s
 		WHERE disabled
 		ORDER BY "startsAt"`, publicTable("Slot")))
@@ -475,7 +484,12 @@ func copyDisabledSlots(oldDB *sql.DB, tx *sql.Tx, instructorID int64) (int64, er
 
 func copyEvents(oldDB *sql.DB, tx *sql.Tx) (int64, error) {
 	rows, err := oldDB.Query(fmt.Sprintf(`
-		SELECT id, "userId", "startsAt", type::text, "occurredAt"
+		SELECT
+			id,
+			"userId",
+			"startsAt" AT TIME ZONE 'UTC',
+			type::text,
+			"occurredAt" AT TIME ZONE 'UTC'
 		FROM %s
 		ORDER BY id`, publicTable("Event")))
 	if err != nil {

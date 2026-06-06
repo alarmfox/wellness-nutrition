@@ -10,6 +10,8 @@ const BookingType = {
     DISABLE: 'DISABLE'
 };
 
+var BUSINESS_TIME_ZONE = 'Europe/Rome';
+
 // ============================================================================
 // UTILITIES
 // ============================================================================
@@ -18,6 +20,55 @@ function getCookie(name) {
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(';').shift();
     return null;
+}
+
+function getRomeParts(date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: BUSINESS_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short'
+    }).formatToParts(date);
+
+    return Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+}
+
+function romeWallTimeToDate(year, month, day, hour) {
+    const utcCandidate = new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0));
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: BUSINESS_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(utcCandidate);
+    const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+    const renderedAsUTC = Date.UTC(
+        Number(values.year),
+        Number(values.month) - 1,
+        Number(values.day),
+        Number(values.hour),
+        Number(values.minute),
+        Number(values.second)
+    );
+    return new Date(utcCandidate.getTime() - (renderedAsUTC - utcCandidate.getTime()));
+}
+
+function addRomeDays(parts, days) {
+    const date = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + days, 12, 0, 0, 0));
+    return getRomeParts(date);
+}
+
+function getRomeWeekStartParts(date) {
+    const parts = getRomeParts(date);
+    const weekdays = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    const day = weekdays[parts.weekday];
+    const diff = day === 0 ? -6 : 1 - day;
+    return addRomeDays(parts, diff);
 }
 
 // ============================================================================
@@ -723,15 +774,21 @@ const DataLoader = {
     async loadBookings() {
         UI.showLoading('Caricamento calendario...');
 
-        const from = new Date(CalendarState.currentDate);
-        const to = new Date(CalendarState.currentDate);
-
-        const day = from.getDay();
-        const diff = from.getDate() - day + (day === 0 ? -6 : 1);
-        from.setDate(diff);
-        from.setHours(0, 0, 0, 0);
-        to.setDate(from.getDate() + 6);
-        to.setHours(23, 59, 59, 999);
+        const weekStartParts = getRomeWeekStartParts(CalendarState.currentDate);
+        const weekEndParts = addRomeDays(weekStartParts, 6);
+        const from = romeWallTimeToDate(
+            Number(weekStartParts.year),
+            Number(weekStartParts.month),
+            Number(weekStartParts.day),
+            0
+        );
+        const to = romeWallTimeToDate(
+            Number(weekEndParts.year),
+            Number(weekEndParts.month),
+            Number(weekEndParts.day),
+            23
+        );
+        to.setTime(to.getTime() + 59 * 60 * 1000 + 59 * 1000 + 999);
 
         try {
             CalendarState.bookings = await API.fetchBookings(from, to, CalendarState.selectedInstructorId);
@@ -786,17 +843,24 @@ const Calendar = {
     },
 
     render() {
-        const weekStart = new Date(CalendarState.currentDate);
-        const day = weekStart.getDay();
-        const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
-        weekStart.setDate(diff);
-
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
+        const weekStartParts = getRomeWeekStartParts(CalendarState.currentDate);
+        const weekEndParts = addRomeDays(weekStartParts, 6);
+        const weekStart = romeWallTimeToDate(
+            Number(weekStartParts.year),
+            Number(weekStartParts.month),
+            Number(weekStartParts.day),
+            0
+        );
+        const weekEnd = romeWallTimeToDate(
+            Number(weekEndParts.year),
+            Number(weekEndParts.month),
+            Number(weekEndParts.day),
+            0
+        );
 
         const currentMonth = document.getElementById('currentMonth');
         if (currentMonth) {
-            currentMonth.textContent = `${weekStart.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+            currentMonth.textContent = `${weekStart.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', timeZone: BUSINESS_TIME_ZONE })} - ${weekEnd.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric', timeZone: BUSINESS_TIME_ZONE })}`;
         }
 
         let html = '<div class="week-view">';
@@ -805,8 +869,8 @@ const Calendar = {
         for (let i = 0; i < 6; i++) {
             const date = new Date(weekStart);
             date.setDate(weekStart.getDate() + i);
-            const dayName = date.toLocaleDateString('it-IT', { weekday: 'short' });
-            const dayNum = date.getDate();
+            const dayName = date.toLocaleDateString('it-IT', { weekday: 'short', timeZone: BUSINESS_TIME_ZONE });
+            const dayNum = date.toLocaleDateString('it-IT', { day: 'numeric', timeZone: BUSINESS_TIME_ZONE });
             html += `<div class="day-header">${dayName} ${dayNum}</div>`;
         }
 
@@ -814,9 +878,13 @@ const Calendar = {
             html += `<div class="time-label">${hour}:00</div>`;
 
             for (let i = 0; i < 6; i++) {
-                const date = new Date(weekStart);
-                date.setDate(weekStart.getDate() + i);
-                date.setHours(hour, 0, 0, 0);
+                const dayParts = addRomeDays(weekStartParts, i);
+                const date = romeWallTimeToDate(
+                    Number(dayParts.year),
+                    Number(dayParts.month),
+                    Number(dayParts.day),
+                    hour
+                );
 
                 html += this.renderTimeSlot(date);
             }

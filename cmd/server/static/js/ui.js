@@ -1,6 +1,8 @@
 // ============================================================================
 // UI UTILITIES
 // ============================================================================
+var BUSINESS_TIME_ZONE = 'Europe/Rome';
+
 const UI = {
     showLoading(text = 'Caricamento...') {
         const overlay = document.getElementById('loading-overlay');
@@ -62,7 +64,8 @@ const UI = {
             month: 'long',
             day: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: BUSINESS_TIME_ZONE
         });
     }
 };
