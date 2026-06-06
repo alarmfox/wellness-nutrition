@@ -139,7 +139,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// Auth API routes - apply CSRF
 	mux.Handle("POST /api/auth/login", csrfMiddleware(http.HandlerFunc(authHandler.Login)))
-	mux.HandleFunc("DELETE /api/auth/logout", authHandler.Logout)
+	mux.Handle("DELETE /api/auth/logout", csrfMiddleware(http.HandlerFunc(authHandler.Logout)))
 	mux.Handle("POST /api/auth/reset", csrfMiddleware(http.HandlerFunc(userHandler.ResetPassword)))
 	mux.Handle("POST /api/auth/verify", csrfMiddleware(http.HandlerFunc(userHandler.VerifyAccount)))
 
@@ -195,10 +195,10 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("DELETE /api/admin/survey/questions", csrfMiddleware(adminMiddleware(http.HandlerFunc(surveyHandler.DeleteQuestion))))
 	mux.Handle("GET /api/admin/survey/results", csrfMiddleware(adminMiddleware(http.HandlerFunc(surveyHandler.GetResults))))
 
-	// WebSocket endpoint - no CSRF for websocket
-	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	// WebSocket endpoint - authenticated, but no CSRF for websocket upgrade
+	mux.Handle("/ws", adminMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		websocket.ServeWs(hub, w, r)
-	})
+	})))
 
 	// Root redirect based on role - apply CSRF
 	mux.Handle("/", csrfMiddleware(authMiddleware(http.HandlerFunc(pageHandler.ServeRoot))))
