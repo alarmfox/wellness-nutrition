@@ -486,8 +486,12 @@
             if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
                 return;
             }
+            const csrfToken = getCookie('csrf_token');
             fetch('/api/auth/logout', {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                }
             })
             .then(response => showToast('Chiusura sessione...', true));
         }
