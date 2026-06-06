@@ -61,7 +61,7 @@ func main() {
 			log.Fatalf("Error executing %s: %v", filename, err)
 		}
 
-		log.Printf("✓ Migration %s applied successfully", filename)
+		log.Printf("Migration %s applied successfully", filename)
 	}
 
 	log.Println("\n=== All migrations completed successfully ===")

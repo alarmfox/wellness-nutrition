@@ -69,3 +69,26 @@ const UI = {
         });
     }
 };
+
+document.addEventListener('keydown', function(event) {
+    if (event.key !== 'Escape') {
+        return;
+    }
+
+    const visibleModals = Array.from(document.querySelectorAll('.modal'))
+        .filter(modal => window.getComputedStyle(modal).display !== 'none');
+    const modal = visibleModals[visibleModals.length - 1];
+    if (!modal) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const closeControl = modal.querySelector('.close, [onclick^="close"], [onclick*="closeModal"]');
+    if (closeControl) {
+        closeControl.click();
+        return;
+    }
+
+    modal.style.display = 'none';
+});

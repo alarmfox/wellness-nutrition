@@ -34,6 +34,19 @@ function getRomeParts(date) {
     return Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
 }
 
+function getRomeDateHourParts(date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: BUSINESS_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(date);
+
+    return Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+}
+
 function romeWallTimeToDate(year, month, day, hour) {
     const utcCandidate = new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0));
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -69,6 +82,25 @@ function getRomeWeekStartParts(date) {
     const day = weekdays[parts.weekday];
     const diff = day === 0 ? -6 : 1 - day;
     return addRomeDays(parts, diff);
+}
+
+function isCurrentRomeHourSlot(date) {
+    const slot = getRomeDateHourParts(date);
+    const now = getRomeDateHourParts(new Date());
+
+    return slot.year === now.year &&
+        slot.month === now.month &&
+        slot.day === now.day &&
+        slot.hour === now.hour;
+}
+
+function isPastRomeHourSlot(date) {
+    const slot = getRomeDateHourParts(date);
+    const now = getRomeDateHourParts(new Date());
+    const slotHour = Date.UTC(Number(slot.year), Number(slot.month) - 1, Number(slot.day), Number(slot.hour));
+    const currentHour = Date.UTC(Number(now.year), Number(now.month) - 1, Number(now.day), Number(now.hour));
+
+    return slotHour < currentHour;
 }
 
 // ============================================================================
@@ -916,7 +948,19 @@ const Calendar = {
             ? allBookings.filter(b => b.instructorId === parseInt(CalendarState.selectedInstructorId))
             : allBookings;
 
-        let html = `<div class="time-slot" onclick="Calendar.handleSlotClick('${isoTime}')">`;
+        const slotClasses = ['time-slot'];
+        const isPastSlot = isPastRomeHourSlot(date);
+        if (isCurrentRomeHourSlot(date)) {
+            slotClasses.push('current-slot');
+        }
+        if (isPastSlot) {
+            slotClasses.push('past-slot');
+        }
+
+        const slotAttributes = isPastSlot
+            ? `class="${slotClasses.join(' ')}" aria-readonly="true" data-slot="${isoTime}"`
+            : `class="${slotClasses.join(' ')}" onclick="Calendar.handleSlotClick('${isoTime}')" data-slot="${isoTime}"`;
+        let html = `<div ${slotAttributes}>`;
 
         // Render each booking
         filteredBookings.forEach(booking => {
