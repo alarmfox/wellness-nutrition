@@ -15,6 +15,8 @@ import (
 	"github.com/alarmfox/wellness-nutrition/app/websocket"
 )
 
+const businessTimeZone = "Europe/Rome"
+
 type BookingHandler struct {
 	bookingRepo    *models.BookingRepository
 	eventRepo      *models.EventRepository
@@ -68,7 +70,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r.Context())
 
 	// Check if user can create booking
-	if time.Now().After(user.ExpiresAt) || user.RemainingAccesses <= 0 {
+	if time.Now().After(subscriptionExpiresAt(user.ExpiresAt)) || user.RemainingAccesses <= 0 {
 		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Subscription expired or no remaining accesses"})
 		return
 	}
@@ -79,7 +81,12 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startsAt, _ := time.Parse(time.RFC3339, req.StartsAt)
+	startsAt, err := time.Parse(time.RFC3339, req.StartsAt)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
+		return
+	}
+	startsAt = startsAt.UTC()
 
 	booking := models.Booking{
 		InstructorID: req.InstructorID,
@@ -105,7 +112,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		UserID:     user.ID,
 		StartsAt:   startsAt,
 		Type:       models.EventTypeCreated,
-		OccurredAt: time.Now(),
+		OccurredAt: time.Now().UTC(),
 	}
 	if err := h.eventRepo.Create(event); err != nil {
 		log.Printf("Error creating event: %v", err)
@@ -122,9 +129,9 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if h.hub != nil {
 		h.hub.BroadcastJSON(
 			websocket.NotificationBookingCreated,
-			fmt.Sprintf("Nuova prenotazione: %s %s - %s", user.FirstName, user.LastName, startsAt.Format("02/01/2006 15:04")),
+			fmt.Sprintf("Nuova prenotazione: %s %s - %s", user.FirstName, user.LastName, formatBusinessTime(startsAt)),
 			fmt.Sprintf("%s %s", user.FirstName, user.LastName),
-			startsAt.Format("02/01/2006 15:04"),
+			formatBusinessTime(startsAt),
 		)
 	}
 
@@ -183,7 +190,7 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		UserID:     user.ID,
 		StartsAt:   booking.StartsAt,
 		Type:       models.EventTypeDeleted,
-		OccurredAt: time.Now(),
+		OccurredAt: time.Now().UTC(),
 	}
 	if err := h.eventRepo.Create(event); err != nil {
 		log.Printf("Error creating event: %v", err)
@@ -206,9 +213,9 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		}
 		h.hub.BroadcastJSON(
 			websocket.NotificationBookingDeleted,
-			fmt.Sprintf("Prenotazione cancellata: %s - %s", userName, booking.StartsAt.Format("02/01/2006 15:04")),
+			fmt.Sprintf("Prenotazione cancellata: %s - %s", userName, formatBusinessTime(booking.StartsAt)),
 			userName,
-			booking.StartsAt.Format("02/01/2006 15:04"),
+			formatBusinessTime(booking.StartsAt),
 		)
 	}
 
@@ -369,6 +376,7 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid date format"})
 		return
 	}
+	startsAt = startsAt.UTC()
 
 	// Create booking
 	booking := &models.Booking{
@@ -444,11 +452,12 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	now := time.Now().Add(time.Hour * 3).UTC()
+	now := time.Now().UTC()
 	// Calculate end date: 1 month from now or user's plan expiration, whichever is earlier
 	endDate := now.AddDate(0, 1, 0)
-	if user.ExpiresAt.Before(endDate) {
-		endDate = user.ExpiresAt
+	userExpiration := subscriptionExpiresAt(user.ExpiresAt)
+	if userExpiration.Before(endDate) {
+		endDate = userExpiration
 	}
 
 	// Generate all possible slots from 7am to 9pm, Monday-Saturday
@@ -533,38 +542,51 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-// generateSlots creates time slots from 7am to 9pm, Monday-Saturday
+// generateSlots creates hourly Europe/Rome slots from 7am to 9pm, Monday-Saturday.
 // Slots are hourly intervals
 func generateSlots(start, end time.Time) []time.Time {
 	var slots []time.Time
-
-	// Start from the current hour or the next hour
-	current := start.Truncate(time.Hour)
-
-	// Ensure we start from at least 7am on the current day
-	if current.Hour() < 6 {
-		current = time.Date(current.Year(), current.Month(), current.Day(), 6, 0, 0, 0, current.Location())
+	loc, err := time.LoadLocation(businessTimeZone)
+	if err != nil {
+		panic(err)
 	}
 
-	for current.Before(end) {
+	startLocal := start.In(loc)
+	endLocal := end.In(loc)
+
+	currentDay := time.Date(startLocal.Year(), startLocal.Month(), startLocal.Day(), 0, 0, 0, 0, loc)
+
+	for !currentDay.After(endLocal) {
 		// Only include Monday (1) through Saturday (6)
-		weekday := current.Weekday()
+		weekday := currentDay.Weekday()
 		if weekday >= time.Monday && weekday <= time.Saturday {
-			hour := current.Hour()
-			// Only include slots from 6am to 10pm (6-20)
-			if hour >= 6 && hour <= 20 {
-				slots = append(slots, current)
+			for hour := 7; hour <= 21; hour++ {
+				slotLocal := time.Date(currentDay.Year(), currentDay.Month(), currentDay.Day(), hour, 0, 0, 0, loc)
+				if !slotLocal.Before(startLocal) && slotLocal.Before(endLocal) {
+					slots = append(slots, slotLocal.UTC())
+				}
 			}
 		}
 
-		// Move to next hour
-		current = current.Add(time.Hour)
-
-		// If we've passed 8pm, skip to 6am next day
-		if current.Hour() > 20 || current.Hour() < 6 {
-			current = time.Date(current.Year(), current.Month(), current.Day()+1, 6, 0, 0, 0, current.Location())
-		}
+		currentDay = currentDay.AddDate(0, 0, 1)
 	}
 
 	return slots
+}
+
+func subscriptionExpiresAt(expiresAt time.Time) time.Time {
+	loc, err := time.LoadLocation(businessTimeZone)
+	if err != nil {
+		panic(err)
+	}
+	expiresAt = expiresAt.In(loc)
+	return time.Date(expiresAt.Year(), expiresAt.Month(), expiresAt.Day(), 23, 59, 59, int(time.Second-time.Nanosecond), loc)
+}
+
+func formatBusinessTime(t time.Time) string {
+	loc, err := time.LoadLocation(businessTimeZone)
+	if err != nil {
+		panic(err)
+	}
+	return t.In(loc).Format("02/01/2006 15:04")
 }

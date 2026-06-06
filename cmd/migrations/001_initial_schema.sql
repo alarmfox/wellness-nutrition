@@ -14,14 +14,14 @@ CREATE TABLE IF NOT EXISTS users (
     cellphone VARCHAR(50),
     sub_type VARCHAR(50) NOT NULL DEFAULT 'SHARED',
     email VARCHAR(255) NOT NULL UNIQUE,
-    email_verified TIMESTAMP,
-    expires_at TIMESTAMP NOT NULL,
+    email_verified TIMESTAMPTZ,
+    expires_at DATE NOT NULL,
     remaining_accesses INTEGER NOT NULL,
     verification_token VARCHAR(255),
-    verification_token_expires_in TIMESTAMP,
+    verification_token_expires_in TIMESTAMPTZ,
     goals TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index on verification token for faster lookups
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS instructors (
     id SERIAL PRIMARY KEY,
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Bookings table
@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     id BIGSERIAL PRIMARY KEY,
     user_id VARCHAR(255),
     instructor_id INTEGER NOT NULL,
-    starts_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    starts_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     type VARCHAR(20) NOT NULL DEFAULT 'SIMPLE',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (instructor_id) REFERENCES instructors(id) ON DELETE CASCADE,
@@ -61,9 +61,9 @@ CREATE INDEX IF NOT EXISTS idx_bookings_instructor_id ON bookings(instructor_id)
 CREATE TABLE IF NOT EXISTS events (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
-    starts_at TIMESTAMP NOT NULL,
+    starts_at TIMESTAMPTZ NOT NULL,
     type VARCHAR(50) NOT NULL,
-    occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -74,7 +74,7 @@ CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 CREATE TABLE IF NOT EXISTS sessions (
     token VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

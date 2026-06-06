@@ -62,11 +62,23 @@ func TestRunMigrationIntegration(t *testing.T) {
 
 	var bookingType string
 	var instructorID int64
-	if err := targetDB.QueryRow(`SELECT type, instructor_id FROM public.bookings WHERE id = 42`).Scan(&bookingType, &instructorID); err != nil {
+	var bookingStartsAt, bookingCreatedAt time.Time
+	if err := targetDB.QueryRow(`SELECT type, instructor_id, starts_at, created_at FROM public.bookings WHERE id = 42`).Scan(
+		&bookingType,
+		&instructorID,
+		&bookingStartsAt,
+		&bookingCreatedAt,
+	); err != nil {
 		t.Fatalf("failed to query migrated booking: %v", err)
 	}
 	if bookingType != "SIMPLE" || instructorID != 1 {
 		t.Fatalf("unexpected migrated booking type/instructor: %s/%d", bookingType, instructorID)
+	}
+	if want := time.Date(2026, 6, 10, 9, 0, 0, 0, time.UTC); !bookingStartsAt.Equal(want) {
+		t.Fatalf("old UTC booking startsAt should import as %s, got %s", want, bookingStartsAt)
+	}
+	if want := time.Date(2026, 6, 1, 8, 0, 0, 0, time.UTC); !bookingCreatedAt.Equal(want) {
+		t.Fatalf("old UTC booking createdAt should import as %s, got %s", want, bookingCreatedAt)
 	}
 
 	var disabledUserID sql.NullString
@@ -81,6 +93,25 @@ func TestRunMigrationIntegration(t *testing.T) {
 	}
 	if disabledUserID.Valid || disabledInstructorID != 1 || !disabledStartsAt.Equal(expectedDisabledStartsAt) {
 		t.Fatalf("unexpected migrated disabled slot: user=%v instructor=%d starts_at=%s", disabledUserID, disabledInstructorID, disabledStartsAt)
+	}
+
+	var expiresAt time.Time
+	if err := targetDB.QueryRow(`SELECT expires_at FROM public.users WHERE id = 'user-1'`).Scan(&expiresAt); err != nil {
+		t.Fatalf("failed to query migrated user expiration: %v", err)
+	}
+	if got, want := expiresAt.Format("2006-01-02"), "2026-07-01"; got != want {
+		t.Fatalf("old user expiresAt should import as date %s, got %s", want, got)
+	}
+
+	var eventStartsAt, eventOccurredAt time.Time
+	if err := targetDB.QueryRow(`SELECT starts_at, occurred_at FROM public.events WHERE id = 9`).Scan(&eventStartsAt, &eventOccurredAt); err != nil {
+		t.Fatalf("failed to query migrated event: %v", err)
+	}
+	if want := time.Date(2026, 6, 10, 9, 0, 0, 0, time.UTC); !eventStartsAt.Equal(want) {
+		t.Fatalf("old UTC event startsAt should import as %s, got %s", want, eventStartsAt)
+	}
+	if want := time.Date(2026, 6, 1, 8, 0, 0, 0, time.UTC); !eventOccurredAt.Equal(want) {
+		t.Fatalf("old UTC event occurredAt should import as %s, got %s", want, eventOccurredAt)
 	}
 
 	var nextBookingID int64
