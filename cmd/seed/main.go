@@ -164,7 +164,7 @@ func seedTest(db *sql.DB) {
 			}
 		}
 	}
-	log.Printf("✓ Created %d bookings for test users", bookingsCreated)
+	log.Printf("Created %d bookings for test users", bookingsCreated)
 
 	log.Println("\nTest Accounts:")
 	log.Println("  Admin: admin@wellness.local / admin123")

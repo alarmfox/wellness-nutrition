@@ -118,7 +118,8 @@ body {
     transform: scale(1.2);
 }
 .star-rating label::before {
-    content: '★';
+    content: 'star';
+    font-family: 'Material Icons';
     font-size: 48px;
     color: #e0e0e0;
     transition: color 0.2s;

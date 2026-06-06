@@ -22,7 +22,7 @@ func NewInstructorHandler(instructorRepo *models.InstructorRepository) *Instruct
 }
 
 func (h *InstructorHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	instructors, err := h.instructorRepo.GetAll()
+	instructors, err := h.instructorRepo.GetEnabled()
 	if err != nil {
 		log.Printf("Error getting instructors: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
@@ -36,6 +36,7 @@ type CreateInstructorRequest struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
 	MaxSlots  int    `json:"maxSlots"`
+	Enabled   *bool  `json:"enabled"`
 }
 
 func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -54,12 +55,17 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.MaxSlots <= 0 {
 		req.MaxSlots = 2
 	}
+	enabled := true
+	if req.Enabled != nil {
+		enabled = *req.Enabled
+	}
 
 	// Create instructor
 	instructor := &models.Instructor{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		MaxSlots:  req.MaxSlots,
+		Enabled:   enabled,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -77,6 +83,7 @@ type UpdateInstructorRequest struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
 	MaxSlots  int    `json:"maxSlots"`
+	Enabled   *bool  `json:"enabled"`
 }
 
 func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -110,6 +117,9 @@ func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
 	instructor.LastName = req.LastName
 	if req.MaxSlots > 0 {
 		instructor.MaxSlots = req.MaxSlots
+	}
+	if req.Enabled != nil {
+		instructor.Enabled = *req.Enabled
 	}
 
 	if err := h.instructorRepo.Update(instructor); err != nil {

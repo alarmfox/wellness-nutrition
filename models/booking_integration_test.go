@@ -42,7 +42,7 @@ func TestBookingRepository_Integration(t *testing.T) {
 	}
 
 	// Create test instructor
-	instructor := &models.Instructor{FirstName: "Test", LastName: "Instructor", MaxSlots: 5}
+	instructor := &models.Instructor{FirstName: "Test", LastName: "Instructor", MaxSlots: 5, Enabled: true}
 	if err := instructorRepo.Create(instructor); err != nil {
 		t.Fatalf("Failed to create test instructor: %v", err)
 	}

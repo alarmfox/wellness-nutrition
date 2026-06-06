@@ -59,9 +59,6 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
-		booking.CreatedAt = booking.CreatedAt.UTC()
-		booking.StartsAt = booking.StartsAt.UTC()
 		bookings = append(bookings, &booking)
 	}
 
@@ -110,10 +107,6 @@ func (r *BookingRepository) GetByID(id int64) (*Booking, error) {
 		return nil, err
 	}
 
-	// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
-	booking.CreatedAt = booking.CreatedAt.UTC()
-	booking.StartsAt = booking.StartsAt.UTC()
-
 	return &booking, nil
 }
 
@@ -145,9 +138,6 @@ func (r *BookingRepository) GetByDateRange(from, to time.Time) ([]*Booking, erro
 		if err != nil {
 			return nil, err
 		}
-		// Ensure times are treated as UTC since database stores TIMESTAMP (not TIMESTAMPTZ)
-		booking.CreatedAt = booking.CreatedAt.UTC()
-		booking.StartsAt = booking.StartsAt.UTC()
 		bookings = append(bookings, &booking)
 	}
 

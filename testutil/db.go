@@ -82,14 +82,14 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 			cellphone VARCHAR(50),
 			sub_type VARCHAR(50) NOT NULL DEFAULT 'SHARED',
 			email VARCHAR(255) NOT NULL UNIQUE,
-			email_verified TIMESTAMP,
-			expires_at TIMESTAMP NOT NULL,
+			email_verified TIMESTAMPTZ,
+			expires_at DATE NOT NULL,
 			remaining_accesses INTEGER NOT NULL,
 			verification_token VARCHAR(255),
-			verification_token_expires_in TIMESTAMP,
+			verification_token_expires_in TIMESTAMPTZ,
 			goals TEXT,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE TABLE IF NOT EXISTS instructors (
@@ -97,16 +97,17 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 			first_name VARCHAR(255) NOT NULL,
 			last_name VARCHAR(255) NOT NULL,
 			max_slots INTEGER NOT NULL DEFAULT 2,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			enabled BOOLEAN NOT NULL DEFAULT TRUE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE TABLE IF NOT EXISTS bookings (
 			id BIGSERIAL PRIMARY KEY,
 			user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
 			instructor_id INTEGER NOT NULL REFERENCES instructors(id) ON DELETE CASCADE,
-			starts_at TIMESTAMP NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			starts_at TIMESTAMPTZ NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			type VARCHAR(20) NOT NULL DEFAULT 'SIMPLE',
 			CONSTRAINT unique_user_instructor_time UNIQUE (user_id, instructor_id, starts_at)
 		);
@@ -114,15 +115,15 @@ func CreateTestSchema(t *testing.T, db *sql.DB) {
 		CREATE TABLE IF NOT EXISTS events (
 			id SERIAL PRIMARY KEY,
 			user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			starts_at TIMESTAMP NOT NULL,
+			starts_at TIMESTAMPTZ NOT NULL,
 			type VARCHAR(50) NOT NULL,
-			occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			occurred_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE TABLE IF NOT EXISTS sessions (
 			token VARCHAR(255) PRIMARY KEY,
 			user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			expires_at TIMESTAMP NOT NULL
+			expires_at TIMESTAMPTZ NOT NULL
 		);
 
 		CREATE TABLE IF NOT EXISTS questions (

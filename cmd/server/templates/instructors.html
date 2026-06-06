@@ -39,6 +39,7 @@
                         <th>Nome</th>
                         <th>Cognome</th>
                         <th>Slot Massimi</th>
+                        <th>Stato</th>
                         <th>Azioni</th>
                     </tr>
                 </thead>
@@ -49,8 +50,15 @@
                         <td>{{.LastName}}</td>
                         <td>{{.MaxSlots}}</td>
                         <td>
+                            {{if .Enabled}}
+                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-size: 12px; font-weight: 500;">Abilitato</span>
+                            {{else}}
+                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; background: #ffebee; color: #c62828; font-size: 12px; font-weight: 500;">Disabilitato</span>
+                            {{end}}
+                        </td>
+                        <td>
                             <div class="action-buttons">
-                                <button class="btn-icon" onclick="openEditModal('{{.ID}}', '{{.FirstName}}', '{{.LastName}}', {{.MaxSlots}})" title="Modifica">
+                                <button class="btn-icon" onclick="openEditModal('{{.ID}}', '{{.FirstName}}', '{{.LastName}}', {{.MaxSlots}}, {{.Enabled}})" title="Modifica">
                                     <span class="material-icons">edit</span>
                                 </button>
                                 <button class="btn-icon" onclick="deleteInstructor('{{.ID}}')" title="Elimina">
@@ -70,7 +78,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Nuovo Istruttore</h2>
-                <span class="close" onclick="closeCreateModal()">&times;</span>
+                <span class="close" onclick="closeCreateModal()"><span class="material-icons">close</span></span>
             </div>
             <div class="modal-body">
                 <form id="createForm">
@@ -86,6 +94,12 @@
                         <label for="create-maxSlots">Slot Massimi</label>
                         <input type="number" id="create-maxSlots" min="1" value="2">
                     </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="create-enabled" checked>
+                            Abilitato
+                        </label>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -100,7 +114,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Modifica Istruttore</h2>
-                <span class="close" onclick="closeEditModal()">&times;</span>
+                <span class="close" onclick="closeEditModal()"><span class="material-icons">close</span></span>
             </div>
             <div class="modal-body">
                 <form id="editForm">
@@ -116,6 +130,12 @@
                     <div class="form-group">
                         <label for="edit-maxSlots">Slot Massimi</label>
                         <input type="number" id="edit-maxSlots" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="edit-enabled">
+                            Abilitato
+                        </label>
                     </div>
                 </form>
             </div>
@@ -146,11 +166,12 @@
             document.getElementById('createForm').reset();
         }
 
-        function openEditModal(id, firstName, lastName, maxSlots) {
+        function openEditModal(id, firstName, lastName, maxSlots, enabled) {
             document.getElementById('edit-id').value = id;
             document.getElementById('edit-firstName').value = firstName;
             document.getElementById('edit-lastName').value = lastName || '';
             document.getElementById('edit-maxSlots').value = maxSlots || 2;
+            document.getElementById('edit-enabled').checked = enabled;
             document.getElementById('editModal').style.display = 'block';
         }
 
@@ -173,6 +194,7 @@
             const firstName = document.getElementById('create-firstName').value;
             const lastName = document.getElementById('create-lastName').value;
             const maxSlots = parseInt(document.getElementById('create-maxSlots').value, 10) || 2;
+            const enabled = document.getElementById('create-enabled').checked;
 
             if (!firstName) {
                 showToast('Il nome è obbligatorio');
@@ -191,6 +213,7 @@
                         firstName,
                         lastName,
                         maxSlots,
+                        enabled,
                     }),
                 });
 
@@ -213,6 +236,7 @@
             const firstName = document.getElementById('edit-firstName').value;
             const lastName = document.getElementById('edit-lastName').value;
             const maxSlots = parseInt(document.getElementById('edit-maxSlots').value, 10) || 2;
+            const enabled = document.getElementById('edit-enabled').checked;
 
             if (!firstName) {
                 showToast('Il nome è obbligatorio');
@@ -231,6 +255,7 @@
                         firstName,
                         lastName,
                         maxSlots,
+                        enabled,
                     }),
                 });
 
@@ -249,7 +274,7 @@
         }
 
         async function deleteInstructor(id) {
-            if (!confirm('Sei sicuro di voler eliminare questo istruttore?')) {
+            if (!confirm('ATTENZIONE! Sei sicuro di voler eliminare questo istruttore? Tutte le prenotazioni assegnate a questo istruttore saranno eliminate')) {
                 return;
             }
 

@@ -10,6 +10,7 @@ type Instructor struct {
 	FirstName string
 	LastName  string
 	MaxSlots  int
+	Enabled   bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -24,12 +25,27 @@ func NewInstructorRepository(db *sql.DB) *InstructorRepository {
 
 func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 	query := `
-		SELECT id, first_name, last_name, max_slots, created_at, updated_at
+		SELECT id, first_name, last_name, max_slots, enabled, created_at, updated_at
 		FROM instructors
 		ORDER BY first_name, last_name
 	`
 
-	rows, err := r.db.Query(query)
+	return r.queryMany(query)
+}
+
+func (r *InstructorRepository) GetEnabled() ([]*Instructor, error) {
+	query := `
+		SELECT id, first_name, last_name, max_slots, enabled, created_at, updated_at
+		FROM instructors
+		WHERE enabled = TRUE
+		ORDER BY first_name, last_name
+	`
+
+	return r.queryMany(query)
+}
+
+func (r *InstructorRepository) queryMany(query string, args ...interface{}) ([]*Instructor, error) {
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +59,7 @@ func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 			&instructor.FirstName,
 			&instructor.LastName,
 			&instructor.MaxSlots,
+			&instructor.Enabled,
 			&instructor.CreatedAt,
 			&instructor.UpdatedAt,
 		)
@@ -57,7 +74,7 @@ func (r *InstructorRepository) GetAll() ([]*Instructor, error) {
 
 func (r *InstructorRepository) GetByID(id int64) (*Instructor, error) {
 	query := `
-		SELECT id, first_name, last_name, max_slots, created_at, updated_at
+		SELECT id, first_name, last_name, max_slots, enabled, created_at, updated_at
 		FROM instructors
 		WHERE id = $1
 	`
@@ -68,6 +85,31 @@ func (r *InstructorRepository) GetByID(id int64) (*Instructor, error) {
 		&instructor.FirstName,
 		&instructor.LastName,
 		&instructor.MaxSlots,
+		&instructor.Enabled,
+		&instructor.CreatedAt,
+		&instructor.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &instructor, nil
+}
+
+func (r *InstructorRepository) GetEnabledByID(id int64) (*Instructor, error) {
+	query := `
+		SELECT id, first_name, last_name, max_slots, enabled, created_at, updated_at
+		FROM instructors
+		WHERE id = $1 AND enabled = TRUE
+	`
+
+	var instructor Instructor
+	err := r.db.QueryRow(query, id).Scan(
+		&instructor.ID,
+		&instructor.FirstName,
+		&instructor.LastName,
+		&instructor.MaxSlots,
+		&instructor.Enabled,
 		&instructor.CreatedAt,
 		&instructor.UpdatedAt,
 	)
@@ -80,8 +122,8 @@ func (r *InstructorRepository) GetByID(id int64) (*Instructor, error) {
 
 func (r *InstructorRepository) Create(instructor *Instructor) error {
 	query := `
-		INSERT INTO instructors (first_name, last_name, max_slots)
-		VALUES ($1, $2, $3)
+		INSERT INTO instructors (first_name, last_name, max_slots, enabled)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -89,6 +131,7 @@ func (r *InstructorRepository) Create(instructor *Instructor) error {
 		instructor.FirstName,
 		instructor.LastName,
 		instructor.MaxSlots,
+		instructor.Enabled,
 	).Scan(&instructor.ID, &instructor.CreatedAt, &instructor.UpdatedAt)
 
 	return err
@@ -97,7 +140,7 @@ func (r *InstructorRepository) Create(instructor *Instructor) error {
 func (r *InstructorRepository) Update(instructor *Instructor) error {
 	query := `
 		UPDATE instructors
-		SET first_name = $2, last_name = $3, max_slots = $4, updated_at = $5
+		SET first_name = $2, last_name = $3, max_slots = $4, enabled = $5, updated_at = $6
 		WHERE id = $1
 	`
 
@@ -106,7 +149,8 @@ func (r *InstructorRepository) Update(instructor *Instructor) error {
 		instructor.FirstName,
 		instructor.LastName,
 		instructor.MaxSlots,
-		time.Now(),
+		instructor.Enabled,
+		time.Now().UTC(),
 	)
 
 	return err
