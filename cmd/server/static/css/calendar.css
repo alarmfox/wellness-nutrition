@@ -128,46 +128,43 @@
 .time-slot {
     cursor: pointer;
     position: relative;
+
+    padding: 4px 6px;
+    margin: 2px 0;
+    border-radius: 3px;
+    font-size: 11px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
 }
 .time-slot:hover:not(.disabled) {
     background-color: #f5f5f5;
+
 }
-.time-slot.disabled {
+.time-slot .disabled {
     background-color: #e0e0e0;
     cursor: not-allowed;
     opacity: 0.6;
 }
-.time-slot.massage {
+.time-slot .massage {
     background-color: #fff3e0;
     cursor: pointer;
     border: 2px solid #ff9800;
 }
-.time-slot.massage:hover {
+.time-slot .massage:hover {
     background-color: #ffe0b2;
 }
-.time-slot.appointment {
+.time-slot .appointment {
     background-color: #e8f5e9;
     cursor: pointer;
     border: 2px solid #4caf50;
 }
-.time-slot.appointment:hover {
+.time-slot .appointment:hover {
     background-color: #c8e6c9;
 }
-.disabled-text {
-    color: #999;
-    font-size: 11px;
-    text-align: center;
-    padding: 5px;
-    font-style: italic;
-}
-.reserved-text {
-    color: #f57c00;
-    font-size: 11px;
-    text-align: center;
-    padding: 5px;
-    font-weight: 500;
-    font-style: italic;
-}
+
 .modal-footer {
     padding: 16px 20px;
     border-top: 1px solid #e0e0e0;

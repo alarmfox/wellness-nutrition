@@ -923,11 +923,11 @@ const Calendar = {
             const instructorName = `${instructor.FirstName} ${instructor.LastName}`.trim();
 
             if (booking.type === BookingType.DISABLE) {
-                html += `<div class="disabled-text">🚫 Non disponibile - ${instructorName}</div>`;
+                html += `<div class="disabled">🚫 Non disponibile - ${instructorName}</div>`;
             } else if (booking.type === BookingType.MASSAGE) {
-                html += `<div class="reserved-text">💆 Massaggio - ${instructorName}</div>`;
+                html += `<div class="massage">💆 Massaggio - ${instructorName}</div>`;
             } else if (booking.type === BookingType.APPOINTMENT) {
-                html += `<div class="reserved-text">📅 Appuntamento - ${instructorName}</div>`;
+                html += `<div class="appointment">📅 Appuntamento - ${instructorName}</div>`;
             } else if (booking.type === BookingType.SIMPLE && booking.user) {
                 const cssClass = booking.user.subType === 'SHARED' ? 'booking shared' : 'booking';
                 const displayName = `${instructorName} - ${booking.user.lastName} ${booking.user.firstName.substring(0, 3)}.`;
