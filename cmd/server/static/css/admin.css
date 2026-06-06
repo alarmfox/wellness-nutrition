@@ -192,6 +192,10 @@ tr:hover {
 .close:hover {
     color: #333;
 }
+.close .material-icons {
+    font-size: 24px;
+    line-height: 30px;
+}
 .modal-body {
     padding: 20px;
 }

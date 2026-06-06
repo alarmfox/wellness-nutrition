@@ -33,21 +33,21 @@
     <div class="container">
         <div class="calendar-container">
             <div class="calendar-header">
-                <h2 id="currentMonth" style="margin: 0; font-size: 24px; font-weight: 400;"></h2>
-                <div style="display: flex; gap: 16px; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <label for="instructorFilter" style="font-size: 14px; font-weight: 500;">Istruttore:</label>
-                        <select id="instructorFilter" onchange="onInstructorFilterChange()" style="padding: 8px; border: 1px solid #e0e0e0; border-radius: 4px; font-family: 'Roboto', sans-serif;">
+                <h2 id="currentMonth" class="calendar-title"></h2>
+                <div class="calendar-toolbar">
+                    <div class="calendar-filter">
+                        <label for="instructorFilter">Istruttore</label>
+                        <select id="instructorFilter" onchange="onInstructorFilterChange()">
                             <option value="">Tutti</option>
                         </select>
                     </div>
                     <div class="calendar-nav">
-                        <button class="btn" onclick="previousPeriod()">
-                            <span class="material-icons" style="font-size: 18px;">chevron_left</span>
+                        <button class="btn icon-button" onclick="previousPeriod()" aria-label="Settimana precedente">
+                            <span class="material-icons">chevron_left</span>
                         </button>
                         <button class="btn" onclick="today()">Oggi</button>
-                        <button class="btn" onclick="nextPeriod()">
-                            <span class="material-icons" style="font-size: 18px;">chevron_right</span>
+                        <button class="btn icon-button" onclick="nextPeriod()" aria-label="Settimana successiva">
+                            <span class="material-icons">chevron_right</span>
                         </button>
                     </div>
                 </div>
@@ -83,7 +83,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Elimina Prenotazione</h2>
-                <button class="close" onclick="closeDeleteBookingModal()">&times;</button>
+                <button class="close" onclick="closeDeleteBookingModal()"><span class="material-icons">close</span></button>
             </div>
             <div class="modal-body">
                 <p>Vuoi eliminare la prenotazione di <strong id="deleteBookingUserName"></strong>?</p>
@@ -102,7 +102,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Rilascia Slot Riservato</h2>
-                <button class="close" onclick="closeUnreserveSlotModal()">&times;</button>
+                <button class="close" onclick="closeUnreserveSlotModal()"><span class="material-icons">close</span></button>
             </div>
             <div class="modal-body">
                 <p>Vuoi rendere questo slot nuovamente disponibile per le prenotazioni?</p>
@@ -120,7 +120,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Riabilita Slot</h2>
-                <button class="close" onclick="closeEnableSlotModal()">&times;</button>
+                <button class="close" onclick="closeEnableSlotModal()"><span class="material-icons">close</span></button>
             </div>
             <div class="modal-body">
                 <p>Vuoi riabilitare questo slot?</p>
@@ -138,32 +138,32 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle">Gestione Slot</h2>
-                <button class="close" onclick="closeSlotModal()">&times;</button>
+                <button class="close" onclick="closeSlotModal()"><span class="material-icons">close</span></button>
             </div>
             <div class="modal-body">
                 <div id="actionSelection">
                     <div id="actionUnreserve" class="action-card" style="display: none;" onclick="showUnreserveSlot()">
-                        <h3>🔓 Rilascia Slot</h3>
+                        <h3><span class="material-icons">lock_open</span> Rilascia Slot</h3>
                         <p>Rendi questo slot nuovamente disponibile per le prenotazioni</p>
                     </div>
                     <div id="actionUnavailable" class="action-card" onclick="showMarkUnavailable()">
-                        <h3>🚫 Segna come Non Disponibile</h3>
+                        <h3><span class="material-icons">event_busy</span> Segna come Non Disponibile</h3>
                         <p>Gli utenti non potranno prenotare questo slot</p>
                     </div>
                     <div id="actionMassage" class="action-card" onclick="showReserveMassage()">
-                        <h3>💆 Riserva per Massaggio</h3>
+                        <h3><span class="material-icons">spa</span> Riserva per Massaggio</h3>
                         <p>Riserva questo slot per un massaggio (gli utenti non potranno prenotare)</p>
                     </div>
                     <div id="actionAppointment" class="action-card" onclick="showReserveAppointment()">
-                        <h3>📅 Riserva per Appuntamento</h3>
+                        <h3><span class="material-icons">event</span> Riserva per Appuntamento</h3>
                         <p>Riserva questo slot per un appuntamento (gli utenti non potranno prenotare)</p>
                     </div>
                     <div id="actionCreateBooking" class="action-card" onclick="showCreateBooking()">
-                        <h3>➕ Crea Prenotazione</h3>
+                        <h3><span class="material-icons">event_available</span> Crea Prenotazione</h3>
                         <p>Crea una prenotazione per un utente specifico</p>
                     </div>
                     <div id="actionEnableSlot" class="action-card" style="display: none;" onclick="showEnableSlot()">
-                        <h3>✅ Abilita Slot</h3>
+                        <h3><span class="material-icons">check_circle</span> Abilita Slot</h3>
                         <p>Rendi disponibile lo slot per un istruttore specifico</p>
                     </div>
                 </div>

@@ -5,10 +5,13 @@ body {
     background-color: #f5f5f5;
 }
 .simulation-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     background: #ff9800;
     color: white;
     padding: 12px 20px;
-    text-align: center;
     font-weight: 500;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -123,6 +126,11 @@ h1 {
 .list-secondary {
     font-size: 12px;
     color: rgba(0, 0, 0, 0.6);
+}
+.inline-icon {
+    font-size: 14px;
+    line-height: 1;
+    vertical-align: text-bottom;
 }
 .empty-state {
     text-align: center;

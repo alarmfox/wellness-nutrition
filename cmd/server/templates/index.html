@@ -12,7 +12,8 @@
 <body>
     {{if .IsSimulation}}
     <div class="simulation-banner">
-        ⚠️ MODALITÀ SIMULAZIONE - Questa è una vista simulata dell'interfaccia utente. Le azioni non saranno salvate.
+        <span class="material-icons">warning</span>
+        <span>MODALITÀ SIMULAZIONE - Questa è una vista simulata dell'interfaccia utente. Le azioni non saranno salvate.</span>
     </div>
     <a href="/admin/calendar" class="back-button">
         <span class="material-icons" style="font-size: 18px;">arrow_back</span>
@@ -66,7 +67,7 @@
                         <div class="list-text">
                             <div class="list-primary" data-timestamp="{{.StartsAt}}"></div>
                             <div class="list-secondary">
-                                {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;"> {{.InstructorName}}</span> • {{end}}<span data-created="{{.CreatedAt}}"></span>
+                                {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;"> {{.InstructorName}}</span> - {{end}}<span data-created="{{.CreatedAt}}"></span>
                             </div>
                         </div>
                         <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
@@ -320,7 +321,7 @@
                             <div class="list-text">
                                 <div class="list-primary" data-timestamp="{{.StartsAt}}"></div>
                                 <div class="list-secondary">
-                                    {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;">🧑‍⚕️ {{.InstructorName}}</span> • {{end}}<span data-created="{{.CreatedAt}}"></span>
+                                    {{if .InstructorName}}<span style="color: #1976d2; font-weight: 500;"><span class="material-icons inline-icon">person</span> {{.InstructorName}}</span> - {{end}}<span data-created="{{.CreatedAt}}"></span>
                                 </div>
                             </div>
                             <span class="material-icons list-icon" style="cursor: pointer;" onclick="deleteBooking('{{.ID}}', '{{.StartsAt}}')">delete</span>
@@ -362,14 +363,14 @@
             if (!confirm('Vuoi confermare questa prenotazione?')) {
                 return;
             }
-            showToast('✓ Prenotazione simulata! (Non salvata in modalità simulazione)', true);
+            showToast('Prenotazione simulata. Non salvata in modalità simulazione.', true);
         }
 
         function deleteBooking(id, startsAt) {
             if (!confirm('Sicuro di voler eliminare questa prenotazione?')) {
                 return;
             }
-            showToast('✓ Cancellazione simulata! (Non salvata in modalità simulazione)', true);
+            showToast('Cancellazione simulata. Non salvata in modalità simulazione.', true);
         }
 
         function showSlots() {

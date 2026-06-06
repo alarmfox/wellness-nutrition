@@ -566,7 +566,10 @@ const SlotOverview = {
                 const info = this.getStateInfo(is);
                 html += `<div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
                     <span style="font-weight: 500;">${is.InstructorName}</span>
-                    <span style="color: ${info.color}; font-size: 13px;">${info.text} (${is.PeopleCount}/${is.MaxCapacity})</span>
+                    <span class="slot-state" style="color: ${info.color};">
+                        <span class="material-icons">${info.icon}</span>
+                        ${info.text} (${is.PeopleCount}/${is.MaxCapacity})
+                    </span>
                 </div>`;
             });
         } else {
@@ -581,13 +584,13 @@ const SlotOverview = {
 
     getStateInfo(instructorSlot) {
         if (instructorSlot.Disabled || instructorSlot.State === 'UNAVAILABLE') {
-            return { text: 'Non disponibile', color: '#757575' };
+            return { icon: 'event_busy', text: 'Non disponibile', color: '#757575' };
         } else if (instructorSlot.State === 'MASSAGE') {
-            return { text: '💆 Massaggio', color: '#ff9800' };
+            return { icon: 'spa', text: 'Massaggio', color: '#ff9800' };
         } else if (instructorSlot.State === 'APPOINTMENT') {
-            return { text: '📅 Appuntamento', color: '#2196f3' };
+            return { icon: 'event', text: 'Appuntamento', color: '#2196f3' };
         }
-        return { text: 'Disponibile', color: '#4caf50' };
+        return { icon: 'check_circle', text: 'Disponibile', color: '#4caf50' };
     },
 
     buildActionCards() {
@@ -604,19 +607,19 @@ const SlotOverview = {
         if (!allUnavailable) {
             html += `
                 <div class="action-card" onclick="SlotActions.showOperation('${BookingType.SIMPLE}')">
-                    <h3>📅 Crea Prenotazione</h3>
+                    <h3><span class="material-icons">event_available</span> Crea Prenotazione</h3>
                     <p>Prenota questo slot per un utente</p>
                 </div>
                 <div class="action-card" onclick="SlotActions.showOperation('${BookingType.DISABLE}')">
-                    <h3>🚫 Segna Non Disponibile</h3>
+                    <h3><span class="material-icons">event_busy</span> Segna Non Disponibile</h3>
                     <p>Disabilita questo slot per uno o più istruttori</p>
                 </div>
                 <div class="action-card" onclick="SlotActions.showOperation('${BookingType.MASSAGE}')">
-                    <h3>💆 Riserva per Massaggio</h3>
+                    <h3><span class="material-icons">spa</span> Riserva per Massaggio</h3>
                     <p>Blocca questo slot per un massaggio</p>
                 </div>
                 <div class="action-card" onclick="SlotActions.showOperation('${BookingType.APPOINTMENT}')">
-                    <h3>📅 Riserva per Appuntamento</h3>
+                    <h3><span class="material-icons">event</span> Riserva per Appuntamento</h3>
                     <p>Blocca questo slot per un appuntamento</p>
                 </div>
             `;
@@ -625,7 +628,7 @@ const SlotOverview = {
         disabled.forEach(is => {
             html += `
                 <div class="action-card" onclick="SlotActions.quickEnable(${is.InstructorID}, '${is.InstructorName}')">
-                    <h3>✅ Abilita per ${is.InstructorName}</h3>
+                    <h3><span class="material-icons">check_circle</span> Abilita per ${is.InstructorName}</h3>
                     <p>Rendi disponibile lo slot per questo istruttore</p>
                 </div>
             `;
@@ -634,7 +637,7 @@ const SlotOverview = {
         massage.forEach(is => {
             html += `
                 <div class="action-card" onclick="SlotActions.quickUnreserve(${is.InstructorID}, '${is.InstructorName}', '${BookingType.MASSAGE}')">
-                    <h3>🔓 Elimina Massaggio - ${is.InstructorName}</h3>
+                    <h3><span class="material-icons">lock_open</span> Elimina Massaggio - ${is.InstructorName}</h3>
                     <p>Rimuovi la prenotazione per massaggio</p>
                 </div>
             `;
@@ -643,7 +646,7 @@ const SlotOverview = {
         appointment.forEach(is => {
             html += `
                 <div class="action-card" onclick="SlotActions.quickUnreserve(${is.InstructorID}, '${is.InstructorName}', '${BookingType.APPOINTMENT}')">
-                    <h3>🔓 Elimina Appuntamento - ${is.InstructorName}</h3>
+                    <h3><span class="material-icons">lock_open</span> Elimina Appuntamento - ${is.InstructorName}</h3>
                     <p>Rimuovi la prenotazione per appuntamento</p>
                 </div>
             `;
@@ -923,11 +926,17 @@ const Calendar = {
             const instructorName = `${instructor.FirstName} ${instructor.LastName}`.trim();
 
             if (booking.type === BookingType.DISABLE) {
-                html += `<div class="disabled">🚫 Non disponibile - ${instructorName}</div>`;
+                html += `<div class="disabled" title="Non disponibile - ${instructorName}">
+                    <span class="material-icons slot-icon">event_busy</span> Non disponibile - ${instructorName}
+                </div>`;
             } else if (booking.type === BookingType.MASSAGE) {
-                html += `<div class="massage">💆 Massaggio - ${instructorName}</div>`;
+                html += `<div class="massage" title="Massaggio - ${instructorName}">
+                    <span class="material-icons slot-icon">spa</span> Massaggio - ${instructorName}
+                </div>`;
             } else if (booking.type === BookingType.APPOINTMENT) {
-                html += `<div class="appointment">📅 Appuntamento - ${instructorName}</div>`;
+                html += `<div class="appointment" title="Appuntamento - ${instructorName}">
+                    <span class="material-icons slot-icon">event</span> Appuntamento - ${instructorName}
+                </div>`;
             } else if (booking.type === BookingType.SIMPLE && booking.user) {
                 const cssClass = booking.user.subType === 'SHARED' ? 'booking shared' : 'booking';
                 const displayName = `${instructorName} - ${booking.user.lastName} ${booking.user.firstName.substring(0, 3)}.`;

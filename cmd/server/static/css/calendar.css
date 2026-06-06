@@ -1,206 +1,277 @@
 .calendar-container {
-    background: white;
+    background: #ffffff;
+    border: 1px solid #e6e8eb;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 20px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
 }
+
 .calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    gap: 20px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e6e8eb;
 }
+
+.calendar-title {
+    margin: 0;
+    color: #172033;
+    font-size: 22px;
+    font-weight: 500;
+}
+
+.calendar-toolbar,
+.calendar-filter,
 .calendar-nav {
     display: flex;
-    gap: 10px;
     align-items: center;
 }
-.btn-secondary {
-    background-color: #757575;
+
+.calendar-toolbar {
+    gap: 16px;
 }
-.btn-secondary:hover {
-    background-color: #616161;
+
+.calendar-filter {
+    gap: 8px;
 }
-.calendar {
-    width: 100%;
-    border-collapse: collapse;
-}
-.calendar th {
-    background-color: #f5f5f5;
-    padding: 12px;
-    text-align: center;
+
+.calendar-filter label {
+    color: #445064;
+    font-size: 13px;
     font-weight: 500;
-    border: 1px solid #e0e0e0;
 }
-.calendar td {
-    border: 1px solid #e0e0e0;
-    padding: 8px;
-    vertical-align: top;
-    height: 100px;
-    width: 14.28%;
-}
-.day-number {
+
+.calendar-filter select {
+    min-width: 150px;
+    padding: 9px 32px 9px 10px;
+    border: 1px solid #d6dbe2;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: #172033;
+    font-family: 'Roboto', sans-serif;
     font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 5px;
-    color: rgba(0, 0, 0, 0.87);
 }
-.today {
-    background-color: #e3f2fd;
+
+.calendar-nav {
+    gap: 8px;
 }
-.other-month {
-    background-color: #fafafa;
-    color: rgba(0, 0, 0, 0.38);
+
+.icon-button {
+    width: 38px;
+    height: 38px;
+    justify-content: center;
+    padding: 0;
 }
-.booking {
-    background-color: #1976d2;
-    color: white;
-    padding: 4px 6px;
-    margin: 2px 0;
-    border-radius: 3px;
-    font-size: 11px;
-    cursor: pointer;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+
+.icon-button .material-icons {
+    font-size: 20px;
 }
-.booking:hover {
-    background-color: #1565c0;
-}
-.booking.shared {
-    background-color: #7b1fa2;
-}
-.booking.shared:hover {
-    background-color: #6a1b9a;
-}
+
 .legend {
     display: flex;
-    gap: 20px;
-    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #e6e8eb;
+    background: #f8fafc;
+    color: #445064;
     font-size: 12px;
 }
+
 .legend-item {
     display: flex;
     align-items: center;
     gap: 8px;
 }
+
 .legend-box {
-    width: 20px;
-    height: 12px;
-    border-radius: 3px;
+    width: 18px;
+    height: 10px;
+    border-radius: 10px;
 }
+
 .legend-box.single {
-    background-color: #1976d2;
+    background-color: #2563eb;
 }
+
 .legend-box.shared {
-    background-color: #7b1fa2;
+    background-color: #8b5cf6;
 }
+
 .legend-box.massage {
-    background-color: #ff9800;
+    background-color: #f59e0b;
 }
+
 .legend-box.appointment {
-    background-color: #4caf50;
+    background-color: #16a34a;
 }
+
+#calendarView {
+    overflow-x: auto;
+}
+
 .week-view {
     display: grid;
-    grid-template-columns: 80px repeat(6, 1fr);
+    grid-template-columns: 74px repeat(6, minmax(138px, 1fr));
+    min-width: 900px;
+    background-color: #e6e8eb;
     gap: 1px;
-    background-color: #e0e0e0;
 }
-.time-slot {
-    background: white;
-    padding: 8px;
-    min-height: 60px;
-}
+
+.day-header,
 .time-label {
-    background: #f5f5f5;
-    padding: 8px;
-    text-align: center;
+    background: #f8fafc;
+    color: #445064;
     font-size: 12px;
     font-weight: 500;
 }
-.day-header {
-    background: #f5f5f5;
-    padding: 12px;
-    text-align: center;
-    font-weight: 500;
-}
-.time-slot {
-    cursor: pointer;
-    position: relative;
 
-    padding: 4px 6px;
-    margin: 2px 0;
-    border-radius: 3px;
-    font-size: 11px;
+.day-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 13px 10px;
+    text-align: center;
+    text-transform: capitalize;
+}
+
+.time-label {
+    padding: 10px 8px;
+    text-align: center;
+}
+
+.time-slot {
+    min-height: 64px;
+    padding: 6px;
+    background: #ffffff;
     cursor: pointer;
+    overflow: hidden;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.time-slot:hover {
+    background-color: #f4f8ff;
+    box-shadow: inset 0 0 0 1px #bfdbfe;
+}
+
+.booking,
+.time-slot .disabled,
+.time-slot .massage,
+.time-slot .appointment {
+    display: block;
+    margin-bottom: 5px;
+    padding: 5px 7px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.25;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-
-}
-.time-slot:hover:not(.disabled) {
-    background-color: #f5f5f5;
-
-}
-.time-slot .disabled {
-    background-color: #e0e0e0;
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-.time-slot .massage {
-    background-color: #fff3e0;
-    cursor: pointer;
-    border: 2px solid #ff9800;
-}
-.time-slot .massage:hover {
-    background-color: #ffe0b2;
-}
-.time-slot .appointment {
-    background-color: #e8f5e9;
-    cursor: pointer;
-    border: 2px solid #4caf50;
-}
-.time-slot .appointment:hover {
-    background-color: #c8e6c9;
 }
 
-.modal-footer {
-    padding: 16px 20px;
-    border-top: 1px solid #e0e0e0;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-.action-card {
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.action-card:hover {
-    border-color: #1976d2;
-    background-color: #f5f9ff;
-}
-.action-card h3 {
-    margin: 0 0 8px 0;
+.slot-icon,
+.slot-state .material-icons,
+.action-card h3 .material-icons {
     font-size: 16px;
-    font-weight: 500;
-    color: #1976d2;
+    line-height: 1;
+    vertical-align: text-bottom;
 }
+
+.slot-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.booking {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+.booking:hover {
+    background-color: #1d4ed8;
+}
+
+.booking.shared {
+    background-color: #8b5cf6;
+}
+
+.booking.shared:hover {
+    background-color: #7c3aed;
+}
+
+.time-slot .disabled {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+.time-slot .massage {
+    background-color: #fff7ed;
+    color: #9a3412;
+    box-shadow: inset 0 0 0 1px #fdba74;
+}
+
+.time-slot .appointment {
+    background-color: #ecfdf5;
+    color: #166534;
+    box-shadow: inset 0 0 0 1px #86efac;
+}
+
+.action-card {
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    border: 1px solid #d6dbe2;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.action-card:hover {
+    border-color: #2563eb;
+    background-color: #f4f8ff;
+}
+
+.action-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px;
+    color: #172033;
+    font-size: 15px;
+    font-weight: 500;
+}
+
 .action-card p {
     margin: 0;
-    font-size: 14px;
-    color: #666;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.35;
 }
-.form-group select {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    font-family: 'Roboto', sans-serif;
-    font-size: 14px;
-    box-sizing: border-box;
+
+@media (max-width: 760px) {
+    .calendar-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .calendar-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .calendar-filter,
+    .calendar-filter select,
+    .calendar-nav {
+        width: 100%;
+    }
+
+    .calendar-nav .btn {
+        flex: 1;
+        justify-content: center;
+    }
 }
