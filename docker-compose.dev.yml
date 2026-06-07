@@ -39,7 +39,9 @@ services:
       timeout: 10s
 
   cron:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db/postgres?sslmode=disable
       - EMAIL_SERVER_HOST=mailpit

@@ -488,7 +488,9 @@
                     'X-CSRF-Token': csrfToken
                 }
             })
-            .then(response => showToast('Chiusura sessione...', true));
+            .finally(() => {
+                window.location.href = '/signin';
+            });
         }
 
         function confirmBookingWithInstructor(startsAt, instructorId) {
