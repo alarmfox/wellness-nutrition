@@ -86,6 +86,11 @@ func TestSignAndVerifyToken(t *testing.T) {
 			data:    "very-long-token-with-lots-of-data-to-test-handling-of-larger-payloads",
 			wantErr: false,
 		},
+		{
+			name:    "token containing dots",
+			data:    "payload.with.dots",
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -147,6 +152,12 @@ func TestCreateAndVerifyTimedToken(t *testing.T) {
 		{
 			name:      "valid token not expired",
 			data:      "user123",
+			expiresAt: time.Now().Add(1 * time.Hour),
+			wantErr:   nil,
+		},
+		{
+			name:      "valid token with separators not expired",
+			data:      "user.with.dots|and-pipes",
 			expiresAt: time.Now().Add(1 * time.Hour),
 			wantErr:   nil,
 		},

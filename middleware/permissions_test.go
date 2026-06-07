@@ -43,6 +43,7 @@ func TestPermissions(t *testing.T) {
 		name           string
 		middleware     func(http.Handler) http.Handler
 		token          string
+		path           string
 		expectedStatus int
 	}{
 		// Auth Middleware Tests (User Access)
@@ -76,19 +77,25 @@ func TestPermissions(t *testing.T) {
 			name:           "AdminAuth: Normal user gets Forbidden",
 			middleware:     AdminAuth(sessionStore, userRepo),
 			token:          userSignedToken,
+			path:           "/api/admin/users",
 			expectedStatus: http.StatusForbidden,
 		},
 		{
 			name:           "AdminAuth: Unauthenticated gets Unauthorized",
 			middleware:     AdminAuth(sessionStore, userRepo),
 			token:          "",
+			path:           "/api/admin/users",
 			expectedStatus: http.StatusUnauthorized,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/", nil)
+			path := tt.path
+			if path == "" {
+				path = "/"
+			}
+			req := httptest.NewRequest("GET", path, nil)
 			if tt.token != "" {
 				req.AddCookie(&http.Cookie{Name: "session", Value: tt.token})
 			}

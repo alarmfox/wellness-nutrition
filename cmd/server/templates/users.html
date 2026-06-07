@@ -55,8 +55,18 @@
                         <th style="width: 40px;">
                             <input type="checkbox" class="checkbox" id="selectAll" onchange="toggleAll(this)" />
                         </th>
-                        <th>Cognome</th>
-                        <th>Nome</th>
+                        <th>
+                            <button type="button" class="table-sort" data-sort-key="lastName" onclick="sortUsers('lastName')">
+                                Cognome
+                                <span class="material-icons sort-icon" id="sort-lastName">arrow_upward</span>
+                            </button>
+                        </th>
+                        <th>
+                            <button type="button" class="table-sort" data-sort-key="firstName" onclick="sortUsers('firstName')">
+                                Nome
+                                <span class="material-icons sort-icon inactive" id="sort-firstName">arrow_upward</span>
+                            </button>
+                        </th>
                         <th>Email</th>
                         <th>Tipo</th>
                         <th>Stato</th>
@@ -67,7 +77,7 @@
                 </thead>
                 <tbody>
                     {{range .Users}}
-                    <tr>
+                    <tr data-first-name="{{.FirstName}}" data-last-name="{{.LastName}}">
                         <td>
                             <input type="checkbox" class="checkbox user-checkbox" value="{{.ID}}" onchange="updateDeleteButton()" />
                         </td>
@@ -254,15 +264,8 @@
         </div>
     </div>
 
+    <script src="/static/js/security.js"></script>
     <script>
-        // Helper function to get cookie value
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-            return null;
-        }
-
         function showLoading(text = 'Caricamento...') {
             const overlay = document.getElementById('loading-overlay');
             const loadingText = document.getElementById('loading-text');
@@ -285,6 +288,70 @@
             const checkboxes = document.querySelectorAll('.user-checkbox:checked');
             const deleteBtn = document.getElementById('deleteBtn');
             deleteBtn.disabled = checkboxes.length === 0;
+        }
+
+        const userSortState = {
+            key: 'lastName',
+            direction: 'asc'
+        };
+
+        function normalizeSortValue(value) {
+            return (value || '').toLocaleLowerCase('it-IT').trim();
+        }
+
+        function sortUsers(key) {
+            if (userSortState.key === key) {
+                userSortState.direction = userSortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                userSortState.key = key;
+                userSortState.direction = 'asc';
+            }
+
+            applyUserSort();
+        }
+
+        function applyUserSort() {
+            const tbody = document.querySelector('tbody');
+            if (!tbody) return;
+
+            const rows = Array.from(tbody.querySelectorAll('tr[data-first-name]'));
+            const direction = userSortState.direction === 'asc' ? 1 : -1;
+
+            rows.sort((left, right) => {
+                const leftPrimary = normalizeSortValue(left.dataset[userSortState.key]);
+                const rightPrimary = normalizeSortValue(right.dataset[userSortState.key]);
+                const primaryCompare = leftPrimary.localeCompare(rightPrimary, 'it-IT', { sensitivity: 'base' });
+                if (primaryCompare !== 0) return primaryCompare * direction;
+
+                const fallbackKey = userSortState.key === 'lastName' ? 'firstName' : 'lastName';
+                const leftFallback = normalizeSortValue(left.dataset[fallbackKey]);
+                const rightFallback = normalizeSortValue(right.dataset[fallbackKey]);
+                return leftFallback.localeCompare(rightFallback, 'it-IT', { sensitivity: 'base' });
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+            updateSortIcons();
+            resetSelection();
+        }
+
+        function updateSortIcons() {
+            ['lastName', 'firstName'].forEach(key => {
+                const icon = document.getElementById('sort-' + key);
+                if (!icon) return;
+
+                const active = key === userSortState.key;
+                icon.classList.toggle('inactive', !active);
+                icon.textContent = active && userSortState.direction === 'desc' ? 'arrow_downward' : 'arrow_upward';
+            });
+        }
+
+        function resetSelection() {
+            const selectAll = document.getElementById('selectAll');
+            if (selectAll) {
+                selectAll.checked = false;
+            }
+            document.querySelectorAll('.user-checkbox').forEach(checkbox => checkbox.checked = false);
+            updateDeleteButton();
         }
 
         function deleteSelected() {
@@ -518,11 +585,11 @@
 
         function filterUsers() {
             const searchTerm = document.getElementById('userSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('tbody tr');
+            const rows = document.querySelectorAll('tbody tr[data-first-name]');
 
             rows.forEach(row => {
-                const firstName = row.cells[1].textContent.toLowerCase();  // Second column (after checkbox)
-                const lastName = row.cells[2].textContent.toLowerCase();   // Third column
+                const lastName = row.dataset.lastName.toLowerCase();
+                const firstName = row.dataset.firstName.toLowerCase();
                 const fullName = firstName + ' ' + lastName;
 
                 if (fullName.includes(searchTerm) || firstName.includes(searchTerm) || lastName.includes(searchTerm)) {
@@ -532,6 +599,10 @@
                 }
             });
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            applyUserSort();
+        });
 
         function showToast(message, isSuccess) {
             const toast = document.getElementById('toast');

@@ -12,16 +12,6 @@ const BookingType = {
 
 var BUSINESS_TIME_ZONE = 'Europe/Rome';
 
-// ============================================================================
-// UTILITIES
-// ============================================================================
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-}
-
 function getRomeParts(date) {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: BUSINESS_TIME_ZONE,

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/alarmfox/wellness-nutrition/app/models"
@@ -37,26 +36,11 @@ const (
 func Auth(sessionStore SessionStoreInterface, userRepo UserRepositoryInterface) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie("session")
+			user, err := authenticateRequest(w, r, sessionStore, userRepo)
 			if err != nil {
-				http.Redirect(w, r, "/signin", http.StatusSeeOther)
+				writeUnauthorized(w, r)
 				return
 			}
-
-			session, err := sessionStore.GetSession(cookie.Value)
-			if err != nil {
-				http.Redirect(w, r, "/signin", http.StatusSeeOther)
-				return
-			}
-
-			user, err := userRepo.GetByID(session.UserID)
-			if err != nil {
-				http.Redirect(w, r, "/signin", http.StatusSeeOther)
-				return
-			}
-
-			// Extend session if needed (transparent to the rest of the application)
-			extendSessionIfNeeded(w, sessionStore, session, cookie.Value)
 
 			ctx := context.WithValue(r.Context(), UserContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -64,35 +48,20 @@ func Auth(sessionStore SessionStoreInterface, userRepo UserRepositoryInterface) 
 	}
 }
 
-// AdminAuth middleware checks if user is authenticated and is an admin
+// AdminAuth middleware checks if user is authenticated and is an admin.
 func AdminAuth(sessionStore SessionStoreInterface, userRepo UserRepositoryInterface) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie("session")
+			user, err := authenticateRequest(w, r, sessionStore, userRepo)
 			if err != nil {
-				sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
-				return
-			}
-
-			session, err := sessionStore.GetSession(cookie.Value)
-			if err != nil {
-				sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
-				return
-			}
-
-			user, err := userRepo.GetByID(session.UserID)
-			if err != nil {
-				sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+				writeUnauthorized(w, r)
 				return
 			}
 
 			if user.Role != models.RoleAdmin {
-				sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden - Admin access required"})
+				writeForbidden(w, r)
 				return
 			}
-
-			// Extend session if needed (transparent to the rest of the application)
-			extendSessionIfNeeded(w, sessionStore, session, cookie.Value)
 
 			ctx := context.WithValue(r.Context(), UserContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -124,22 +93,50 @@ func extendSessionIfNeeded(w http.ResponseWriter, sessionStore SessionStoreInter
 			return currentToken
 		}
 
-		// Set the new token as a cookie
-		isProd := os.Getenv("ENVIRONMENT") == "production"
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session",
-			Value:    newToken,
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   isProd,
-			SameSite: http.SameSiteLaxMode,
-			Expires:  newExpiresAt,
-		})
+		SetSessionCookie(w, newToken, newExpiresAt)
 
 		return newToken
 	}
 
 	return currentToken
+}
+
+func authenticateRequest(w http.ResponseWriter, r *http.Request, sessionStore SessionStoreInterface, userRepo UserRepositoryInterface) (*models.User, error) {
+	cookie, err := r.Cookie(SessionCookieName)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := sessionStore.GetSession(cookie.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := userRepo.GetByID(session.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	extendSessionIfNeeded(w, sessionStore, session, cookie.Value)
+	return user, nil
+}
+
+func writeUnauthorized(w http.ResponseWriter, r *http.Request) {
+	if isAPIRequest(r) {
+		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+
+	http.Redirect(w, r, "/signin", http.StatusSeeOther)
+}
+
+func writeForbidden(w http.ResponseWriter, r *http.Request) {
+	if isAPIRequest(r) {
+		sendJSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden - Admin access required"})
+		return
+	}
+
+	http.Redirect(w, r, "/signin", http.StatusSeeOther)
 }
 
 func sendJSON(w http.ResponseWriter, status int, data interface{}) {

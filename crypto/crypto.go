@@ -134,13 +134,10 @@ func SignToken(data string) string {
 
 // VerifyToken verifies a signed token and returns the original data
 func VerifyToken(signedToken string) (string, error) {
-	parts := strings.Split(signedToken, ".")
-	if len(parts) != 2 {
+	data, expectedSignature, ok := splitSignedToken(signedToken)
+	if !ok {
 		return "", ErrInvalidToken
 	}
-
-	data := parts[0]
-	expectedSignature := parts[1]
 
 	actualSignature := computeHMAC(data, SecretKey)
 
@@ -161,13 +158,10 @@ func CreateTimedToken(data string, expiresAt time.Time) string {
 
 // VerifyTimedToken verifies a timed token and returns the data if valid and not expired
 func VerifyTimedToken(signedToken string) (string, error) {
-	parts := strings.Split(signedToken, ".")
-	if len(parts) != 2 {
+	payload, expectedSignature, ok := splitSignedToken(signedToken)
+	if !ok {
 		return "", ErrInvalidToken
 	}
-
-	payload := parts[0]
-	expectedSignature := parts[1]
 
 	actualSignature := computeHMAC(payload, SecretKey)
 
@@ -176,14 +170,14 @@ func VerifyTimedToken(signedToken string) (string, error) {
 	}
 
 	// Parse payload
-	payloadParts := strings.Split(payload, "|")
-	if len(payloadParts) != 2 {
+	idx := strings.LastIndex(payload, "|")
+	if idx <= 0 || idx == len(payload)-1 {
 		return "", ErrInvalidToken
 	}
 
-	data := payloadParts[0]
+	data := payload[:idx]
 	var expiresAt int64
-	_, err := fmt.Sscanf(payloadParts[1], "%d", &expiresAt)
+	_, err := fmt.Sscanf(payload[idx+1:], "%d", &expiresAt)
 	if err != nil {
 		return "", ErrInvalidToken
 	}
@@ -194,6 +188,15 @@ func VerifyTimedToken(signedToken string) (string, error) {
 	}
 
 	return data, nil
+}
+
+func splitSignedToken(signedToken string) (payload, signature string, ok bool) {
+	idx := strings.LastIndex(signedToken, ".")
+	if idx < 0 || idx == len(signedToken)-1 {
+		return "", "", false
+	}
+
+	return signedToken[:idx], signedToken[idx+1:], true
 }
 
 // computeHMAC computes HMAC-SHA256
