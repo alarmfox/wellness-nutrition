@@ -18,8 +18,6 @@ services:
       - 3000:3000/tcp
     volumes:
       - .:/app
-      - go-cache:/root/.cache/go-build
-      - go-mod:/go/pkg/mod
     depends_on:
       db:
         condition: service_healthy
@@ -41,7 +39,7 @@ services:
   cron:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db/postgres?sslmode=disable
       - EMAIL_SERVER_HOST=mailpit
@@ -61,7 +59,9 @@ services:
              crond -f -l 2"
 
   seed:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db/postgres?sslmode=disable
     depends_on:
@@ -74,7 +74,3 @@ services:
     ports:
       - 1025:1025/tcp
       - 8025:8025/tcp
-
-volumes:
-  go-cache:
-  go-mod:

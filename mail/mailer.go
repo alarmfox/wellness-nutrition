@@ -51,7 +51,7 @@ type mailMessage struct {
 func NewMailer(host, port, username, password, from string) (*Mailer, error) {
 	client, err := connect(host, port, username, password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize mailer: %w", err)
+		log.Printf("cannot connect to SMTP server: %v", err)
 	}
 
 	m := &Mailer{
@@ -69,7 +69,8 @@ func NewMailer(host, port, username, password, from string) (*Mailer, error) {
 
 // Run starts the mail sending loop. Should be called in a goroutine.
 func (m *Mailer) Run(ctx context.Context) {
-	ticker := time.Tick(time.Second * 10)
+	ticker := time.NewTicker(time.Second * 10)
+	defer ticker.Stop()
 	defer close(m.mailCh)
 	for {
 		select {
@@ -80,7 +81,7 @@ func (m *Mailer) Run(ctx context.Context) {
 			}
 			return
 
-		case <-ticker:
+		case <-ticker.C:
 			if m.client != nil {
 				if err := m.client.Noop(); err == nil {
 					continue
@@ -93,6 +94,7 @@ func (m *Mailer) Run(ctx context.Context) {
 			client, err := connect(m.host, m.port, m.username, m.password)
 			if err != nil {
 				log.Printf("cannot connect to SMTP server: %v", err)
+				continue
 			}
 
 			m.client = client
@@ -145,6 +147,10 @@ func connect(host, port, username, password string) (*smtp.Client, error) {
 
 // sendEmail sends an email using the provided SMTP client
 func (m *Mailer) sendEmail(client *smtp.Client, to, subject string, data EmailData) error {
+	if client == nil {
+		return fmt.Errorf("smtp client is not connected")
+	}
+
 	if data.AppName == "" {
 		data.AppName = "Wellness & Nutrition"
 	}

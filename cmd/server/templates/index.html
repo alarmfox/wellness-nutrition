@@ -379,11 +379,12 @@
 
             mockInstructors.forEach(instructor => {
                 const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
+                const instructorName = `${instructor.FirstName}${lastName}`;
                 html += `
-                    <div class="list-item" style="cursor: pointer;" onclick="showSlotsForInstructor('${instructor.ID}', '${instructor.FirstName}${lastName}')">
+                    <div class="list-item" style="cursor: pointer;" onclick="showSlotsForInstructor('${instructor.ID}', '${instructorName}')">
                         <span class="material-icons list-icon" style="color: #1976d2;">person</span>
                         <div class="list-text">
-                            <div class="list-primary">${instructor.FirstName}${lastName}</div>
+                            <div class="list-primary">${instructorName}</div>
                         </div>
                         <span class="material-icons list-icon">arrow_forward</span>
                     </div>
@@ -597,11 +598,12 @@
 
                     instructors.forEach(instructor => {
                         const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
+                        const instructorName = `${instructor.FirstName}${lastName}`;
                         html += `
-                            <div class="list-item" style="cursor: pointer;" onclick="showSlotsForInstructor('${instructor.ID}', '${instructor.FirstName}${lastName}')">
+                            <div class="list-item" style="cursor: pointer;" onclick="showSlotsForInstructor('${instructor.ID}', '${instructorName}')">
                                 <span class="material-icons list-icon" style="color: #1976d2;">person</span>
                                 <div class="list-text">
-                                    <div class="list-primary">${instructor.FirstName}${lastName}</div>
+                                    <div class="list-primary">${instructorName}</div>
                                 </div>
                                 <span class="material-icons list-icon">arrow_forward</span>
                             </div>

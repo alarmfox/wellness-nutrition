@@ -27,7 +27,7 @@ func main() {
 	defer db.Close()
 
 	cleanupQueries := []string{
-		"DELETE FROM slots WHERE starts_at < now() - interval '3 months'",
+		"DELETE FROM sessions WHERE expires_at < now()",
 		"DELETE FROM events WHERE starts_at < now() - interval '1 months'",
 	}
 

@@ -1,8 +1,8 @@
 root = "."
 
 [build]
-cmd = "go build -buildvcs=false -o server ./cmd/server"
-bin = "server"
+cmd = "go build -buildvcs=false -o /tmp/server ./cmd/server"
+bin = "/tmp/server"
 delay = 1000
 exclude_dir = ["tmp", "bin", ".git", ".agents", ".codex"]
 include_ext = ["go", "html", "css", "js"]

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -75,7 +76,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !user.EmailVerified.Valid || !user.Password.Valid {
-		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Account not verified"})
+		sendJSON(w, http.StatusUnauthorized, map[string]string{"error": "Invalid credentials"})
 		return
 	}
 
@@ -430,6 +431,10 @@ func generateSignedToken(expiresAt time.Time) (signedToken, unsignedToken string
 }
 
 func getBaseURL(r *http.Request) string {
+	if baseURL := strings.TrimRight(os.Getenv("AUTH_URL"), "/"); baseURL != "" {
+		return baseURL
+	}
+
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
