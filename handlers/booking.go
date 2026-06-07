@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -88,13 +89,19 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	startsAt = startsAt.UTC()
 
-	if _, err := h.instructorRepo.GetEnabledByID(req.InstructorID); err != nil {
+	instructor, err := h.instructorRepo.GetEnabledByID(req.InstructorID)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJSON(w, http.StatusNotFound, map[string]string{"error": "Instructor not found"})
 			return
 		}
 		log.Printf("Error getting instructor: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
+	}
+
+	if !isBookableUserSlot(startsAt, user.ExpiresAt) {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Slot not available"})
 		return
 	}
 
@@ -105,16 +112,19 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Type:         models.BookingTypeSimple,
 	}
 
-	if err := h.bookingRepo.Create(&booking); err != nil {
-		log.Printf("Error creating booking: %v", err)
-		sendJSON(w, http.StatusConflict, map[string]string{"error": "Booking already exists"})
-		return
+	neededSlots := 1
+	if user.SubType == models.SubTypeSingle {
+		neededSlots = 2
 	}
 
-	if err := h.userRepo.DecrementAccesses(user.ID); err != nil {
-		log.Printf("Error decrementing accesses: %v", err)
-		sendJSON(w, http.StatusConflict, map[string]string{"error": "Cannot decrement accesses"})
-
+	if err := h.bookingRepo.CreateUserBooking(&booking, neededSlots, instructor.MaxSlots); err != nil {
+		log.Printf("Error creating booking: %v", err)
+		if errors.Is(err, models.ErrSlotUnavailable) || errors.Is(err, models.ErrNoAccesses) {
+			sendJSON(w, http.StatusConflict, map[string]string{"error": "Slot not available"})
+			return
+		}
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
 	}
 
 	// Create event
@@ -301,13 +311,13 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 		to = time.Now().AddDate(0, 1, 0)
 	}
 
-	var bookings []*models.Booking
+	var bookings []*models.BookingWithUser
 
 	// Filter by instructor if specified
 	if instructorID != "" {
-		bookings, err = h.bookingRepo.GetByInstructorAndDateRange(instructorID, from, to)
+		bookings, err = h.bookingRepo.GetWithUsersByInstructorAndDateRange(instructorID, from, to)
 	} else {
-		bookings, err = h.bookingRepo.GetByDateRange(from, to)
+		bookings, err = h.bookingRepo.GetWithUsersByDateRange(from, to)
 	}
 
 	if err != nil {
@@ -335,12 +345,6 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 	result := make([]BookingWithUser, len(bookings))
 	for i, booking := range bookings {
 		if booking.UserID.Valid {
-			user, err := h.userRepo.GetByID(booking.UserID.String)
-			if err != nil {
-				log.Printf("Error getting user %s: %v", booking.UserID.String, err)
-				continue
-			}
-
 			result[i].User = &struct {
 				ID        string `json:"id"`
 				FirstName string `json:"firstName"`
@@ -348,13 +352,12 @@ func (h *BookingHandler) GetAllBookings(w http.ResponseWriter, r *http.Request) 
 				Email     string `json:"email"`
 				SubType   string `json:"subType"`
 			}{
-				ID:        user.ID,
-				FirstName: user.FirstName,
-				LastName:  user.LastName,
-				Email:     user.Email,
-				SubType:   string(user.SubType),
+				ID:        booking.UserID.String,
+				FirstName: booking.UserFirstName.String,
+				LastName:  booking.UserLastName.String,
+				Email:     booking.UserEmail.String,
+				SubType:   booking.UserSubType.String,
 			}
-
 		}
 		result[i].ID = booking.ID
 		result[i].StartsAt = booking.StartsAt
@@ -388,7 +391,8 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 	}
 	startsAt = startsAt.UTC()
 
-	if _, err := h.instructorRepo.GetEnabledByID(req.InstructorID); err != nil {
+	instructor, err := h.instructorRepo.GetEnabledByID(req.InstructorID)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJSON(w, http.StatusNotFound, map[string]string{"error": "Instructor not found"})
 			return
@@ -398,18 +402,11 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Create booking
 	booking := &models.Booking{
 		UserID:       sql.NullString{Valid: req.UserID != "", String: req.UserID},
 		InstructorID: req.InstructorID,
 		StartsAt:     startsAt,
 		Type:         req.Type,
-	}
-
-	if err := h.bookingRepo.Create(booking); err != nil {
-		log.Printf("Error creating booking: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
-		return
 	}
 
 	if booking.Type == models.BookingTypeSimple {
@@ -420,9 +417,16 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		err = h.userRepo.DecrementAccesses(req.UserID)
-		if err != nil {
-			log.Printf("Error decrementing access: %v", err)
+		neededSlots := 1
+		if user.SubType == models.SubTypeSingle {
+			neededSlots = 2
+		}
+		if err := h.bookingRepo.CreateUserBooking(booking, neededSlots, instructor.MaxSlots); err != nil {
+			log.Printf("Error creating booking: %v", err)
+			if errors.Is(err, models.ErrSlotUnavailable) || errors.Is(err, models.ErrNoAccesses) {
+				sendJSON(w, http.StatusConflict, map[string]string{"error": "Slot not available"})
+				return
+			}
 			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 			return
 		}
@@ -431,6 +435,10 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 		if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName, startsAt); err != nil {
 			log.Printf("Error sending notification: %v", err)
 		}
+	} else if err := h.bookingRepo.Create(booking); err != nil {
+		log.Printf("Error creating booking: %v", err)
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
+		return
 	}
 
 	sendJSON(w, http.StatusCreated, map[string]interface{}{
@@ -601,6 +609,32 @@ func subscriptionExpiresAt(expiresAt time.Time) time.Time {
 	}
 	expiresAt = expiresAt.In(loc)
 	return time.Date(expiresAt.Year(), expiresAt.Month(), expiresAt.Day(), 23, 59, 59, int(time.Second-time.Nanosecond), loc)
+}
+
+func isBookableUserSlot(startsAt, expiresAt time.Time) bool {
+	loc, err := time.LoadLocation(businessTimeZone)
+	if err != nil {
+		panic(err)
+	}
+
+	now := time.Now().Add(time.Hour * 4).UTC()
+	endDate := now.AddDate(0, 1, 0)
+	userExpiration := subscriptionExpiresAt(expiresAt)
+	if userExpiration.Before(endDate) {
+		endDate = userExpiration
+	}
+
+	local := startsAt.In(loc)
+	weekday := local.Weekday()
+	return startsAt.After(now) &&
+		!startsAt.After(endDate) &&
+		weekday >= time.Monday &&
+		weekday <= time.Saturday &&
+		local.Hour() >= 7 &&
+		local.Hour() <= 21 &&
+		local.Minute() == 0 &&
+		local.Second() == 0 &&
+		local.Nanosecond() == 0
 }
 
 func formatBusinessTime(t time.Time) string {

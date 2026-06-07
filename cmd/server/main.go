@@ -71,6 +71,9 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(time.Hour)
 
 	if err := db.Ping(); err != nil {
 		log.Fatal(err)
@@ -131,6 +134,9 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	csrfMiddleware := middleware.CSRF
 	authMiddleware := middleware.Auth(sessionStore, userRepo)
 	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
+	loginLimit := middleware.RateLimit(10, time.Minute)
+	resetLimit := middleware.RateLimit(5, time.Hour)
+	surveyLimit := middleware.RateLimit(30, time.Hour)
 
 	// Public routes - apply CSRF to set tokens in cookies for forms
 	mux.Handle("GET /signin", csrfMiddleware(http.HandlerFunc(pageHandler.ServeSignIn)))
@@ -140,13 +146,13 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.HandleFunc("GET /survey/thanks", pageHandler.ServeSurveyThanks)
 
 	// Auth API routes - apply CSRF
-	mux.Handle("POST /api/auth/login", csrfMiddleware(http.HandlerFunc(authHandler.Login)))
+	mux.Handle("POST /api/auth/login", loginLimit(csrfMiddleware(http.HandlerFunc(authHandler.Login))))
 	mux.Handle("DELETE /api/auth/logout", csrfMiddleware(http.HandlerFunc(authHandler.Logout)))
-	mux.Handle("POST /api/auth/reset", csrfMiddleware(http.HandlerFunc(userHandler.ResetPassword)))
+	mux.Handle("POST /api/auth/reset", resetLimit(csrfMiddleware(http.HandlerFunc(userHandler.ResetPassword))))
 	mux.Handle("POST /api/auth/verify", csrfMiddleware(http.HandlerFunc(userHandler.VerifyAccount)))
 
 	// Public survey API routes
-	mux.Handle("POST /survey/submit", csrfMiddleware(http.HandlerFunc(surveyHandler.SubmitSurvey)))
+	mux.Handle("POST /survey/submit", surveyLimit(csrfMiddleware(http.HandlerFunc(surveyHandler.SubmitSurvey))))
 
 	// User dashboard - apply CSRF
 	mux.Handle("GET /user", authMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeUserDashboard))))

@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS bookings (
 -- Indexes for bookings
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_instructor_id ON bookings(instructor_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_starts_at ON bookings(starts_at);
+CREATE INDEX IF NOT EXISTS idx_bookings_instructor_starts_at ON bookings(instructor_id, starts_at);
 
 -- Events table
 CREATE TABLE IF NOT EXISTS events (

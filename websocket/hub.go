@@ -77,19 +77,17 @@ func (h *Hub) Run(ctx context.Context) {
 				continue
 			}
 
-			h.mu.RLock()
+			h.mu.Lock()
 			for client := range h.clients {
 				select {
 				case client.send <- data:
 				default:
 					// Client send buffer is full, close it
-					h.mu.RUnlock()
 					close(client.send)
 					delete(h.clients, client)
-					h.mu.RLock()
 				}
 			}
-			h.mu.RUnlock()
+			h.mu.Unlock()
 		case <-ctx.Done():
 			return
 		}
