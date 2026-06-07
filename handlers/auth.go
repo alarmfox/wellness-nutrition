@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
+	"net/url"
 	"strings"
 	"time"
 
@@ -92,16 +92,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isProd := os.Getenv("ENVIRONMENT") == "production"
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(30 * 24 * time.Hour),
-	})
+	middleware.SetSessionCookie(w, token, time.Now().Add(30*24*time.Hour))
 
 	sendJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
@@ -122,17 +113,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		h.sessionStore.DeleteSession(cookie.Value)
 	}
 
-	isProd := os.Getenv("ENVIRONMENT") == "production"
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Unix(0, 0),
-		MaxAge:   -1,
-	})
+	middleware.ClearSessionCookie(w)
 }
 
 type UserHandler struct {
@@ -263,7 +244,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send welcome email with verification link
-	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), signedToken)
+	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), url.QueryEscape(signedToken))
 	if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
 		log.Printf("Error sending welcome email: %v", err)
 		// Don't fail user creation if email fails, but log it
@@ -346,7 +327,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		user.VerificationTokenExpiresIn = sql.NullTime{Time: expiresAt, Valid: true}
 
 		// Send new verification email
-		verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), signedToken)
+		verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), url.QueryEscape(signedToken))
 		if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
 			log.Printf("Error sending verification email: %v", err)
 			// Don't fail update if email fails, but log it
@@ -422,7 +403,7 @@ func (h *UserHandler) ResendVerification(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Send verification email
-	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), signedToken)
+	verificationURL := fmt.Sprintf("%s/verify?token=%s", getBaseURL(r), url.QueryEscape(signedToken))
 	if err := h.mailer.SendWelcomeEmail(user.Email, user.FirstName, verificationURL); err != nil {
 		log.Printf("Error sending verification email: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to send verification email"})
@@ -442,7 +423,7 @@ func generateSignedToken(expiresAt time.Time) (signedToken, unsignedToken string
 	if _, err := rand.Read(b); err != nil {
 		return "", "", err
 	}
-	unsignedToken = base64.URLEncoding.EncodeToString(b)
+	unsignedToken = base64.RawURLEncoding.EncodeToString(b)
 	// Sign the token with the expiration time
 	signedToken = crypto.CreateTimedToken(unsignedToken, expiresAt)
 	return signedToken, unsignedToken, nil
@@ -500,7 +481,7 @@ func (h *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send reset email
-	resetURL := fmt.Sprintf("%s/reset?token=%s", getBaseURL(r), signedToken)
+	resetURL := fmt.Sprintf("%s/reset?token=%s", getBaseURL(r), url.QueryEscape(signedToken))
 	if err := h.mailer.SendResetEmail(user.Email, user.FirstName, resetURL); err != nil {
 		log.Printf("Error sending reset email: %v", err)
 	}

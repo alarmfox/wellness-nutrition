@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/alarmfox/wellness-nutrition/app/crypto"
@@ -24,8 +23,7 @@ func GenerateCSRFToken() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	token := base64.URLEncoding.EncodeToString(b)
-	// Sign the token
+	token := base64.RawURLEncoding.EncodeToString(b)
 	return crypto.SignToken(token), nil
 }
 
@@ -48,19 +46,7 @@ func CSRF(next http.Handler) http.Handler {
 				return
 			}
 
-			// Set the CSRF token in a cookie
-			// Note: HttpOnly is false so JavaScript can read the token for AJAX requests
-			// This is safe for CSRF tokens as they don't grant authentication
-			isProd := os.Getenv("ENVIRONMENT") == "production"
-			http.SetCookie(w, &http.Cookie{
-				Name:     CSRFCookieName,
-				Value:    token,
-				Path:     "/",
-				HttpOnly: false, // JavaScript needs to read this for fetch requests
-				Secure:   isProd,
-				SameSite: http.SameSiteStrictMode,
-				MaxAge:   86400, // 24 hours
-			})
+			setCSRFCookie(w, token)
 
 			// Add token to context so templates can access it
 			ctx := context.WithValue(r.Context(), CSRFTokenContextKey, token)
@@ -80,14 +66,14 @@ func CSRF(next http.Handler) http.Handler {
 
 		if token == "" {
 			log.Printf("CSRF token missing for %s %s", r.Method, r.URL.Path)
-			http.Error(w, "CSRF token missing", http.StatusForbidden)
+			writeCSRFError(w, r, "CSRF token missing")
 			return
 		}
 
 		// Verify the token signature
 		if err := VerifyCSRFToken(token); err != nil {
 			log.Printf("Invalid CSRF token for %s %s: %v", r.Method, r.URL.Path, err)
-			http.Error(w, "Invalid CSRF token", http.StatusForbidden)
+			writeCSRFError(w, r, "Invalid CSRF token")
 			return
 		}
 
@@ -95,13 +81,13 @@ func CSRF(next http.Handler) http.Handler {
 		cookie, err := r.Cookie(CSRFCookieName)
 		if err != nil {
 			log.Printf("CSRF cookie missing for %s %s", r.Method, r.URL.Path)
-			http.Error(w, "CSRF cookie missing", http.StatusForbidden)
+			writeCSRFError(w, r, "CSRF cookie missing")
 			return
 		}
 
 		if cookie.Value != token {
 			log.Printf("CSRF token mismatch for %s %s", r.Method, r.URL.Path)
-			http.Error(w, "CSRF token mismatch", http.StatusForbidden)
+			writeCSRFError(w, r, "CSRF token mismatch")
 			return
 		}
 
@@ -135,21 +121,15 @@ func getOrCreateCSRFToken(r *http.Request) (string, error) {
 	return GenerateCSRFToken()
 }
 
-// CSRFExempt creates a middleware that exempts certain paths from CSRF protection
-// This is useful for API endpoints that use other authentication methods
-func CSRFExempt(exemptPaths ...string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Check if path is exempt
-			for _, path := range exemptPaths {
-				if strings.HasPrefix(r.URL.Path, path) {
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
-			// Not exempt, apply CSRF protection
-			CSRF(next).ServeHTTP(w, r)
-		})
+func writeCSRFError(w http.ResponseWriter, r *http.Request, message string) {
+	if isAPIRequest(r) {
+		sendJSON(w, http.StatusForbidden, map[string]string{"error": message})
+		return
 	}
+
+	http.Error(w, message, http.StatusForbidden)
+}
+
+func isAPIRequest(r *http.Request) bool {
+	return strings.HasPrefix(r.URL.Path, "/api/")
 }

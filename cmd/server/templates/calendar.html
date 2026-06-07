@@ -78,6 +78,13 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
 
+    <div id="dayContextMenu" class="context-menu">
+        <button type="button" onclick="DayDisableActions.openModalFromMenu()">
+            <span class="material-icons">event_busy</span>
+            Disabilita giornata
+        </button>
+    </div>
+
     <!-- Delete Booking Modal -->
     <div id="deleteBookingModal" class="modal">
         <div class="modal-content">
@@ -129,6 +136,30 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeEnableSlotModal()">Annulla</button>
                 <button type="button" class="btn" style="background-color: #4caf50;" onclick="confirmEnableSlot()">Riabilita slot</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disable Day Modal -->
+    <div id="disableDayModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Disabilita Slot</h2>
+                <button class="close" onclick="closeDisableDayModal()"><span class="material-icons">close</span></button>
+            </div>
+            <div class="modal-body">
+                <p id="disableDayInfo" class="modal-info"></p>
+                <div class="form-group">
+                    <label for="disableDayInstructorId">Seleziona Istruttore *</label>
+                    <select id="disableDayInstructorId" required>
+                        <option value="">Caricamento...</option>
+                    </select>
+                </div>
+                <p id="disableDayDescription" class="modal-info"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeDisableDayModal()">Annulla</button>
+                <button type="button" class="btn" onclick="confirmDisableDay()">Disabilita slot</button>
             </div>
         </div>
     </div>
@@ -223,6 +254,7 @@
             </div>
         </div>
     </div>
+    <script src="/static/js/security.js"></script>
     <script src="/static/js/ui.js"></script>
     <script src="/static/js/ws.js"></script>
     <script src="/static/js/calendar.js"></script>

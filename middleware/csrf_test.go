@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -87,6 +88,37 @@ func TestCSRFMiddleware_UnsafeMethodsWithoutToken(t *testing.T) {
 				t.Errorf("Expected status Forbidden for %s request without CSRF token, got %d", method, w.Code)
 			}
 		})
+	}
+}
+
+func TestCSRFMiddleware_APIErrorIsJSON(t *testing.T) {
+	if err := crypto.InitializeSecretKey("test-secret-key"); err != nil {
+		t.Fatalf("Failed to initialize secret key: %v", err)
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	csrfHandler := CSRF(handler)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/users", nil)
+	w := httptest.NewRecorder()
+
+	csrfHandler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("Expected status Forbidden, got %d", w.Code)
+	}
+	if contentType := w.Result().Header.Get("Content-Type"); contentType != "application/json" {
+		t.Fatalf("Expected JSON content type, got %q", contentType)
+	}
+
+	var body map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("Expected JSON body: %v", err)
+	}
+	if body["error"] != "CSRF token missing" {
+		t.Fatalf("Expected CSRF error body, got %#v", body)
 	}
 }
 

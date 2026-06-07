@@ -70,10 +70,6 @@ const UI = {
     }
 };
 
-function getCookie(name) {
-    return document.cookie.split(';').find(c => c.trim().startsWith(name + '='))?.split('=')[1] || '';
-}
-
 function handleLogout() {
     if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
         return;

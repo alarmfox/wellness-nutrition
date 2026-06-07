@@ -101,14 +101,14 @@ func seedTest(db *sql.DB) {
 
 	var id int
 	for i, instr := range instructors {
-		err := db.QueryRow(`
+		row := db.QueryRow(`
 			INSERT INTO instructors
 			(id, first_name, last_name)
 			VALUES ($1, $2, $3)
 			ON CONFLICT DO NOTHING
 		`, i, instr.firstName, instr.lastName)
-		if err != nil {
-			log.Printf("Warning: Could not create instructor %s %s: %v", instr.firstName, instr.lastName, err)
+		if row.Err() != nil {
+			log.Printf("Warning: Could not create instructor %s %s: %v", instr.firstName, instr.lastName, row.Err())
 		} else {
 			log.Printf("Created instructor %s %s", instr.firstName, instr.lastName)
 		}

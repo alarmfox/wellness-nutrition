@@ -129,6 +129,8 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// CSRF middleware for protected routes
 	csrfMiddleware := middleware.CSRF
+	authMiddleware := middleware.Auth(sessionStore, userRepo)
+	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
 
 	// Public routes - apply CSRF to set tokens in cookies for forms
 	mux.Handle("GET /signin", csrfMiddleware(http.HandlerFunc(pageHandler.ServeSignIn)))
@@ -147,53 +149,51 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.Handle("POST /survey/submit", csrfMiddleware(http.HandlerFunc(surveyHandler.SubmitSurvey)))
 
 	// User dashboard - apply CSRF
-	authMiddleware := middleware.Auth(sessionStore, userRepo)
-	mux.Handle("GET /user", csrfMiddleware(authMiddleware(http.HandlerFunc(pageHandler.ServeUserDashboard))))
-	mux.Handle("GET /user/", csrfMiddleware(authMiddleware(http.HandlerFunc(pageHandler.ServeUserDashboard))))
+	mux.Handle("GET /user", authMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeUserDashboard))))
+	mux.Handle("GET /user/", authMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeUserDashboard))))
 
 	// User API - apply CSRF
-	mux.Handle("GET /api/user/bookings", csrfMiddleware(authMiddleware(http.HandlerFunc(bookingHandler.GetCurrent))))
-	mux.Handle("POST /api/user/bookings", csrfMiddleware(authMiddleware(http.HandlerFunc(bookingHandler.Create))))
-	mux.Handle("DELETE /api/user/bookings/{id}", csrfMiddleware(authMiddleware(http.HandlerFunc(bookingHandler.Delete))))
-	mux.Handle("GET /api/user/bookings/slots", csrfMiddleware(authMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots))))
+	mux.Handle("GET /api/user/bookings", authMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.GetCurrent))))
+	mux.Handle("POST /api/user/bookings", authMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.Create))))
+	mux.Handle("DELETE /api/user/bookings/{id}", authMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.Delete))))
+	mux.Handle("GET /api/user/bookings/slots", authMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots))))
 
 	// Admin dashboard - apply CSRF
-	adminMiddleware := middleware.AdminAuth(sessionStore, userRepo)
-	mux.Handle("GET /admin", csrfMiddleware(authMiddleware(http.HandlerFunc(pageHandler.ServeAdminHome))))
-	mux.Handle("GET /admin/", csrfMiddleware(authMiddleware(http.HandlerFunc(pageHandler.ServeAdminHome))))
-	mux.Handle("GET /admin/calendar", csrfMiddleware(adminMiddleware(http.HandlerFunc(pageHandler.ServeCalendar))))
-	mux.Handle("GET /admin/users", csrfMiddleware(adminMiddleware(http.HandlerFunc(pageHandler.ServeUsers))))
-	mux.Handle("GET /admin/instructors", csrfMiddleware(adminMiddleware(http.HandlerFunc(pageHandler.ServeInstructors))))
-	mux.Handle("GET /admin/events", csrfMiddleware(adminMiddleware(http.HandlerFunc(pageHandler.ServeEvents))))
-	mux.Handle("GET /admin/survey/questions", csrfMiddleware(adminMiddleware(http.HandlerFunc(pageHandler.ServeSurveyQuestions))))
-	mux.Handle("GET /admin/survey/results", csrfMiddleware(adminMiddleware(http.HandlerFunc(pageHandler.ServeSurveyResults))))
-	mux.Handle("GET /admin/user-view", csrfMiddleware(adminMiddleware(http.HandlerFunc(pageHandler.ServeUserView))))
+	mux.Handle("GET /admin", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeAdminHome))))
+	mux.Handle("GET /admin/", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeAdminHome))))
+	mux.Handle("GET /admin/calendar", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeCalendar))))
+	mux.Handle("GET /admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeUsers))))
+	mux.Handle("GET /admin/instructors", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeInstructors))))
+	mux.Handle("GET /admin/events", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeEvents))))
+	mux.Handle("GET /admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeSurveyQuestions))))
+	mux.Handle("GET /admin/survey/results", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeSurveyResults))))
+	mux.Handle("GET /admin/user-view", adminMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeUserView))))
 
 	// Admin user API - apply CSRF
-	mux.Handle("GET /api/admin/users", csrfMiddleware(adminMiddleware(http.HandlerFunc(userHandler.GetAll))))
-	mux.Handle("POST /api/admin/users", csrfMiddleware(adminMiddleware(http.HandlerFunc(userHandler.Create))))
-	mux.Handle("PUT /api/admin/users", csrfMiddleware(adminMiddleware(http.HandlerFunc(userHandler.Update))))
-	mux.Handle("DELETE /api/admin/users", csrfMiddleware(adminMiddleware(http.HandlerFunc(userHandler.Delete))))
-	mux.Handle("POST /api/admin/users/resend-verification", csrfMiddleware(adminMiddleware(http.HandlerFunc(userHandler.ResendVerification))))
+	mux.Handle("GET /api/admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.GetAll))))
+	mux.Handle("POST /api/admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.Create))))
+	mux.Handle("PUT /api/admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.Update))))
+	mux.Handle("DELETE /api/admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.Delete))))
+	mux.Handle("POST /api/admin/users/resend-verification", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.ResendVerification))))
 
 	// Instructors API - apply CSRF
-	mux.Handle("GET /api/user/instructors", csrfMiddleware(authMiddleware(http.HandlerFunc(instructorHandler.GetAll))))
-	mux.Handle("GET /api/admin/instructors", csrfMiddleware(adminMiddleware(http.HandlerFunc(instructorHandler.GetAll))))
-	mux.Handle("POST /api/admin/instructors", csrfMiddleware(adminMiddleware(http.HandlerFunc(instructorHandler.Create))))
-	mux.Handle("PUT /api/admin/instructors/{id}", csrfMiddleware(adminMiddleware(http.HandlerFunc(instructorHandler.Update))))
-	mux.Handle("DELETE /api/admin/instructors/{id}", csrfMiddleware(adminMiddleware(http.HandlerFunc(instructorHandler.Delete))))
+	mux.Handle("GET /api/user/instructors", authMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.GetAll))))
+	mux.Handle("GET /api/admin/instructors", adminMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.GetAll))))
+	mux.Handle("POST /api/admin/instructors", adminMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.Create))))
+	mux.Handle("PUT /api/admin/instructors/{id}", adminMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.Update))))
+	mux.Handle("DELETE /api/admin/instructors/{id}", adminMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.Delete))))
 
 	// Bookings API - apply CSRF
-	mux.Handle("GET /api/admin/bookings", csrfMiddleware(adminMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings))))
-	mux.Handle("POST /api/admin/bookings", csrfMiddleware(adminMiddleware(http.HandlerFunc(bookingHandler.CreateBookingForUser))))
-	mux.Handle("DELETE /api/admin/bookings/{id}", csrfMiddleware(adminMiddleware(http.HandlerFunc(bookingHandler.DeleteAdmin))))
+	mux.Handle("GET /api/admin/bookings", adminMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings))))
+	mux.Handle("POST /api/admin/bookings", adminMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.CreateBookingForUser))))
+	mux.Handle("DELETE /api/admin/bookings/{id}", adminMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.DeleteAdmin))))
 
 	// Survey API - apply CSRF
-	mux.Handle("GET /api/admin/survey/questions", csrfMiddleware(adminMiddleware(http.HandlerFunc(surveyHandler.GetAllQuestions))))
-	mux.Handle("POST /api/admin/survey/questions", csrfMiddleware(adminMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion))))
-	mux.Handle("PUT /api/admin/survey/questions", csrfMiddleware(adminMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion))))
-	mux.Handle("DELETE /api/admin/survey/questions", csrfMiddleware(adminMiddleware(http.HandlerFunc(surveyHandler.DeleteQuestion))))
-	mux.Handle("GET /api/admin/survey/results", csrfMiddleware(adminMiddleware(http.HandlerFunc(surveyHandler.GetResults))))
+	mux.Handle("GET /api/admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.GetAllQuestions))))
+	mux.Handle("POST /api/admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion))))
+	mux.Handle("PUT /api/admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion))))
+	mux.Handle("DELETE /api/admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.DeleteQuestion))))
+	mux.Handle("GET /api/admin/survey/results", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.GetResults))))
 
 	// WebSocket endpoint - authenticated, but no CSRF for websocket upgrade
 	mux.Handle("/ws", adminMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +201,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	})))
 
 	// Root redirect based on role - apply CSRF
-	mux.Handle("/", csrfMiddleware(authMiddleware(http.HandlerFunc(pageHandler.ServeRoot))))
+	mux.Handle("/", authMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeRoot))))
 
 	log.Printf("listening on %s", listenAddr)
 	return startHTTPServer(ctx, mux, listenAddr)

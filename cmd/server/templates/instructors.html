@@ -148,15 +148,8 @@
 
     <div id="toast" class="toast"></div>
 
+    <script src="/static/js/security.js"></script>
     <script>
-        // Helper function to get cookie value
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-            return null;
-        }
-
         function openCreateModal() {
             document.getElementById('createModal').style.display = 'block';
         }
