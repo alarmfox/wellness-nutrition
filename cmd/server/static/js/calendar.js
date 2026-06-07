@@ -120,6 +120,12 @@ const CalendarState = {
         refund: false
     },
 
+    dayDisable: {
+        dayParts: null,
+        label: '',
+        selectedSlots: null
+    },
+
     resetModal() {
         this.modal.slotTime = null;
         this.modal.slotData = null;
@@ -201,6 +207,10 @@ const CalendarState = {
         return slotData;
     }
 };
+
+function getInstructorName(instructor) {
+    return `${instructor.FirstName} ${instructor.LastName || ''}`.trim();
+}
 
 // ============================================================================
 // API SERVICE
@@ -803,6 +813,328 @@ const SlotActions = {
 };
 
 // ============================================================================
+// DAY DISABLE ACTIONS
+// ============================================================================
+const DayDisableActions = {
+    showMenu(event, year, month, day, label) {
+        event.preventDefault();
+
+        this.setDay(year, month, day, label);
+
+        const menu = document.getElementById('dayContextMenu');
+        if (!menu) return;
+
+        menu.style.left = `${event.pageX}px`;
+        menu.style.top = `${event.pageY}px`;
+        menu.style.display = 'block';
+    },
+
+    setDay(year, month, day, label) {
+        CalendarState.dayDisable.dayParts = { year, month, day };
+        CalendarState.dayDisable.label = label;
+        CalendarState.dayDisable.selectedSlots = null;
+    },
+
+    setSelectedSlots(slots) {
+        if (slots.length === 0) return;
+
+        const sortedSlots = slots
+            .map(slot => new Date(slot.dataset.slot))
+            .sort((left, right) => left.getTime() - right.getTime());
+        const firstSlot = slots[0];
+
+        CalendarState.dayDisable.dayParts = {
+            year: firstSlot.dataset.dayYear,
+            month: firstSlot.dataset.dayMonth,
+            day: firstSlot.dataset.dayDay
+        };
+        CalendarState.dayDisable.selectedSlots = sortedSlots;
+
+        const from = sortedSlots[0].toLocaleTimeString('it-IT', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: BUSINESS_TIME_ZONE
+        });
+        const to = sortedSlots[sortedSlots.length - 1].toLocaleTimeString('it-IT', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: BUSINESS_TIME_ZONE
+        });
+        CalendarState.dayDisable.label = `${firstSlot.dataset.dayLabel}, ${from}-${to} (${sortedSlots.length} slot)`;
+    },
+
+    hideMenu() {
+        const menu = document.getElementById('dayContextMenu');
+        if (menu) {
+            menu.style.display = 'none';
+        }
+    },
+
+    openModalFromMenu() {
+        this.hideMenu();
+        this.openModal();
+    },
+
+    openModal() {
+        if (!CalendarState.dayDisable.dayParts) return;
+
+        const modal = document.getElementById('disableDayModal');
+        const info = document.getElementById('disableDayInfo');
+        const description = document.getElementById('disableDayDescription');
+        const select = document.getElementById('disableDayInstructorId');
+
+        if (!modal || !info || !description || !select) return;
+
+        info.textContent = CalendarState.dayDisable.selectedSlots
+            ? `Slot selezionati: ${CalendarState.dayDisable.label}`
+            : `Giornata: ${CalendarState.dayDisable.label}`;
+        description.textContent = CalendarState.dayDisable.selectedSlots
+            ? 'Verranno creati slot non disponibili solo per le ore selezionate.'
+            : 'Verranno creati slot non disponibili per ogni ora futura della giornata selezionata.';
+        select.innerHTML = '<option value="">-- Seleziona istruttore --</option><option value="all">Tutti</option>';
+
+        CalendarState.instructors.forEach(instructor => {
+            const option = document.createElement('option');
+            option.value = instructor.ID;
+            option.textContent = getInstructorName(instructor);
+            select.appendChild(option);
+        });
+
+        modal.style.display = 'block';
+    },
+
+    closeModal() {
+        const modal = document.getElementById('disableDayModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    },
+
+    getDaySlots() {
+        if (CalendarState.dayDisable.selectedSlots) {
+            return CalendarState.dayDisable.selectedSlots.filter(slot => !isPastRomeHourSlot(slot));
+        }
+
+        const dayParts = CalendarState.dayDisable.dayParts;
+        if (!dayParts) return [];
+
+        const slots = [];
+        for (let hour = 7; hour <= 21; hour++) {
+            const date = romeWallTimeToDate(
+                Number(dayParts.year),
+                Number(dayParts.month),
+                Number(dayParts.day),
+                hour
+            );
+
+            if (!isPastRomeHourSlot(date)) {
+                slots.push(date);
+            }
+        }
+
+        return slots;
+    },
+
+    getTargetInstructors() {
+        const select = document.getElementById('disableDayInstructorId');
+        if (!select || !select.value) return [];
+
+        if (select.value === 'all') {
+            return CalendarState.instructors;
+        }
+
+        const instructorId = parseInt(select.value);
+        return CalendarState.instructors.filter(instructor => instructor.ID === instructorId);
+    },
+
+    async fetchDayBookings(slots) {
+        if (slots.length === 0) return [];
+
+        const from = new Date(slots[0]);
+        const to = new Date(slots[slots.length - 1]);
+        to.setTime(to.getTime() + 59 * 60 * 1000 + 59 * 1000 + 999);
+
+        return await API.fetchBookings(from, to);
+    },
+
+    hasDisabledBooking(bookings, slotDate, instructorId) {
+        const targetTime = slotDate.getTime();
+
+        return bookings.some(booking => {
+            return booking.type === BookingType.DISABLE &&
+                booking.instructorId === instructorId &&
+                new Date(booking.startsAt).getTime() === targetTime;
+        });
+    },
+
+    async submit() {
+        const instructors = this.getTargetInstructors();
+        if (instructors.length === 0) {
+            UI.showToast('Seleziona un istruttore', false);
+            return;
+        }
+
+        const slots = this.getDaySlots();
+        if (slots.length === 0) {
+            UI.showToast('Nessuno slot futuro da disabilitare', false);
+            return;
+        }
+
+        const isSelection = Boolean(CalendarState.dayDisable.selectedSlots);
+        UI.showLoading(isSelection ? 'Disabilitazione slot...' : 'Disabilitazione giornata...');
+
+        let successCount = 0;
+        let skippedCount = 0;
+        let errorCount = 0;
+
+        let existingBookings = [];
+        try {
+            existingBookings = await this.fetchDayBookings(slots);
+        } catch (error) {
+            UI.hideLoading();
+            UI.showToast('Errore nel controllo degli slot esistenti', false);
+            console.error(error);
+            return;
+        }
+
+        for (const slotDate of slots) {
+            for (const instructor of instructors) {
+                if (this.hasDisabledBooking(existingBookings, slotDate, instructor.ID)) {
+                    skippedCount++;
+                    continue;
+                }
+
+                try {
+                    const data = await API.createBooking(BookingType.DISABLE, {
+                        startsAt: slotDate.toISOString(),
+                        instructorId: instructor.ID
+                    });
+
+                    if (data.error) {
+                        errorCount++;
+                    } else {
+                        successCount++;
+                        existingBookings.push({
+                            startsAt: slotDate.toISOString(),
+                            instructorId: instructor.ID,
+                            type: BookingType.DISABLE
+                        });
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.error(error);
+                }
+            }
+        }
+
+        UI.hideLoading();
+
+        if (successCount > 0) {
+            this.closeModal();
+            await Calendar.load();
+
+            const details = skippedCount > 0 ? `, ${skippedCount} gia presenti` : '';
+            const subject = isSelection ? 'Slot disabilitati' : 'Giornata disabilitata';
+            UI.showToast(`${subject}: ${successCount} slot creati${details}`, errorCount === 0);
+            return;
+        }
+
+        if (skippedCount > 0 && errorCount === 0) {
+            this.closeModal();
+            UI.showToast(isSelection ? 'Slot gia disabilitati' : 'Giornata gia disabilitata', true);
+            return;
+        }
+
+        UI.showToast('Errore durante la disabilitazione degli slot', false);
+    }
+};
+
+// ============================================================================
+// CALENDAR DRAG SELECTION
+// ============================================================================
+const CalendarDragSelection = {
+    isDragging: false,
+    dayKey: '',
+    selectedSlots: new Set(),
+    suppressNextClick: false,
+
+    init() {
+        const calendarView = document.getElementById('calendarView');
+        if (!calendarView) return;
+
+        calendarView.addEventListener('mousedown', event => this.start(event));
+        calendarView.addEventListener('mouseover', event => this.extend(event));
+        document.addEventListener('mouseup', () => this.finish());
+    },
+
+    start(event) {
+        if (event.button !== 0) return;
+
+        const slot = event.target.closest('.time-slot');
+        if (!this.canSelect(slot)) return;
+
+        event.preventDefault();
+        this.clearSelection();
+        this.isDragging = true;
+        this.dayKey = slot.dataset.dayKey;
+        this.addSlot(slot);
+    },
+
+    extend(event) {
+        if (!this.isDragging) return;
+
+        const slot = event.target.closest('.time-slot');
+        if (!this.canSelect(slot) || slot.dataset.dayKey !== this.dayKey) return;
+
+        this.addSlot(slot);
+    },
+
+    finish() {
+        if (!this.isDragging) return;
+
+        const selected = Array.from(this.selectedSlots);
+        const firstSlot = selected[0];
+        this.isDragging = false;
+
+        if (selected.length >= 2 && firstSlot) {
+            this.suppressNextClick = true;
+            setTimeout(() => {
+                this.suppressNextClick = false;
+            }, 250);
+            DayDisableActions.setSelectedSlots(selected);
+            DayDisableActions.openModal();
+        }
+
+        this.clearSelection();
+    },
+
+    canSelect(slot) {
+        return slot && !slot.classList.contains('past-slot');
+    },
+
+    addSlot(slot) {
+        this.selectedSlots.add(slot);
+        slot.classList.add('drag-selected');
+    },
+
+    clearSelection() {
+        this.selectedSlots.forEach(slot => slot.classList.remove('drag-selected'));
+        this.selectedSlots.clear();
+    },
+
+    consumeSuppressedClick(event) {
+        if (!this.suppressNextClick) return false;
+
+        this.suppressNextClick = false;
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        return true;
+    }
+};
+
+// ============================================================================
 // DATA LOADER
 // ============================================================================
 const DataLoader = {
@@ -904,9 +1236,11 @@ const Calendar = {
         for (let i = 0; i < 6; i++) {
             const date = new Date(weekStart);
             date.setDate(weekStart.getDate() + i);
+            const dayParts = addRomeDays(weekStartParts, i);
             const dayName = date.toLocaleDateString('it-IT', { weekday: 'short', timeZone: BUSINESS_TIME_ZONE });
             const dayNum = date.toLocaleDateString('it-IT', { day: 'numeric', timeZone: BUSINESS_TIME_ZONE });
-            html += `<div class="day-header">${dayName} ${dayNum}</div>`;
+            const dayLabel = `${dayName} ${dayNum}`;
+            html += `<div class="day-header day-header-action" title="Click destro per disabilitare la giornata" oncontextmenu="DayDisableActions.showMenu(event, '${dayParts.year}', '${dayParts.month}', '${dayParts.day}', '${dayLabel}')">${dayLabel}</div>`;
         }
 
         for (let hour = 7; hour <= 21; hour++) {
@@ -936,6 +1270,13 @@ const Calendar = {
     renderTimeSlot(date) {
         const targetTime = date.getTime();
         const isoTime = date.toISOString();
+        const dayParts = getRomeParts(date);
+        const dayLabel = date.toLocaleDateString('it-IT', {
+            weekday: 'short',
+            day: 'numeric',
+            timeZone: BUSINESS_TIME_ZONE
+        });
+        const dayAttributes = `data-day-key="${dayParts.year}-${dayParts.month}-${dayParts.day}" data-day-year="${dayParts.year}" data-day-month="${dayParts.month}" data-day-day="${dayParts.day}" data-day-label="${dayLabel}"`;
 
         // Get all bookings for this time slot
         const allBookings = CalendarState.bookings.filter(b => {
@@ -958,8 +1299,8 @@ const Calendar = {
         }
 
         const slotAttributes = isPastSlot
-            ? `class="${slotClasses.join(' ')}" aria-readonly="true" data-slot="${isoTime}"`
-            : `class="${slotClasses.join(' ')}" onclick="Calendar.handleSlotClick('${isoTime}')" data-slot="${isoTime}"`;
+            ? `class="${slotClasses.join(' ')}" aria-readonly="true" data-slot="${isoTime}" ${dayAttributes}`
+            : `class="${slotClasses.join(' ')}" onclick="Calendar.handleSlotClick(event, '${isoTime}')" data-slot="${isoTime}" ${dayAttributes}`;
         let html = `<div ${slotAttributes}>`;
 
         // Render each booking
@@ -986,7 +1327,7 @@ const Calendar = {
                 const displayName = `${instructorName} - ${booking.user.lastName} ${booking.user.firstName.substring(0, 3)}.`;
                 const title = `${instructorName} - ${booking.user.firstName} ${booking.user.lastName}`;
 
-                html += `<div class="${cssClass}" title="${title}" onclick="event.stopPropagation(); Calendar.handleBookingClick('${booking.id}', '${booking.user.firstName}', '${booking.user.lastName}', '${isoTime}')">
+                html += `<div class="${cssClass}" title="${title}" onclick="if (CalendarDragSelection.consumeSuppressedClick(event)) return; event.stopPropagation(); Calendar.handleBookingClick('${booking.id}', '${booking.user.firstName}', '${booking.user.lastName}', '${isoTime}')">
                     ${displayName}
                 </div>`;
             }
@@ -996,7 +1337,9 @@ const Calendar = {
         return html;
     },
 
-    handleSlotClick(slotTime) {
+    handleSlotClick(event, slotTime) {
+        if (CalendarDragSelection.consumeSuppressedClick(event)) return;
+
         const slotData = CalendarState.getOrCreateSlotData(slotTime);
         SlotActions.openSlot(slotTime, slotData);
     },
@@ -1074,6 +1417,14 @@ function confirmDeleteBooking() {
     BookingActions.delete();
 }
 
+function closeDisableDayModal() {
+    DayDisableActions.closeModal();
+}
+
+function confirmDisableDay() {
+    DayDisableActions.submit();
+}
+
 function previousPeriod() {
     Calendar.previousWeek();
 }
@@ -1092,9 +1443,16 @@ function toggleRefund(elem) {
 }
 
 window.onclick = function(event) {
+    DayDisableActions.hideMenu();
+
     const slotModal = document.getElementById('slotModal');
     if (event.target === slotModal) {
         closeSlotModal();
+    }
+
+    const disableDayModal = document.getElementById('disableDayModal');
+    if (event.target === disableDayModal) {
+        closeDisableDayModal();
     }
 };
 
@@ -1103,6 +1461,7 @@ window.onclick = function(event) {
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function() {
     Modal.init();
+    CalendarDragSelection.init();
 
     Promise.all([
         DataLoader.loadUsers(),

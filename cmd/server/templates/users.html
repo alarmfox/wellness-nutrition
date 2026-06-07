@@ -55,6 +55,7 @@
                         <th style="width: 40px;">
                             <input type="checkbox" class="checkbox" id="selectAll" onchange="toggleAll(this)" />
                         </th>
+                        <th>Cognome</th>
                         <th>Nome</th>
                         <th>Email</th>
                         <th>Tipo</th>
@@ -70,7 +71,8 @@
                         <td>
                             <input type="checkbox" class="checkbox user-checkbox" value="{{.ID}}" onchange="updateDeleteButton()" />
                         </td>
-                        <td>{{.FirstName}} {{.LastName}}</td>
+                        <td>{{.LastName}}</td>
+                        <td>{{.FirstName}}</td>
                         <td>{{.Email}}</td>
                         <td>
                             <span class="badge {{if eq .SubType "SHARED"}}badge-shared{{else}}badge-single{{end}}">
