@@ -127,11 +127,12 @@ func connect(host, port, username, password string) (*smtp.Client, error) {
 		}
 	}
 
-	// Authenticate
-	auth := smtp.PlainAuth("", username, password, host)
-	if err = client.Auth(auth); err != nil {
-		client.Close()
-		return nil, err
+	if username != "" {
+		auth := smtp.PlainAuth("", username, password, host)
+		if err = client.Auth(auth); err != nil {
+			client.Close()
+			return nil, err
+		}
 	}
 
 	// Send a hello to verify the connection works

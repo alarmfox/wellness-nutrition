@@ -6,6 +6,7 @@ coverage.html
 
 # Build artifacts
 bin/
+tmp/
 *.exe
 *.dll
 *.so

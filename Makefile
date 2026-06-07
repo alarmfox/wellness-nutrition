@@ -1,13 +1,22 @@
-.PHONY: test test-unit test-integration test-e2e test-db clean help
+.PHONY: test test-unit test-integration test-e2e test-db clean help dev dev-down
 
 # Test commands
 help: ## Display this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
-test: ## Run all tests (unit + integration + e2e)
+test: test-docker-up ## Run all tests with Docker test services
 	@echo "Running all tests..."
-	@go test -v ./... -coverprofile=coverage.out
+	@trap '$(MAKE) test-docker-down' EXIT; \
+	DATABASE_URL="postgresql://postgres:test123@localhost:5433/test_db?sslmode=disable" \
+	EMAIL_SERVER_HOST="localhost" \
+	EMAIL_SERVER_PORT="1025" \
+	EMAIL_SERVER_USER="" \
+	EMAIL_SERVER_PASSWORD="" \
+	EMAIL_SERVER_FROM="no-reply@example.test" \
+	EMAIL_NOTIFY_ADDRESS="no-reply@example.test" \
+	AUTH_URL="http://localhost:3000" \
+	go test -v ./... -coverprofile=coverage.out
 
 test-unit: ## Run unit tests only (no database required)
 	@echo "Running unit tests..."
@@ -55,19 +64,32 @@ deps: ## Download dependencies
 	@go mod download
 	@go mod verify
 
+dev: ## Build and start the development environment
+	@docker compose -f docker-compose.dev.yml up --build
+
+dev-down: ## Stop the development environment
+	@docker compose -f docker-compose.dev.yml down
+
 # Docker test environment
-test-docker-up: ## Start test database in Docker
-	@echo "Starting test database..."
+test-docker-up: ## Start test services in Docker
+	@echo "Starting test services..."
 	@docker compose -f docker-compose.test.yml up -d
-	@echo "Waiting for database to be ready..."
+	@echo "Waiting for test services to be ready..."
 	@sleep 5
 
-test-docker-down: ## Stop test database
-	@echo "Stopping test database..."
+test-docker-down: ## Stop test services
+	@echo "Stopping test services..."
 	@docker compose -f docker-compose.test.yml down -v
 
 test-docker: test-docker-up ## Run tests with Docker database
 	@echo "Running tests with Docker database..."
-	@export DATABASE_URL="postgresql://postgres:test123@localhost:5433/test_db?sslmode=disable" && \
+	@trap '$(MAKE) test-docker-down' EXIT; \
+	DATABASE_URL="postgresql://postgres:test123@localhost:5433/test_db?sslmode=disable" \
+	EMAIL_SERVER_HOST="localhost" \
+	EMAIL_SERVER_PORT="1025" \
+	EMAIL_SERVER_USER="" \
+	EMAIL_SERVER_PASSWORD="" \
+	EMAIL_SERVER_FROM="no-reply@example.test" \
+	EMAIL_NOTIFY_ADDRESS="no-reply@example.test" \
+	AUTH_URL="http://localhost:3000" \
 	go test -v ./...
-	@$(MAKE) test-docker-down
