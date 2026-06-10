@@ -13,7 +13,7 @@ services:
       - EMAIL_NOTIFY_ADDRESS=no-reply@example.test
       - AUTH_URL=http://localhost:3000
       - LISTEN_ADDR=0.0.0.0:3000
-      - SECRET_KEY=secret-key
+      - SECRET_KEY=dev-secret-key-at-least-32-bytes
     ports:
       - 3000:3000/tcp
     volumes:
@@ -55,7 +55,7 @@ services:
         condition: service_started
     command: >
       sh -c "echo '0 2 * * * /app/cleanup >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
-             echo '0 0 1/1 * * /app/remainder >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
+             echo '0 0 1/1 * * /app/reminder >> /var/log/cron.log 2>&1' >> /etc/crontabs/root &&
              crond -f -l 2"
 
   seed:

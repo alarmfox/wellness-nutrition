@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alarmfox/wellness-nutrition/app/middleware"
@@ -72,10 +73,10 @@ func (h *PageHandler) ServeUserDashboard(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get user's bookings
-	bookings, err := h.bookingRepo.GetByUserID(user.ID)
+	bookings, err := h.bookingRepo.GetByUserIDWithInstructor(user.ID)
 	if err != nil {
 		log.Printf("Error getting bookings: %v", err)
-		bookings = []*models.Booking{}
+		bookings = []*models.BookingWithInstructor{}
 	}
 
 	// Format dates for display
@@ -94,12 +95,14 @@ func (h *PageHandler) ServeUserDashboard(w http.ResponseWriter, r *http.Request)
 	}
 	for _, b := range bookings {
 		instructorName := ""
-		instructor, err := h.instructorRepo.GetByID(b.InstructorID)
-		if err == nil {
-			instructorName = instructor.FirstName
-			if instructor.LastName != "" {
-				instructorName += " " + instructor.LastName
+		if b.InstructorFirstName.Valid {
+			instructorName = b.InstructorFirstName.String
+		}
+		if b.InstructorLastName.Valid && b.InstructorLastName.String != "" {
+			if instructorName != "" {
+				instructorName += " "
 			}
+			instructorName += b.InstructorLastName.String
 		}
 
 		startsAt := b.StartsAt.In(loc)
@@ -268,7 +271,7 @@ func (h *PageHandler) ServeEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := h.eventRepo.GetAll()
+	events, err := h.eventRepo.GetAllWithUsers()
 	if err != nil {
 		log.Printf("Error getting events: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -286,11 +289,12 @@ func (h *PageHandler) ServeEvents(w http.ResponseWriter, r *http.Request) {
 
 	var displayEvents []EventDisplay
 	for _, e := range events {
-		// Get user for event
-		u, err := h.userRepo.GetByID(e.UserID)
 		userName := "Unknown"
-		if err == nil {
-			userName = u.FirstName + " " + u.LastName
+		if e.UserFirstName.Valid || e.UserLastName.Valid {
+			userName = strings.TrimSpace(e.UserFirstName.String + " " + e.UserLastName.String)
+			if userName == "" {
+				userName = "Unknown"
+			}
 		}
 
 		displayEvents = append(displayEvents, EventDisplay{
@@ -319,7 +323,7 @@ func (h *PageHandler) ServeSurvey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	questions, err := h.questionRepo.GetAll()
+	questions, err := getCachedSurveyQuestions(h.questionRepo)
 	if err != nil {
 		log.Printf("Error getting questions: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

@@ -342,6 +342,28 @@ func (m *Mailer) SendEmail(to, subject string, data EmailData) error {
 	return <-respCh
 }
 
+func (m *Mailer) EnqueueEmail(to, subject string, data EmailData) bool {
+	msg := &mailMessage{
+		to:      to,
+		subject: subject,
+		data:    data,
+		respCh:  make(chan error, 1),
+	}
+
+	select {
+	case m.mailCh <- msg:
+		go func() {
+			if err := <-msg.respCh; err != nil {
+				log.Printf("async email send failed: %v", err)
+			}
+		}()
+		return true
+	default:
+		log.Printf("async email queue full for %s", to)
+		return false
+	}
+}
+
 func (m *Mailer) SendWelcomeEmail(email, firstName, verificationURL string) error {
 	data := EmailData{
 		Name:         firstName,
@@ -388,6 +410,25 @@ func (m *Mailer) SendNewBookingNotification(firstName, lastName string, startsAt
 	return m.SendEmail(notifyEmail, "Nuova prenotazione", data)
 }
 
+func (m *Mailer) EnqueueNewBookingNotification(firstName, lastName string, startsAt time.Time) {
+	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
+	localTime, err := formatUserTime(startsAt, businessTimeZone)
+	if err != nil {
+		log.Printf("failed to format new booking notification: %v", err)
+		return
+	}
+
+	data := EmailData{
+		Name: "amministratore",
+		Intro: fmt.Sprintf("Una nuova prenotazione è stata inserita da %s %s per %s",
+			firstName, lastName, localTime),
+		Title:     "Nuova prenotazione",
+		Signature: "Saluti,",
+	}
+
+	m.EnqueueEmail(notifyEmail, "Nuova prenotazione", data)
+}
+
 func (m *Mailer) SendDeleteBookingNotification(firstName, lastName string, startsAt time.Time) error {
 	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
 
@@ -405,6 +446,26 @@ func (m *Mailer) SendDeleteBookingNotification(firstName, lastName string, start
 	}
 
 	return m.SendEmail(notifyEmail, "Prenotazione cancellata", data)
+}
+
+func (m *Mailer) EnqueueDeleteBookingNotification(firstName, lastName string, startsAt time.Time) {
+	notifyEmail := os.Getenv("EMAIL_NOTIFY_ADDRESS")
+
+	localTime, err := formatUserTime(startsAt, businessTimeZone)
+	if err != nil {
+		log.Printf("failed to format delete booking notification: %v", err)
+		return
+	}
+
+	data := EmailData{
+		Name: "amministratore",
+		Intro: fmt.Sprintf("Una prenotazione è stata cancellata da %s %s per %s",
+			firstName, lastName, localTime),
+		Title:     "Prenotazione cancellata",
+		Signature: "Saluti,",
+	}
+
+	m.EnqueueEmail(notifyEmail, "Prenotazione cancellata", data)
 }
 
 func (m *Mailer) SendReminderEmail(email, firstName string, startsAt time.Time) error {

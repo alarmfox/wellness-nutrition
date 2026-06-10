@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,9 +41,7 @@ type LoginRequest struct {
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 
-	// Check Content-Type to determine if it's JSON or form data
-	contentType := r.Header.Get("Content-Type")
-	if contentType == "application/json" {
+	if isJSONContentType(r.Header.Get("Content-Type")) {
 		// Parse JSON
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
@@ -435,6 +434,10 @@ func getBaseURL(r *http.Request) string {
 		return baseURL
 	}
 
+	if os.Getenv("ENVIRONMENT") == "production" {
+		return ""
+	}
+
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
@@ -507,9 +510,7 @@ func (h *UserHandler) VerifyAccount(w http.ResponseWriter, r *http.Request) {
 
 	var req VerifyAccountRequest
 
-	// Check Content-Type to determine if it's JSON or form data
-	contentType := r.Header.Get("Content-Type")
-	if contentType == "application/json" {
+	if isJSONContentType(r.Header.Get("Content-Type")) {
 		// Parse JSON
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
@@ -578,4 +579,12 @@ func sendJSON(w http.ResponseWriter, status int, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Error encoding JSON: %v", err)
 	}
+}
+
+func isJSONContentType(contentType string) bool {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+	return mediaType == "application/json"
 }

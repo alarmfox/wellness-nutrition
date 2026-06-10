@@ -9,9 +9,11 @@ import (
 	"html/template"
 	"io/fs"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -54,6 +56,9 @@ func main() {
 	secretKey := os.Getenv("SECRET_KEY")
 	if secretKey == "" {
 		log.Fatal("SECRET_KEY environment variable is required")
+	}
+	if err := validateStartupConfig(secretKey, os.Getenv("AUTH_URL"), os.Getenv("ENVIRONMENT")); err != nil {
+		log.Fatal(err)
 	}
 	if err := crypto.InitializeSecretKey(secretKey); err != nil {
 		log.Fatalf("failed to initialize secret key: %v", err)
@@ -128,7 +133,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// Static files - no CSRF needed
 	fileServer := http.FileServer(http.FS(staticContent))
-	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	mux.Handle("/static/", staticCache(http.StripPrefix("/static/", fileServer)))
 
 	// CSRF middleware for protected routes
 	csrfMiddleware := middleware.CSRF
@@ -137,6 +142,9 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	loginLimit := middleware.RateLimit(10, time.Minute)
 	resetLimit := middleware.RateLimit(5, time.Hour)
 	surveyLimit := middleware.RateLimit(30, time.Hour)
+	smallJSONLimit := middleware.BodyLimit(64 * 1024)
+	mediumJSONLimit := middleware.BodyLimit(1 << 20)
+	formLimit := middleware.BodyLimit(64 * 1024)
 
 	// Public routes - apply CSRF to set tokens in cookies for forms
 	mux.Handle("GET /signin", csrfMiddleware(http.HandlerFunc(pageHandler.ServeSignIn)))
@@ -146,13 +154,13 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	mux.HandleFunc("GET /survey/thanks", pageHandler.ServeSurveyThanks)
 
 	// Auth API routes - apply CSRF
-	mux.Handle("POST /api/auth/login", loginLimit(csrfMiddleware(http.HandlerFunc(authHandler.Login))))
+	mux.Handle("POST /api/auth/login", loginLimit(smallJSONLimit(csrfMiddleware(http.HandlerFunc(authHandler.Login)))))
 	mux.Handle("DELETE /api/auth/logout", csrfMiddleware(http.HandlerFunc(authHandler.Logout)))
-	mux.Handle("POST /api/auth/reset", resetLimit(csrfMiddleware(http.HandlerFunc(userHandler.ResetPassword))))
-	mux.Handle("POST /api/auth/verify", csrfMiddleware(http.HandlerFunc(userHandler.VerifyAccount)))
+	mux.Handle("POST /api/auth/reset", resetLimit(smallJSONLimit(csrfMiddleware(http.HandlerFunc(userHandler.ResetPassword)))))
+	mux.Handle("POST /api/auth/verify", smallJSONLimit(csrfMiddleware(http.HandlerFunc(userHandler.VerifyAccount))))
 
 	// Public survey API routes
-	mux.Handle("POST /survey/submit", surveyLimit(csrfMiddleware(http.HandlerFunc(surveyHandler.SubmitSurvey))))
+	mux.Handle("POST /survey/submit", surveyLimit(formLimit(csrfMiddleware(http.HandlerFunc(surveyHandler.SubmitSurvey)))))
 
 	// User dashboard - apply CSRF
 	mux.Handle("GET /user", authMiddleware(csrfMiddleware(http.HandlerFunc(pageHandler.ServeUserDashboard))))
@@ -160,7 +168,7 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// User API - apply CSRF
 	mux.Handle("GET /api/user/bookings", authMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.GetCurrent))))
-	mux.Handle("POST /api/user/bookings", authMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.Create))))
+	mux.Handle("POST /api/user/bookings", authMiddleware(smallJSONLimit(csrfMiddleware(http.HandlerFunc(bookingHandler.Create)))))
 	mux.Handle("DELETE /api/user/bookings/{id}", authMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.Delete))))
 	mux.Handle("GET /api/user/bookings/slots", authMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.GetAvailableSlots))))
 
@@ -177,28 +185,28 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 
 	// Admin user API - apply CSRF
 	mux.Handle("GET /api/admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.GetAll))))
-	mux.Handle("POST /api/admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.Create))))
-	mux.Handle("PUT /api/admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.Update))))
-	mux.Handle("DELETE /api/admin/users", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.Delete))))
-	mux.Handle("POST /api/admin/users/resend-verification", adminMiddleware(csrfMiddleware(http.HandlerFunc(userHandler.ResendVerification))))
+	mux.Handle("POST /api/admin/users", adminMiddleware(mediumJSONLimit(csrfMiddleware(http.HandlerFunc(userHandler.Create)))))
+	mux.Handle("PUT /api/admin/users", adminMiddleware(mediumJSONLimit(csrfMiddleware(http.HandlerFunc(userHandler.Update)))))
+	mux.Handle("DELETE /api/admin/users", adminMiddleware(mediumJSONLimit(csrfMiddleware(http.HandlerFunc(userHandler.Delete)))))
+	mux.Handle("POST /api/admin/users/resend-verification", adminMiddleware(smallJSONLimit(csrfMiddleware(http.HandlerFunc(userHandler.ResendVerification)))))
 
 	// Instructors API - apply CSRF
 	mux.Handle("GET /api/user/instructors", authMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.GetAll))))
 	mux.Handle("GET /api/admin/instructors", adminMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.GetAll))))
-	mux.Handle("POST /api/admin/instructors", adminMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.Create))))
-	mux.Handle("PUT /api/admin/instructors/{id}", adminMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.Update))))
+	mux.Handle("POST /api/admin/instructors", adminMiddleware(smallJSONLimit(csrfMiddleware(http.HandlerFunc(instructorHandler.Create)))))
+	mux.Handle("PUT /api/admin/instructors/{id}", adminMiddleware(smallJSONLimit(csrfMiddleware(http.HandlerFunc(instructorHandler.Update)))))
 	mux.Handle("DELETE /api/admin/instructors/{id}", adminMiddleware(csrfMiddleware(http.HandlerFunc(instructorHandler.Delete))))
 
 	// Bookings API - apply CSRF
 	mux.Handle("GET /api/admin/bookings", adminMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.GetAllBookings))))
-	mux.Handle("POST /api/admin/bookings", adminMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.CreateBookingForUser))))
+	mux.Handle("POST /api/admin/bookings", adminMiddleware(smallJSONLimit(csrfMiddleware(http.HandlerFunc(bookingHandler.CreateBookingForUser)))))
 	mux.Handle("DELETE /api/admin/bookings/{id}", adminMiddleware(csrfMiddleware(http.HandlerFunc(bookingHandler.DeleteAdmin))))
 
 	// Survey API - apply CSRF
 	mux.Handle("GET /api/admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.GetAllQuestions))))
-	mux.Handle("POST /api/admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion))))
-	mux.Handle("PUT /api/admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion))))
-	mux.Handle("DELETE /api/admin/survey/questions", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.DeleteQuestion))))
+	mux.Handle("POST /api/admin/survey/questions", adminMiddleware(smallJSONLimit(csrfMiddleware(http.HandlerFunc(surveyHandler.CreateQuestion)))))
+	mux.Handle("PUT /api/admin/survey/questions", adminMiddleware(smallJSONLimit(csrfMiddleware(http.HandlerFunc(surveyHandler.UpdateQuestion)))))
+	mux.Handle("DELETE /api/admin/survey/questions/{id}", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.DeleteQuestion))))
 	mux.Handle("GET /api/admin/survey/results", adminMiddleware(csrfMiddleware(http.HandlerFunc(surveyHandler.GetResults))))
 
 	// WebSocket endpoint - authenticated, but no CSRF for websocket upgrade
@@ -213,10 +221,10 @@ func run(ctx context.Context, db *sql.DB, listenAddr string, staticContent fs.FS
 	return startHTTPServer(ctx, mux, listenAddr)
 }
 
-func startHTTPServer(ctx context.Context, r *http.ServeMux, addr string) error {
+func startHTTPServer(ctx context.Context, r http.Handler, addr string) error {
 	server := http.Server{
 		Addr:              addr,
-		Handler:           r,
+		Handler:           middleware.RequestLogger(slog.Default())(r),
 		ReadTimeout:       time.Minute,
 		WriteTimeout:      time.Minute,
 		IdleTimeout:       time.Minute,
@@ -241,4 +249,21 @@ func startHTTPServer(ctx context.Context, r *http.ServeMux, addr string) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	return server.Shutdown(shutdownCtx)
+}
+
+func validateStartupConfig(secretKey, authURL, environment string) error {
+	if len([]byte(secretKey)) < 32 {
+		return fmt.Errorf("SECRET_KEY must be at least 32 bytes")
+	}
+	if environment == "production" && strings.TrimSpace(authURL) == "" {
+		return fmt.Errorf("AUTH_URL is required in production")
+	}
+	return nil
+}
+
+func staticCache(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		next.ServeHTTP(w, r)
+	})
 }

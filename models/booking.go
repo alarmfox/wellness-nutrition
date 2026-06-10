@@ -45,6 +45,17 @@ type BookingWithUser struct {
 	UserSubType   sql.NullString
 }
 
+type BookingWithInstructor struct {
+	ID                  int64
+	UserID              sql.NullString
+	InstructorID        int64
+	CreatedAt           time.Time
+	StartsAt            time.Time
+	Type                BookingType
+	InstructorFirstName sql.NullString
+	InstructorLastName  sql.NullString
+}
+
 type BookingRepository struct {
 	db *sql.DB
 }
@@ -77,6 +88,45 @@ func (r *BookingRepository) GetByUserID(userID string) ([]*Booking, error) {
 			&booking.InstructorID,
 			&booking.CreatedAt,
 			&booking.StartsAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, &booking)
+	}
+
+	return bookings, rows.Err()
+}
+
+func (r *BookingRepository) GetByUserIDWithInstructor(userID string) ([]*BookingWithInstructor, error) {
+	query := `
+		SELECT b.id, b.user_id, b.instructor_id, b.created_at, b.starts_at, b.type,
+			   i.first_name, i.last_name
+		FROM bookings b
+		LEFT JOIN instructors i ON i.id = b.instructor_id
+		WHERE b.user_id = $1
+			AND b.starts_at > date_trunc('month', CURRENT_TIMESTAMP)
+		ORDER BY b.starts_at DESC
+	`
+
+	rows, err := r.db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var bookings []*BookingWithInstructor
+	for rows.Next() {
+		var booking BookingWithInstructor
+		err := rows.Scan(
+			&booking.ID,
+			&booking.UserID,
+			&booking.InstructorID,
+			&booking.CreatedAt,
+			&booking.StartsAt,
+			&booking.Type,
+			&booking.InstructorFirstName,
+			&booking.InstructorLastName,
 		)
 		if err != nil {
 			return nil, err

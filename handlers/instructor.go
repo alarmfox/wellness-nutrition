@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/alarmfox/wellness-nutrition/app/models"
@@ -13,6 +14,9 @@ import (
 
 type InstructorHandler struct {
 	instructorRepo *models.InstructorRepository
+	cacheMu        sync.Mutex
+	cacheExpiresAt time.Time
+	enabledCache   []*models.Instructor
 }
 
 func NewInstructorHandler(instructorRepo *models.InstructorRepository) *InstructorHandler {
@@ -22,7 +26,7 @@ func NewInstructorHandler(instructorRepo *models.InstructorRepository) *Instruct
 }
 
 func (h *InstructorHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	instructors, err := h.instructorRepo.GetEnabled()
+	instructors, err := h.getEnabledInstructors()
 	if err != nil {
 		log.Printf("Error getting instructors: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
@@ -30,6 +34,37 @@ func (h *InstructorHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendJSON(w, http.StatusOK, instructors)
+}
+
+func (h *InstructorHandler) getEnabledInstructors() ([]*models.Instructor, error) {
+	now := time.Now()
+
+	h.cacheMu.Lock()
+	if now.Before(h.cacheExpiresAt) && h.enabledCache != nil {
+		instructors := cloneInstructors(h.enabledCache)
+		h.cacheMu.Unlock()
+		return instructors, nil
+	}
+	h.cacheMu.Unlock()
+
+	instructors, err := h.instructorRepo.GetEnabled()
+	if err != nil {
+		return nil, err
+	}
+
+	h.cacheMu.Lock()
+	h.enabledCache = cloneInstructors(instructors)
+	h.cacheExpiresAt = now.Add(referenceCacheTTL)
+	h.cacheMu.Unlock()
+
+	return cloneInstructors(instructors), nil
+}
+
+func (h *InstructorHandler) invalidateEnabledCache() {
+	h.cacheMu.Lock()
+	h.cacheExpiresAt = time.Time{}
+	h.enabledCache = nil
+	h.cacheMu.Unlock()
 }
 
 type CreateInstructorRequest struct {
@@ -75,6 +110,7 @@ func (h *InstructorHandler) Create(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
+	h.invalidateEnabledCache()
 
 	sendJSON(w, http.StatusCreated, instructor)
 }
@@ -127,6 +163,7 @@ func (h *InstructorHandler) Update(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
+	h.invalidateEnabledCache()
 
 	sendJSON(w, http.StatusOK, instructor)
 }
@@ -145,6 +182,7 @@ func (h *InstructorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
 	}
+	h.invalidateEnabledCache()
 
 	sendJSON(w, http.StatusOK, map[string]string{"message": "Instructor deleted successfully"})
 }

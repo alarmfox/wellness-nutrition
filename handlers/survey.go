@@ -22,11 +22,6 @@ func NewSurveyHandler(questionRepo *models.QuestionRepository) *SurveyHandler {
 
 // SubmitSurvey handles survey submission
 func (h *SurveyHandler) SubmitSurvey(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		log.Printf("Error parsing form: %v", err)
@@ -78,12 +73,7 @@ func (h *SurveyHandler) SubmitSurvey(w http.ResponseWriter, r *http.Request) {
 
 // GetAllQuestions returns all questions (for admin)
 func (h *SurveyHandler) GetAllQuestions(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
-	questions, err := h.questionRepo.GetAll()
+	questions, err := getCachedSurveyQuestions(h.questionRepo)
 	if err != nil {
 		log.Printf("Error getting questions: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -96,11 +86,6 @@ func (h *SurveyHandler) GetAllQuestions(w http.ResponseWriter, r *http.Request) 
 
 // CreateQuestion creates a new question (admin only)
 func (h *SurveyHandler) CreateQuestion(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
 	var q models.Question
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -113,6 +98,7 @@ func (h *SurveyHandler) CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	invalidateSurveyQuestionsCache()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -121,11 +107,6 @@ func (h *SurveyHandler) CreateQuestion(w http.ResponseWriter, r *http.Request) {
 
 // UpdateQuestion updates an existing question (admin only)
 func (h *SurveyHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
 	var q models.Question
 	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -138,6 +119,7 @@ func (h *SurveyHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	invalidateSurveyQuestionsCache()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(q)
@@ -145,38 +127,26 @@ func (h *SurveyHandler) UpdateQuestion(w http.ResponseWriter, r *http.Request) {
 
 // DeleteQuestion deletes a question (admin only)
 func (h *SurveyHandler) DeleteQuestion(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	id := r.PathValue("id")
+
+	idInt, err := strconv.ParseInt(id, 10, 32)
+	if err != nil {
+		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
 		return
 	}
 
-	var req struct {
-		ID int `json:"id"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		log.Printf("Error decoding request: %v", err)
-		return
-	}
-
-	if err := h.questionRepo.Delete(req.ID); err != nil {
+	if err := h.questionRepo.Delete(int(idInt)); err != nil {
 		log.Printf("Error deleting question: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	invalidateSurveyQuestionsCache()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // GetResults returns survey results (admin only)
 func (h *SurveyHandler) GetResults(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
 	questions, err := h.questionRepo.GetResults()
 	if err != nil {
 		log.Printf("Error getting results: %v", err)

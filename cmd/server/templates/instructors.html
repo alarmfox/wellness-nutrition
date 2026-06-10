@@ -19,15 +19,15 @@
             <a href="/admin/events">Eventi</a>
             <a href="/admin/survey/results">Sondaggio</a>
             <a href="/admin/user-view">Vista Utente</a>
-            <a href="#" onclick="handleLogout(); return false">Esci</a>
+            <a href="#" data-action="logout">Esci</a>
         </div>
     </div>
 
     <div class="container">
         <div class="toolbar">
-            <h2 style="margin: 0; font-size: 18px;">Gestione Istruttori</h2>
+            <h2 class="section-title">Gestione Istruttori</h2>
             <button class="btn" onclick="openCreateModal()">
-                <span class="material-icons" style="font-size: 18px;">add</span>
+                <span class="material-icons icon-sm">add</span>
                 Nuovo Istruttore
             </button>
         </div>
@@ -51,9 +51,9 @@
                         <td>{{.MaxSlots}}</td>
                         <td>
                             {{if .Enabled}}
-                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-size: 12px; font-weight: 500;">Abilitato</span>
+                            <span class="status-pill enabled">Abilitato</span>
                             {{else}}
-                            <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; background: #ffebee; color: #c62828; font-size: 12px; font-weight: 500;">Disabilitato</span>
+                            <span class="status-pill disabled">Disabilitato</span>
                             {{end}}
                         </td>
                         <td>
@@ -95,7 +95,7 @@
                         <input type="number" id="create-maxSlots" min="1" value="2">
                     </div>
                     <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 8px;">
+                        <label class="inline-check">
                             <input type="checkbox" id="create-enabled" checked>
                             Abilitato
                         </label>
@@ -132,7 +132,7 @@
                         <input type="number" id="edit-maxSlots" min="1">
                     </div>
                     <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 8px;">
+                        <label class="inline-check">
                             <input type="checkbox" id="edit-enabled">
                             Abilitato
                         </label>

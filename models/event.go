@@ -26,6 +26,16 @@ type Event struct {
 	OccurredAt time.Time
 }
 
+type EventWithUser struct {
+	ID            int
+	UserID        string
+	StartsAt      time.Time
+	Type          EventType
+	OccurredAt    time.Time
+	UserFirstName sql.NullString
+	UserLastName  sql.NullString
+}
+
 type EventRepository struct {
 	db *sql.DB
 }
@@ -68,6 +78,43 @@ func (r *EventRepository) GetAll() ([]*Event, error) {
 			&event.StartsAt,
 			&event.Type,
 			&event.OccurredAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, &event)
+	}
+
+	return events, rows.Err()
+}
+
+func (r *EventRepository) GetAllWithUsers() ([]*EventWithUser, error) {
+	query := `
+		SELECT e.id, e.user_id, e.starts_at, e.type, e.occurred_at,
+			   u.first_name, u.last_name
+		FROM events e
+		LEFT JOIN users u ON u.id = e.user_id
+		ORDER BY e.occurred_at DESC
+		LIMIT 100
+	`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*EventWithUser
+	for rows.Next() {
+		var event EventWithUser
+		err := rows.Scan(
+			&event.ID,
+			&event.UserID,
+			&event.StartsAt,
+			&event.Type,
+			&event.OccurredAt,
+			&event.UserFirstName,
+			&event.UserLastName,
 		)
 		if err != nil {
 			return nil, err

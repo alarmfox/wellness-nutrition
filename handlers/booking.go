@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -138,12 +139,7 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error creating event: %v", err)
 	}
 
-	// Send notification email
-	go func() {
-		if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName, startsAt); err != nil {
-			log.Printf("Error sending notification: %v", err)
-		}
-	}()
+	h.mailer.EnqueueNewBookingNotification(user.FirstName, user.LastName, startsAt)
 	//
 	// // Send WebSocket notification
 	if h.hub != nil {
@@ -216,12 +212,7 @@ func (h *BookingHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error creating event: %v", err)
 	}
 
-	// Send notification email
-	go func() {
-		if err := h.mailer.SendDeleteBookingNotification(user.FirstName, user.LastName, booking.StartsAt); err != nil {
-			log.Printf("Error sending notification: %v", err)
-		}
-	}()
+	h.mailer.EnqueueDeleteBookingNotification(user.FirstName, user.LastName, booking.StartsAt)
 
 	// Send WebSocket notification
 	if h.hub != nil {
@@ -269,15 +260,20 @@ func (h *BookingHandler) DeleteAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if booking.Type == models.BookingTypeSimple && refundBool {
+		slog.Debug("Refunding access")
+		if err := h.userRepo.IncrementAccesses(booking.UserID.String); err != nil {
+			log.Printf("Error refunding booking access: %v", err)
+			sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to refund access"})
+			return
+		}
+	}
+
 	// Delete booking
 	if err := h.bookingRepo.Delete(idInt); err != nil {
 		log.Printf("Error deleting booking: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
 		return
-	}
-
-	if booking.Type == models.BookingTypeSimple && refundBool {
-		h.userRepo.IncrementAccesses(booking.UserID.String)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -431,10 +427,7 @@ func (h *BookingHandler) CreateBookingForUser(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		// Send notification email (synchronous)
-		if err := h.mailer.SendNewBookingNotification(user.FirstName, user.LastName, startsAt); err != nil {
-			log.Printf("Error sending notification: %v", err)
-		}
+		h.mailer.EnqueueNewBookingNotification(user.FirstName, user.LastName, startsAt)
 	} else if err := h.bookingRepo.Create(booking); err != nil {
 		log.Printf("Error creating booking: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
@@ -492,7 +485,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	slots := generateSlots(now, endDate)
 
 	// Get all bookings for this instructor in the date range
-	bookings, err := h.bookingRepo.GetByInstructorAndDateRange(instructorIDStr, now, endDate)
+	bookings, err := h.bookingRepo.GetWithUsersByInstructorAndDateRange(instructorIDStr, now, endDate)
 	if err != nil {
 		log.Printf("Error getting bookings: %v", err)
 		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal server error"})
@@ -502,7 +495,6 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 	// Build map of unavailable slots
 	unavailableSlots := make(map[int64]bool)
 	slotBookingCount := make(map[int64]int)
-	userSubTypes := make(map[string]models.SubType)
 
 	for _, booking := range bookings {
 		// Both booking times and slots are in UTC, so direct comparison works
@@ -520,18 +512,7 @@ func (h *BookingHandler) GetAvailableSlots(w http.ResponseWriter, r *http.Reques
 		// 2. Count SIMPLE bookings weighted by subscription type
 		// SINGLE subscriptions consume 2 slots, SHARED consume 1
 		if booking.Type == models.BookingTypeSimple && booking.UserID.Valid {
-			subType, ok := userSubTypes[booking.UserID.String]
-			if !ok {
-				bookingUser, err := h.userRepo.GetByID(booking.UserID.String)
-				if err == nil {
-					subType = bookingUser.SubType
-				} else {
-					log.Printf("Error looking up user %s for slot counting: %v", booking.UserID.String, err)
-					subType = models.SubTypeShared
-				}
-				userSubTypes[booking.UserID.String] = subType
-			}
-			if subType == models.SubTypeSingle {
+			if models.SubType(booking.UserSubType.String) == models.SubTypeSingle {
 				slotBookingCount[slotKey] += 2
 			} else {
 				slotBookingCount[slotKey]++

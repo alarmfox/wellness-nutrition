@@ -35,19 +35,12 @@ const UI = {
         if (!panel) {
             panel = document.createElement('div');
             panel.id = 'notificationPanel';
-            panel.style.cssText = 'position: fixed; bottom: 20px; left: 20px; z-index: 10000; max-width: 350px;';
+            panel.className = 'notification-panel';
             document.body.appendChild(panel);
         }
 
         const notification = document.createElement('div');
-        notification.style.cssText = `
-            background: white;
-            border-left: 4px solid ${type === 'success' ? '#4caf50' : '#f44336'};
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-        `;
+        notification.className = 'notification' + (type === 'success' ? ' success' : '');
         notification.textContent = message;
         panel.appendChild(notification);
 
@@ -84,6 +77,17 @@ function handleLogout() {
         window.location.href = '/signin';
     });
 }
+
+document.addEventListener('click', function(event) {
+    const trigger = event.target.closest('[data-action="logout"]');
+    if (!trigger) {
+        return;
+    }
+
+    event.preventDefault();
+    handleLogout();
+});
+
 document.addEventListener('keydown', function(event) {
     if (event.key !== 'Escape') {
         return;
