@@ -93,6 +93,22 @@ function isPastRomeHourSlot(date) {
     return slotHour < currentHour;
 }
 
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[char]);
+}
+
+function getInstructorName(instructorId) {
+    const instructor = CalendarState.instructors.find(i => i.ID === Number(instructorId));
+    if (!instructor) return '';
+    return `${instructor.FirstName || ''} ${instructor.LastName || ''}`.trim();
+}
+
 // ============================================================================
 // STATE MANAGEMENT
 // ============================================================================
@@ -120,6 +136,7 @@ const CalendarState = {
         this.modal.slotTime = null;
         this.modal.slotData = null;
         this.modal.bookingId = null;
+        this.modal.refund = false;
     },
 
     getSlots() {
@@ -293,14 +310,19 @@ const Modal = {
     showDeleteBooking(bookingId, firstName, lastName, slotTime) {
         CalendarState.modal.bookingId = bookingId;
         CalendarState.modal.slotTime = slotTime;
+        CalendarState.modal.refund = false;
 
         const modal = document.getElementById('deleteBookingModal');
         const userName = document.getElementById('deleteBookingUserName');
         const slotInfo = document.getElementById('deleteBookingSlotInfo');
+        const refundCheckbox = document.getElementById('refund-checkbox');
 
         if (modal && userName && slotInfo) {
             userName.textContent = `${firstName} ${lastName}`;
             slotInfo.textContent = UI.formatSlotDateTime(slotTime);
+            if (refundCheckbox) {
+                refundCheckbox.checked = false;
+            }
             modal.style.display = 'block';
         }
     },
@@ -311,6 +333,7 @@ const Modal = {
             modal.style.display = 'none';
         }
         CalendarState.modal.bookingId = null;
+        CalendarState.modal.refund = false;
     }
 };
 
@@ -322,7 +345,7 @@ const OperationForm = {
         const slotTime = CalendarState.modal.slotTime;
         const slotData = CalendarState.modal.slotData;
 
-        let html = `<div style="margin-bottom: 20px;">
+        let html = `<div class="operation-summary">
             <strong>Slot:</strong> ${UI.formatSlotDateTime(slotTime)}
         </div>`;
 
@@ -341,11 +364,11 @@ const OperationForm = {
                             availableInstructors.length === CalendarState.instructors.length &&
                             availableInstructors.length > 0;
 
-        let html = `<div style="margin-bottom: 16px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 500;">
+        let html = `<div class="operation-field form-group">
+            <label>
                 Seleziona Istruttore *
             </label>
-            <select id="operationInstructorId" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">`;
+            <select id="operationInstructorId">`;
 
         if (canSelectAll) {
             html += '<option value="all">Tutti</option>';
@@ -358,14 +381,14 @@ const OperationForm = {
         } else {
             availableInstructors.forEach(instructor => {
                 const lastName = instructor.LastName ? ` ${instructor.LastName}` : '';
-                html += `<option value="${instructor.ID}">${instructor.FirstName}${lastName}</option>`;
+                html += `<option value="${Number(instructor.ID)}">${escapeHTML(instructor.FirstName)}${escapeHTML(lastName)}</option>`;
             });
         }
 
         html += `</select>`;
 
         if (canSelectAll) {
-            html += `<div style="margin-top: 8px; font-size: 12px; color: #666;">
+            html += `<div class="operation-help">
                 Seleziona "Tutti" per applicare a tutti gli istruttori disponibili
             </div>`;
         }
@@ -375,16 +398,16 @@ const OperationForm = {
     },
 
     buildUserSelect() {
-        let html = `<div style="margin-bottom: 16px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 500;">
+        let html = `<div class="operation-field form-group">
+            <label>
                 Seleziona Utente *
             </label>
-            <select id="operationUserId" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <select id="operationUserId">
                 <option value="">-- Seleziona utente --</option>`;
 
         CalendarState.users.forEach(user => {
             if (user.RemainingAccesses > 0) {
-                html += `<option value="${user.ID}">${user.FirstName} ${user.LastName} (${user.Email})</option>`;
+                html += `<option value="${escapeHTML(user.ID)}">${escapeHTML(user.FirstName)} ${escapeHTML(user.LastName)} (${escapeHTML(user.Email)})</option>`;
             }
         });
 
@@ -590,22 +613,22 @@ const SlotOverview = {
     build() {
         const slotData = CalendarState.modal.slotData;
 
-        let html = '<div style="margin-bottom: 20px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 4px; background: #f9f9f9;">';
-        html += '<div style="margin-bottom: 10px;"><strong>Stato attuale per istruttore:</strong></div>';
+        let html = '<div class="slot-status-panel">';
+        html += '<div class="slot-status-heading"><strong>Stato attuale per istruttore:</strong></div>';
 
         if (slotData?.InstructorSlots?.length > 0) {
             slotData.InstructorSlots.forEach(is => {
                 const info = this.getStateInfo(is);
-                html += `<div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
-                    <span style="font-weight: 500;">${is.InstructorName}</span>
-                    <span class="slot-state" style="color: ${info.color};">
+                html += `<div class="slot-status-row">
+                    <span class="slot-status-name">${escapeHTML(is.InstructorName)}</span>
+                    <span class="slot-state ${info.className}">
                         <span class="material-icons">${info.icon}</span>
                         ${info.text} (${is.PeopleCount}/${is.MaxCapacity})
                     </span>
                 </div>`;
             });
         } else {
-            html += '<div style="color: #999; font-style: italic;">Nessun istruttore configurato per questo slot</div>';
+            html += '<div class="slot-status-empty">Nessun istruttore configurato per questo slot</div>';
         }
 
         html += '</div>';
@@ -616,13 +639,13 @@ const SlotOverview = {
 
     getStateInfo(instructorSlot) {
         if (instructorSlot.Disabled || instructorSlot.State === 'UNAVAILABLE') {
-            return { icon: 'event_busy', text: 'Non disponibile', color: '#757575' };
+            return { icon: 'event_busy', text: 'Non disponibile', className: 'unavailable' };
         } else if (instructorSlot.State === 'MASSAGE') {
-            return { icon: 'spa', text: 'Massaggio', color: '#ff9800' };
+            return { icon: 'spa', text: 'Massaggio', className: 'massage' };
         } else if (instructorSlot.State === 'APPOINTMENT') {
-            return { icon: 'event', text: 'Appuntamento', color: '#2196f3' };
+            return { icon: 'event', text: 'Appuntamento', className: 'appointment' };
         }
-        return { icon: 'check_circle', text: 'Disponibile', color: '#4caf50' };
+        return { icon: 'check_circle', text: 'Disponibile', className: 'available' };
     },
 
     buildActionCards() {
@@ -659,8 +682,8 @@ const SlotOverview = {
 
         disabled.forEach(is => {
             html += `
-                <div class="action-card" onclick="SlotActions.quickEnable(${is.InstructorID}, '${is.InstructorName}')">
-                    <h3><span class="material-icons">check_circle</span> Abilita per ${is.InstructorName}</h3>
+                <div class="action-card" onclick="SlotActions.quickEnable(${Number(is.InstructorID)})">
+                    <h3><span class="material-icons">check_circle</span> Abilita per ${escapeHTML(is.InstructorName)}</h3>
                     <p>Rendi disponibile lo slot per questo istruttore</p>
                 </div>
             `;
@@ -668,8 +691,8 @@ const SlotOverview = {
 
         massage.forEach(is => {
             html += `
-                <div class="action-card" onclick="SlotActions.quickUnreserve(${is.InstructorID}, '${is.InstructorName}', '${BookingType.MASSAGE}')">
-                    <h3><span class="material-icons">lock_open</span> Elimina Massaggio - ${is.InstructorName}</h3>
+                <div class="action-card" onclick="SlotActions.quickUnreserve(${Number(is.InstructorID)}, '${BookingType.MASSAGE}')">
+                    <h3><span class="material-icons">lock_open</span> Elimina Massaggio - ${escapeHTML(is.InstructorName)}</h3>
                     <p>Rimuovi la prenotazione per massaggio</p>
                 </div>
             `;
@@ -677,8 +700,8 @@ const SlotOverview = {
 
         appointment.forEach(is => {
             html += `
-                <div class="action-card" onclick="SlotActions.quickUnreserve(${is.InstructorID}, '${is.InstructorName}', '${BookingType.APPOINTMENT}')">
-                    <h3><span class="material-icons">lock_open</span> Elimina Appuntamento - ${is.InstructorName}</h3>
+                <div class="action-card" onclick="SlotActions.quickUnreserve(${Number(is.InstructorID)}, '${BookingType.APPOINTMENT}')">
+                    <h3><span class="material-icons">lock_open</span> Elimina Appuntamento - ${escapeHTML(is.InstructorName)}</h3>
                     <p>Rimuovi la prenotazione per appuntamento</p>
                 </div>
             `;
@@ -739,7 +762,8 @@ const SlotActions = {
         });
     },
 
-    async quickEnable(instructorId, instructorName) {
+    async quickEnable(instructorId) {
+        const instructorName = getInstructorName(instructorId);
         if (!confirm(`Confermi di voler abilitare lo slot per ${instructorName}?`)) return;
 
         UI.showLoading(`Abilitazione slot per ${instructorName}...`);
@@ -770,7 +794,8 @@ const SlotActions = {
         }
     },
 
-    async quickUnreserve(instructorId, instructorName, bookingType) {
+    async quickUnreserve(instructorId, bookingType) {
+        const instructorName = getInstructorName(instructorId);
         if (!confirm(`Confermi di voler eliminare la prenotazione per ${instructorName}?`)) return;
 
         UI.showLoading(`Eliminazione in corso per ${instructorName}...`);
@@ -1299,26 +1324,27 @@ const Calendar = {
             if (!instructor) return;
 
             const instructorName = `${instructor.FirstName} ${instructor.LastName}`.trim();
+            const safeInstructorName = escapeHTML(instructorName);
 
             if (booking.type === BookingType.DISABLE) {
-                html += `<div class="disabled" title="Non disponibile - ${instructorName}">
-                    <span class="material-icons slot-icon">event_busy</span> Non disponibile - ${instructorName}
+                html += `<div class="disabled" title="Non disponibile - ${safeInstructorName}">
+                    <span class="material-icons slot-icon">event_busy</span> Non disponibile - ${safeInstructorName}
                 </div>`;
             } else if (booking.type === BookingType.MASSAGE) {
-                html += `<div class="massage" title="Massaggio - ${instructorName}">
-                    <span class="material-icons slot-icon">spa</span> Massaggio - ${instructorName}
+                html += `<div class="massage" title="Massaggio - ${safeInstructorName}">
+                    <span class="material-icons slot-icon">spa</span> Massaggio - ${safeInstructorName}
                 </div>`;
             } else if (booking.type === BookingType.APPOINTMENT) {
-                html += `<div class="appointment" title="Appuntamento - ${instructorName}">
-                    <span class="material-icons slot-icon">event</span> Appuntamento - ${instructorName}
+                html += `<div class="appointment" title="Appuntamento - ${safeInstructorName}">
+                    <span class="material-icons slot-icon">event</span> Appuntamento - ${safeInstructorName}
                 </div>`;
             } else if (booking.type === BookingType.SIMPLE && booking.user) {
                 const cssClass = booking.user.subType === 'SHARED' ? 'booking shared' : 'booking';
                 const displayName = `${instructorName} - ${booking.user.lastName} ${booking.user.firstName.substring(0, 3)}.`;
                 const title = `${instructorName} - ${booking.user.firstName} ${booking.user.lastName}`;
 
-                html += `<div class="${cssClass}" title="${title}" onclick="if (CalendarDragSelection.consumeSuppressedClick(event)) return; event.stopPropagation(); Calendar.handleBookingClick('${booking.id}', '${booking.user.firstName}', '${booking.user.lastName}', '${isoTime}')">
-                    ${displayName}
+                html += `<div class="${cssClass}" title="${escapeHTML(title)}" onclick="if (CalendarDragSelection.consumeSuppressedClick(event)) return; event.stopPropagation(); Calendar.handleBookingClick('${booking.id}', '${isoTime}')">
+                    ${escapeHTML(displayName)}
                 </div>`;
             }
         });
@@ -1334,7 +1360,10 @@ const Calendar = {
         SlotActions.openSlot(slotTime, slotData);
     },
 
-    handleBookingClick(bookingId, firstName, lastName, slotTime) {
+    handleBookingClick(bookingId, slotTime) {
+        const booking = CalendarState.bookings.find(b => String(b.id) === String(bookingId));
+        const firstName = booking?.user?.firstName || '';
+        const lastName = booking?.user?.lastName || '';
         Modal.showDeleteBooking(bookingId, firstName, lastName, slotTime);
     },
 
@@ -1366,7 +1395,9 @@ const BookingActions = {
 
         UI.showLoading('Eliminazione prenotazione...');
         try {
-            const data = await API.deleteBooking(CalendarState.modal.bookingId, CalendarState.modal.refund == "true");
+            const refundCheckbox = document.getElementById('refund-checkbox');
+            const shouldRefund = refundCheckbox ? refundCheckbox.checked : CalendarState.modal.refund;
+            const data = await API.deleteBooking(CalendarState.modal.bookingId, shouldRefund);
             UI.hideLoading();
 
             if (data.error) {
@@ -1428,8 +1459,7 @@ function today() {
 }
 
 function toggleRefund(elem) {
-    console.log(elem)
-   CalendarState.modal.refund = elem.checked;
+    CalendarState.modal.refund = elem.checked;
 }
 
 window.onclick = function(event) {

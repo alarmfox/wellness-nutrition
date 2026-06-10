@@ -123,6 +123,143 @@ tr:hover {
     gap: 12px;
     flex-wrap: wrap;
 }
+
+.toolbar-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.section-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.section-subtitle {
+    margin: 8px 0 0 0;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 14px;
+}
+
+.page-card {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.search-input {
+    padding: 10px;
+    border: 1px solid #dddddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 200px;
+}
+
+.checkbox-col {
+    width: 40px;
+}
+
+.empty-cell {
+    text-align: center;
+    color: rgba(0, 0, 0, 0.4);
+    padding: 40px;
+}
+
+.btn-icon-plain {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #1976d2;
+    padding: 0;
+}
+
+.icon-sm {
+    font-size: 18px;
+}
+
+.icon-md {
+    font-size: 20px;
+    vertical-align: middle;
+}
+
+.inline-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inline-check-spaced {
+    display: flex;
+    align-items: center;
+    margin-top: 28px;
+}
+
+.is-hidden {
+    display: none;
+}
+
+.verification-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #fff3e0;
+    border-radius: 4px;
+}
+
+.verification-message {
+    color: #e65100;
+    font-size: 14px;
+}
+
+.btn-compact {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pill.enabled {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-pill.disabled {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.notification-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 10000;
+    max-width: 350px;
+}
+
+.notification {
+    background: white;
+    border-left: 4px solid #f44336;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.notification.success {
+    border-left-color: #4caf50;
+}
 .btn {
     padding: 10px 20px;
     background-color: #1976d2;

@@ -12,7 +12,7 @@
 </head>
 <body>
     <div id="loading-overlay" class="loading-overlay">
-        <div style="text-align: center;">
+        <div class="loading-center">
             <div class="loading-spinner"></div>
             <div class="loading-text" id="loading-text">Caricamento...</div>
         </div>
@@ -27,7 +27,7 @@
             <a href="/admin/events">Eventi</a>
             <a href="/admin/survey/results">Sondaggio</a>
             <a href="/admin/user-view">Vista Utente</a>
-            <a href="#" onclick="handleLogout(); return false">Esci</a>
+            <a href="#" data-action="logout">Esci</a>
         </div>
     </div>
     <div class="container">
@@ -94,13 +94,13 @@
             </div>
             <div class="modal-body">
                 <p>Vuoi eliminare la prenotazione di <strong id="deleteBookingUserName"></strong>?</p>
-                <p id="deleteBookingSlotInfo" style="color: #666; margin-top: 10px;"></p>
+                <p id="deleteBookingSlotInfo" class="modal-info"></p>
                 <input type="checkbox" name="refund" id="refund-checkbox" value="true" onchange="toggleRefund(this)">
                 <label for="refund-checkbox">Rimborsa accesso</label>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeDeleteBookingModal()">Annulla</button>
-                <button type="button" class="btn" style="background-color: #d32f2f;" onclick="confirmDeleteBooking()">Elimina</button>
+                <button type="button" class="btn btn-danger-solid" onclick="confirmDeleteBooking()">Elimina</button>
             </div>
         </div>
     </div>
@@ -113,11 +113,11 @@
             </div>
             <div class="modal-body">
                 <p>Vuoi rendere questo slot nuovamente disponibile per le prenotazioni?</p>
-                <p id="unreserveSlotInfo" style="color: #666; margin-top: 10px;"></p>
+                <p id="unreserveSlotInfo" class="modal-info"></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeUnreserveSlotModal()">Annulla</button>
-                <button type="button" class="btn" style="background-color: #4caf50;" onclick="confirmUnreserveSlot()">Rilascia slot</button>
+                <button type="button" class="btn btn-success-solid" onclick="confirmUnreserveSlot()">Rilascia slot</button>
             </div>
         </div>
     </div>
@@ -131,11 +131,11 @@
             </div>
             <div class="modal-body">
                 <p>Vuoi riabilitare questo slot?</p>
-                <p id="enableSlotInfo" style="color: #666; margin-top: 10px;"></p>
+                <p id="enableSlotInfo" class="modal-info"></p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeEnableSlotModal()">Annulla</button>
-                <button type="button" class="btn" style="background-color: #4caf50;" onclick="confirmEnableSlot()">Riabilita slot</button>
+                <button type="button" class="btn btn-success-solid" onclick="confirmEnableSlot()">Riabilita slot</button>
             </div>
         </div>
     </div>
@@ -173,7 +173,7 @@
             </div>
             <div class="modal-body">
                 <div id="actionSelection">
-                    <div id="actionUnreserve" class="action-card" style="display: none;" onclick="showUnreserveSlot()">
+                    <div id="actionUnreserve" class="action-card is-hidden" onclick="showUnreserveSlot()">
                         <h3><span class="material-icons">lock_open</span> Rilascia Slot</h3>
                         <p>Rendi questo slot nuovamente disponibile per le prenotazioni</p>
                     </div>
@@ -193,47 +193,47 @@
                         <h3><span class="material-icons">event_available</span> Crea Prenotazione</h3>
                         <p>Crea una prenotazione per un utente specifico</p>
                     </div>
-                    <div id="actionEnableSlot" class="action-card" style="display: none;" onclick="showEnableSlot()">
+                    <div id="actionEnableSlot" class="action-card is-hidden" onclick="showEnableSlot()">
                         <h3><span class="material-icons">check_circle</span> Abilita Slot</h3>
                         <p>Rendi disponibile lo slot per un istruttore specifico</p>
                     </div>
                 </div>
 
-                <div id="unavailableForm" style="display: none;">
-                    <p id="slotInfo" style="margin-bottom: 16px; color: #666;"></p>
+                <div id="unavailableForm" class="form-panel">
+                    <p id="slotInfo" class="modal-info"></p>
                     <div class="form-group">
                         <label>Seleziona Istruttore *</label>
                         <select id="unavailableInstructorId" required>
                             <option value="">Caricamento...</option>
                         </select>
                     </div>
-                    <p style="margin-top: 12px;">Sei sicuro di voler segnare questo slot come non disponibile?</p>
+                    <p class="modal-note">Sei sicuro di voler segnare questo slot come non disponibile?</p>
                 </div>
 
-                <div id="reserveMassageForm" style="display: none;">
-                    <p id="slotInfoReserveMassage" style="margin-bottom: 16px; color: #666;"></p>
+                <div id="reserveMassageForm" class="form-panel">
+                    <p id="slotInfoReserveMassage" class="modal-info"></p>
                     <div class="form-group">
                         <label>Seleziona Istruttore *</label>
                         <select id="massageInstructorId" required>
                             <option value="">Caricamento...</option>
                         </select>
                     </div>
-                    <p style="margin-top: 12px;">Sei sicuro di voler riservare questo slot per un massaggio? Gli utenti non potranno prenotarlo.</p>
+                    <p class="modal-note">Sei sicuro di voler riservare questo slot per un massaggio? Gli utenti non potranno prenotarlo.</p>
                 </div>
 
-                <div id="reserveAppointmentForm" style="display: none;">
-                    <p id="slotInfoReserveAppointment" style="margin-bottom: 16px; color: #666;"></p>
+                <div id="reserveAppointmentForm" class="form-panel">
+                    <p id="slotInfoReserveAppointment" class="modal-info"></p>
                     <div class="form-group">
                         <label>Seleziona Istruttore *</label>
                         <select id="appointmentInstructorId" required>
                             <option value="">Caricamento...</option>
                         </select>
                     </div>
-                    <p style="margin-top: 12px;">Sei sicuro di voler riservare questo slot per un appuntamento? Gli utenti non potranno prenotarlo.</p>
+                    <p class="modal-note">Sei sicuro di voler riservare questo slot per un appuntamento? Gli utenti non potranno prenotarlo.</p>
                 </div>
 
-                <div id="bookingForm" style="display: none;">
-                    <p id="slotInfoBooking" style="margin-bottom: 16px; color: #666;"></p>
+                <div id="bookingForm" class="form-panel">
+                    <p id="slotInfoBooking" class="modal-info"></p>
                     <div class="form-group">
                         <label>Seleziona Istruttore *</label>
                         <select id="bookingInstructorId" required>
@@ -250,7 +250,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeSlotModal()">Annulla</button>
-                <button type="button" id="confirmBtn" class="btn" style="display: none;" onclick="confirmAction()">Conferma</button>
+                <button type="button" id="confirmBtn" class="btn is-hidden" onclick="confirmAction()">Conferma</button>
             </div>
         </div>
     </div>
@@ -258,22 +258,5 @@
     <script src="/static/js/ui.js"></script>
     <script src="/static/js/ws.js"></script>
     <script src="/static/js/calendar.js"></script>
-    <script>
-        function handleLogout() {
-            if (!confirm('Sicuro di voler uscire dall\'applicazione?')) {
-                return;
-            }
-            const csrfToken = getCookie('csrf_token');
-            fetch('/api/auth/logout', {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                }
-            })
-            .then(response => {
-                window.location.href = '/signin';
-            });
-        }
-    </script>
 </body>
 </html>

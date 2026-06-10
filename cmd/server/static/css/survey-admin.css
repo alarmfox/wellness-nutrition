@@ -1,0 +1,275 @@
+/* Survey admin screens */
+.survey-admin-title {
+    margin: 0;
+    font-size: 18px;
+}
+
+.survey-admin-link {
+    margin: 0;
+    font-size: 18px;
+}
+
+.survey-help {
+    color: #757575;
+    font-size: 12px;
+}
+
+.btn-secondary {
+    background-color: #757575;
+}
+
+.btn-secondary:hover {
+    background-color: #616161;
+}
+
+.icon-sm {
+    font-size: 18px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.question-list,
+.results-container {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+.question-item,
+.result-item {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.question-item {
+    padding: 16px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.question-item:last-child,
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.question-item .question-text {
+    flex: 1;
+}
+
+.question-index {
+    font-weight: 500;
+    color: #1976d2;
+    margin-right: 10px;
+}
+
+.question-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.survey-empty {
+    text-align: center;
+    color: #757575;
+    padding: 40px;
+}
+
+.result-item {
+    padding: 20px 0;
+}
+
+.question-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.question-number {
+    background-color: #1976d2;
+    color: #ffffff;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.question-header .question-text {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.stat-card {
+    background: #f5f5f5;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.star-rating {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.star {
+    color: #ffc107;
+    font-size: 18px;
+}
+
+.star.empty {
+    color: #e0e0e0;
+}
+
+.star-small {
+    font-size: 16px;
+}
+
+.stat-count {
+    font-size: 24px;
+    font-weight: 500;
+    color: #1976d2;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #757575;
+}
+
+.total-responses {
+    background: #e3f2fd;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 12px;
+    text-align: center;
+}
+
+.total-responses strong {
+    color: #1976d2;
+    font-size: 18px;
+}
+
+.chart-container {
+    margin-top: 16px;
+    padding: 16px;
+    background: #fafafa;
+    border-radius: 8px;
+}
+
+.bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.bar-label {
+    min-width: 80px;
+    font-size: 14px;
+    color: #757575;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bar-wrapper {
+    flex: 1;
+    background: #e0e0e0;
+    height: 28px;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1976d2, #42a5f5);
+    transition: width 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.bar-count {
+    min-width: 40px;
+    text-align: right;
+    font-weight: 500;
+    color: #333333;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #757575;
+}
+
+.empty-state .material-icons {
+    font-size: 64px;
+    color: #bdbdbd;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .modal-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .question-item {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .question-actions,
+    .question-actions .btn {
+        width: 100%;
+    }
+
+    .question-actions .btn {
+        justify-content: center;
+    }
+
+    .modal-actions .btn {
+        justify-content: center;
+        width: 100%;
+    }
+}

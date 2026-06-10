@@ -11,7 +11,7 @@
 </head>
 <body>
     <div id="loading-overlay" class="loading-overlay">
-        <div style="text-align: center;">
+        <div class="loading-center">
             <div class="loading-spinner"></div>
             <div class="loading-text" id="loading-text">Caricamento...</div>
         </div>
@@ -26,23 +26,23 @@
             <a href="/admin/events">Eventi</a>
             <a href="/admin/survey/results">Sondaggio</a>
             <a href="/admin/user-view">Vista Utente</a>
-            <a href="#" onclick="handleLogout(); return false">Esci</a>
+            <a href="#" data-action="logout">Esci</a>
         </div>
     </div>
 
     <div class="container">
         <div class="toolbar">
-            <h2 style="margin: 0; font-size: 18px; font-weight: 500;">Gestione Utenti</h2>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <h2 class="section-title">Gestione Utenti</h2>
+            <div class="toolbar-actions">
                 <input type="text" id="userSearch" placeholder="Cerca per nome..."
                        onkeyup="filterUsers()"
-                       style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-width: 200px;">
+                       class="search-input">
                 <button class="btn btn-danger" onclick="deleteSelected()" id="deleteBtn" disabled>
-                    <span class="material-icons" style="font-size: 18px;">delete</span>
+                    <span class="material-icons icon-sm">delete</span>
                     Elimina Selezionati
                 </button>
                 <button class="btn" onclick="openCreateModal()">
-                    <span class="material-icons" style="font-size: 18px;">person_add</span>
+                    <span class="material-icons icon-sm">person_add</span>
                     Nuovo Utente
                 </button>
             </div>
@@ -52,7 +52,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 40px;">
+                        <th class="checkbox-col">
                             <input type="checkbox" class="checkbox" id="selectAll" onchange="toggleAll(this)" />
                         </th>
                         <th>
@@ -97,14 +97,14 @@
                         <td>{{.ExpiresAtFormatted}}</td>
                         <td>{{.RemainingAccesses}}</td>
                         <td>
-                            <button onclick='openEditModal({{.ID}}, "{{.FirstName}}", "{{.LastName}}", "{{.Email}}", "{{.Address}}", "{{.Cellphone}}", "{{.SubType}}", {{.MedOk}}, "{{.ExpiresAt}}", {{.RemainingAccesses}}, "{{.Goals}}", {{if .EmailVerified}}true{{else}}false{{end}})' style="background: none; border: none; cursor: pointer; color: #1976d2; padding: 0;">
-                                <span class="material-icons" style="font-size: 20px; vertical-align: middle;">edit</span>
+                            <button onclick='openEditModal({{.ID}}, "{{.FirstName}}", "{{.LastName}}", "{{.Email}}", "{{.Address}}", "{{.Cellphone}}", "{{.SubType}}", {{.MedOk}}, "{{.ExpiresAt}}", {{.RemainingAccesses}}, "{{.Goals}}", {{if .EmailVerified}}true{{else}}false{{end}})' class="btn-icon-plain">
+                                <span class="material-icons icon-md">edit</span>
                             </button>
                         </td>
                     </tr>
                     {{else}}
                     <tr>
-                        <td colspan="8" style="text-align: center; color: rgba(0, 0, 0, 0.4); padding: 40px;">
+                        <td colspan="8" class="empty-cell">
                             Nessun utente trovato
                         </td>
                     </tr>
@@ -167,7 +167,7 @@
                             <input type="date" id="createExpiresAt" required />
                         </div>
                         <div class="form-group">
-                            <label style="display: flex; align-items: center; margin-top: 28px;">
+                            <label class="inline-check-spaced">
                                 <input type="checkbox" id="createMedOk" />
                                 Certificato Medico OK
                             </label>
@@ -210,10 +210,10 @@
                         <label>Email *</label>
                         <input type="email" id="editEmail" required />
                     </div>
-                    <div class="form-group" id="verificationStatus" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #fff3e0; border-radius: 4px;">
-                            <span style="color: #e65100; font-size: 14px;">Account non verificato</span>
-                            <button type="button" class="btn" onclick="resendVerification()" style="padding: 6px 12px; font-size: 12px;">
+                    <div class="form-group is-hidden" id="verificationStatus">
+                        <div class="verification-box">
+                            <span class="verification-message">Account non verificato</span>
+                            <button type="button" class="btn btn-compact" onclick="resendVerification()">
                                 Reinvia Email
                             </button>
                         </div>
@@ -245,7 +245,7 @@
                             <input type="date" id="editExpiresAt" required />
                         </div>
                         <div class="form-group">
-                            <label style="display: flex; align-items: center; margin-top: 28px;">
+                            <label class="inline-check-spaced">
                                 <input type="checkbox" id="editMedOk" />
                                 Certificato Medico OK
                             </label>

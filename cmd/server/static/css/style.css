@@ -157,6 +157,71 @@ h1 {
     line-height: 1;
     vertical-align: text-bottom;
 }
+
+.icon-sm {
+    font-size: 18px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.user-name-heading {
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+
+.profile-extra {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.profile-goals {
+    margin-top: 8px;
+}
+
+.info-value-small {
+    font-size: 14px;
+}
+
+.instructor-name {
+    color: #1976d2;
+    font-weight: 500;
+}
+
+.booking-delete {
+    cursor: pointer;
+}
+
+.bottom-spacer {
+    height: 80px;
+}
+
+.logout-icon {
+    color: #d32f2f;
+}
+
+.notification-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 10000;
+    max-width: 350px;
+}
+
+.notification {
+    background: white;
+    border-left: 4px solid #f44336;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.notification.success {
+    border-left-color: #4caf50;
+}
 .empty-state {
     text-align: center;
     padding: 40px 20px;
